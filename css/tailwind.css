@@ -1064,6 +1064,11 @@ body {
     height: 644px;
   }
 
+  .intro-header-keynote {
+    height: calc(100vh - 85px);
+    min-height: 520px;
+  }
+
   .site-heading h1 {
     font-size: 80px;
     line-height: 88px;

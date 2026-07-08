@@ -146,6 +146,14 @@ test('Hux visual shell keeps archive and post hero parity contracts', async ({ p
 })
 
 test('post enhancers render responsive media and client Medium Zoom', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(validAiPath)
+  await expect
+    .poll(() =>
+      page.locator('.intro-header-keynote').evaluate((el) => el.getBoundingClientRect().height)
+    )
+    .toBe(815)
+
   await page.goto(openWebUiPath)
 
   const video = page.locator('.aspect-video iframe[src*="youtube-nocookie.com"]').first()
