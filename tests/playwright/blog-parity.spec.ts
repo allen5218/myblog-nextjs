@@ -35,6 +35,7 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   const sitemapText = await sitemap.text()
   expect(sitemapText).toContain(`<loc>${validAiUrl}</loc>`)
   expect(sitemapText).not.toContain(`<loc>${validAiUrlWithoutSlash}</loc>`)
+  expect(sitemapText).not.toContain('<loc>https://blog.allenspace.de/projects/</loc>')
 
   const feed = await request.get('/feed.xml')
   expect(feed.ok()).toBe(true)
@@ -49,6 +50,9 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
 
   const invalid = await request.get(invalidAiPath)
   expect(invalid.status()).toBe(404)
+
+  const projects = await request.get('/projects/')
+  expect(projects.status()).toBe(404)
 })
 
 test('starter KBar search opens with cyan active result and legacy navigation', async ({
