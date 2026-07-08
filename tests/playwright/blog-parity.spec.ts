@@ -170,4 +170,8 @@ test('post enhancers render responsive media and client Medium Zoom', async ({ p
   await page.goto(validAiPath)
   const table = page.locator('.table-responsive > table.table')
   await expect(table).toHaveCount(1)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect
+    .poll(() => page.locator('.table-responsive').evaluate((el) => el.scrollWidth > el.clientWidth))
+    .toBe(true)
 })

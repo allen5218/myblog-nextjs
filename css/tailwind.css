@@ -742,6 +742,13 @@ body {
   overflow-x: auto;
 }
 
+.post-container .table-responsive > table.table {
+  display: table;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+}
+
 .about-shell {
   max-width: 780px;
 }
