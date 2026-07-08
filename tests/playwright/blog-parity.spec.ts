@@ -24,6 +24,12 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   )
   await expect(page.getByText('Catalog Test')).toHaveCount(0)
 
+  const archiveHtml = await request.get('/archive/')
+  expect(archiveHtml.ok()).toBe(true)
+  const archiveHtmlText = await archiveHtml.text()
+  expect(archiveHtmlText).toContain('mini-post-list')
+  expect(archiveHtmlText).toContain('課程啟動 - AI 跨領域學習社群')
+
   const searchIndex = await request.get('/search.json')
   expect(searchIndex.ok()).toBe(true)
   const searchText = await searchIndex.text()

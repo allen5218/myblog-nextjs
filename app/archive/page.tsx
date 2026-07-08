@@ -4,6 +4,7 @@ import { allBlogs } from 'contentlayer/generated'
 import { genPageMetadata } from 'app/seo'
 import HuxHero from '@/components/hux/HuxHero'
 import ArchiveFilter from '@/components/hux/ArchiveFilter'
+import ArchiveContent from '@/components/hux/ArchiveContent'
 
 export const metadata = genPageMetadata({ title: 'Archive' })
 
@@ -27,7 +28,7 @@ export default async function ArchivePage() {
         subtitle="If you don't know, the thing to do is not to get scared, but to learn."
         headerImg="/img/bg-little-universe.jpg"
       />
-      <Suspense fallback={null}>
+      <Suspense fallback={<ArchiveContent posts={posts} tags={tags} />}>
         <ArchiveFilter posts={posts} tags={tags} />
       </Suspense>
     </>
