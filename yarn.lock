@@ -8469,6 +8469,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"medium-zoom@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "medium-zoom@npm:1.1.0"
+  checksum: c58ea2d3335c3b5d4625b4fa70d09925e35d2eb15e9906f41586e7016aa3059ca9b01656ae6d35e70219c7e3e94dda0e9528cd354fcd2f6614231b529654b0b9
+  languageName: node
+  linkType: hard
+
 "memfs@npm:^4.8.2":
   version: 4.56.10
   resolution: "memfs@npm:4.56.10"
@@ -9200,6 +9207,7 @@ __metadata:
     husky: ^9.1.7
     image-size: 2.0.2
     lint-staged: ^16.2.7
+    medium-zoom: ^1.1.0
     next: 15.5.12
     next-contentlayer2: 0.5.8
     next-themes: ^0.4.6

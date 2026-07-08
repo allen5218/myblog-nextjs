@@ -13,7 +13,7 @@ const ContentSecurityPolicy = `
   media-src *.s3.amazonaws.com;
   connect-src *;
   font-src 'self';
-  frame-src giscus.app
+  frame-src giscus.app slide.allenspace.de www.youtube-nocookie.com youtube-nocookie.com;
 `
 
 const securityHeaders = [
@@ -83,6 +83,10 @@ module.exports = () => {
         {
           protocol: 'https',
           hostname: 'picsum.photos',
+        },
+        {
+          protocol: 'https',
+          hostname: 'img.allenspace.de',
         },
       ],
       unoptimized,
