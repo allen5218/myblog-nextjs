@@ -1,14 +1,17 @@
-'use client'
-
-import { useState } from 'react'
-import SearchOverlay from '@/components/hux/SearchOverlay'
+import { AlgoliaButton } from 'pliny/search/AlgoliaButton'
+import { KBarButton } from 'pliny/search/KBarButton'
+import siteMetadata from '@/data/siteMetadata'
 
 const SearchButton = () => {
-  const [open, setOpen] = useState(false)
+  if (
+    siteMetadata.search &&
+    (siteMetadata.search.provider === 'algolia' || siteMetadata.search.provider === 'kbar')
+  ) {
+    const SearchButtonWrapper =
+      siteMetadata.search.provider === 'algolia' ? AlgoliaButton : KBarButton
 
-  return (
-    <>
-      <button aria-label="Search" onClick={() => setOpen(true)} type="button">
+    return (
+      <SearchButtonWrapper aria-label="Search">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -23,10 +26,9 @@ const SearchButton = () => {
             d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
           />
         </svg>
-      </button>
-      <SearchOverlay open={open} onClose={() => setOpen(false)} />
-    </>
-  )
+      </SearchButtonWrapper>
+    )
+  }
 }
 
 export default SearchButton

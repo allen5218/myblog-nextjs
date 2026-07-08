@@ -213,11 +213,11 @@ Use generated `search.json` with legacy paths. Keep overlay open/close and body 
 
 Render a desktop-only TOC from `post.toc`, including fixed/fold behavior after scroll.
 
-- [ ] **Step 4: Build Medium Zoom enhancer**
+- [x] **Step 4: Build Medium Zoom enhancer**
 
 Initialize `medium-zoom` on `.post-container img`; update background color when theme changes.
 
-- [ ] **Step 5: Move table/video wrapping to render time**
+- [x] **Step 5: Move table/video wrapping to render time**
 
 Use MDX component mappings so tables are rendered inside responsive wrappers and YouTube/Vimeo iframes get responsive containers.
 

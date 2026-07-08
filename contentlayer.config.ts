@@ -22,6 +22,7 @@ import rehypeKatexNoTranslate from 'rehype-katex-notranslate'
 import rehypeCitation from 'rehype-citation'
 import rehypePrismPlus from 'rehype-prism-plus'
 import rehypePresetMinify from 'rehype-preset-minify'
+import { visit } from 'unist-util-visit'
 import siteMetadata from './data/siteMetadata'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 import prettier from 'prettier'
@@ -103,6 +104,132 @@ function createSearchIndex(allBlogs) {
       JSON.stringify(allCoreContent(sortPosts(allBlogs.filter((post) => post.listed !== false))))
     )
     console.log('Local search index generated...')
+  }
+}
+
+const responsiveIframeHosts = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com']
+
+function classNames(value: unknown) {
+  if (Array.isArray(value)) return value.map(String)
+  if (typeof value === 'string') return value.split(/\s+/).filter(Boolean)
+  return []
+}
+
+function mdxAttribute(name: string, value: string | boolean | null = null) {
+  return {
+    type: 'mdxJsxAttribute',
+    name,
+    value,
+  }
+}
+
+function mdxAttributeValue(node, name: string) {
+  return node.attributes?.find(
+    (attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name === name
+  )?.value
+}
+
+function setMdxAttribute(node, name: string, value: string | boolean | null) {
+  const attributes = (node.attributes || []).filter(
+    (attribute) =>
+      !(attribute.type === 'mdxJsxAttribute' && [name, name.toLowerCase()].includes(attribute.name))
+  )
+  attributes.push(mdxAttribute(name, value))
+  node.attributes = attributes
+}
+
+function responsiveIframeTransform() {
+  return (tree) => {
+    visit(tree, 'element', (node, index, parent) => {
+      if (
+        node.tagName !== 'iframe' ||
+        typeof index !== 'number' ||
+        !parent ||
+        !Array.isArray(parent.children)
+      ) {
+        return
+      }
+
+      const src = String(node.properties?.src || '')
+      if (!responsiveIframeHosts.some((host) => src.includes(host))) {
+        return
+      }
+
+      const parentClasses = classNames(parent.properties?.className)
+      if (parent.tagName === 'div' && parentClasses.includes('aspect-video')) {
+        return
+      }
+
+      node.properties = {
+        ...node.properties,
+        frameBorder: node.properties?.frameborder ?? node.properties?.frameBorder,
+        allowFullScreen: node.properties?.allowfullscreen ?? node.properties?.allowFullScreen,
+        referrerPolicy: node.properties?.referrerpolicy ?? node.properties?.referrerPolicy,
+        className: Array.from(
+          new Set([...classNames(node.properties?.className), 'h-full', 'w-full'])
+        ),
+      }
+      delete node.properties.frameborder
+      delete node.properties.allowfullscreen
+      delete node.properties.referrerpolicy
+      parent.children[index] = {
+        type: 'element',
+        tagName: 'div',
+        properties: { className: ['my-6', 'aspect-video', 'w-full', 'overflow-hidden'] },
+        children: [node],
+      }
+    })
+
+    visit(tree, 'mdxJsxFlowElement', (node, index, parent) => {
+      if (
+        node.name !== 'iframe' ||
+        typeof index !== 'number' ||
+        !parent ||
+        !Array.isArray(parent.children)
+      ) {
+        return
+      }
+
+      const src = String(mdxAttributeValue(node, 'src') || '')
+      if (!responsiveIframeHosts.some((host) => src.includes(host))) {
+        return
+      }
+
+      const parentClasses =
+        parent.type === 'mdxJsxFlowElement' && parent.name === 'div'
+          ? classNames(mdxAttributeValue(parent, 'className'))
+          : []
+      if (parentClasses.includes('aspect-video')) {
+        return
+      }
+
+      setMdxAttribute(node, 'className', 'h-full w-full')
+      setMdxAttribute(node, 'frameBorder', String(mdxAttributeValue(node, 'frameborder') || 0))
+      if (mdxAttributeValue(node, 'allowfullscreen') !== undefined) {
+        setMdxAttribute(node, 'allowFullScreen', null)
+      }
+      if (mdxAttributeValue(node, 'referrerpolicy') !== undefined) {
+        setMdxAttribute(
+          node,
+          'referrerPolicy',
+          String(mdxAttributeValue(node, 'referrerpolicy') || '')
+        )
+      }
+      node.attributes = node.attributes.filter(
+        (attribute) =>
+          !(
+            attribute.type === 'mdxJsxAttribute' &&
+            ['frameborder', 'allowfullscreen', 'referrerpolicy'].includes(attribute.name)
+          )
+      )
+
+      parent.children[index] = {
+        type: 'mdxJsxFlowElement',
+        name: 'div',
+        attributes: [mdxAttribute('className', 'my-6 aspect-video w-full overflow-hidden')],
+        children: [node],
+      }
+    })
   }
 }
 
@@ -196,6 +323,7 @@ export default makeSource({
       remarkMath,
       remarkImgToJsx,
       remarkAlert,
+      responsiveIframeTransform,
     ],
     rehypePlugins: [
       rehypeSlug,
@@ -213,6 +341,7 @@ export default makeSource({
       rehypeKatexNoTranslate,
       [rehypeCitation, { path: path.join(root, 'data') }],
       [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }],
+      responsiveIframeTransform,
       rehypePresetMinify,
     ],
   },
