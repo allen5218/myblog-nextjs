@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from '@/components/Link'
+import siteMetadata from '@/data/siteMetadata'
 
 type SearchDocument = {
   title: string
@@ -19,6 +20,10 @@ type SearchOverlayProps = {
 }
 
 const MAX_RESULTS = 20
+const searchDocumentsPath =
+  (siteMetadata.search?.provider === 'kbar' &&
+    siteMetadata.search.kbarConfig.searchDocumentsPath) ||
+  `${process.env.BASE_PATH || ''}/search.json`
 
 function getSearchHref(post: SearchDocument) {
   if (post.url) return post.url
@@ -40,7 +45,7 @@ export default function SearchOverlay({ open, onClose }: SearchOverlayProps) {
 
     const controller = new AbortController()
 
-    fetch('/search.json', { signal: controller.signal })
+    fetch(searchDocumentsPath, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error('Unable to load search index')
         return response.json()

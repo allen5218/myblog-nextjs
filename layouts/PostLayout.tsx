@@ -7,6 +7,7 @@ import siteMetadata from '@/data/siteMetadata'
 import HuxHero from '@/components/hux/HuxHero'
 import HuxPager from '@/components/hux/HuxPager'
 import BackTop from '@/components/hux/BackTop'
+import SideCatalog from '@/components/hux/SideCatalog'
 
 const editUrl = (path) => `${siteMetadata.siteRepo}/blob/main/data/${path}`
 const discussUrl = (path) =>
@@ -39,6 +40,8 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
     headerImg,
     headerBgCss,
     headerMask,
+    catalog,
+    toc,
   } = content
   const authorName = authorDetails[0]?.name || siteMetadata.author
 
@@ -74,19 +77,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
               </div>
             )}
           </div>
-          <aside className="side-catalog" aria-label="Post sidebar">
-            <p className="side-catalog-title">作者</p>
-            <p>{authorName}</p>
-            {!!tags?.length && (
-              <div className="tags">
-                {tags.map((tag) => (
-                  <span className="tag" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </aside>
+          <SideCatalog toc={toc} enabled={catalog !== false} />
         </div>
       </article>
     </>

@@ -209,7 +209,7 @@ Render `/archive/` with the old hero image, tag cloud, mini post list, and clien
 
 Use generated `search.json` with legacy paths. Keep overlay open/close and body scroll locking client-side.
 
-- [ ] **Step 3: Build side catalog**
+- [x] **Step 3: Build side catalog**
 
 Render a desktop-only TOC from `post.toc`, including fixed/fold behavior after scroll.
 
