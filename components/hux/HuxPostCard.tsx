@@ -8,23 +8,25 @@ type HuxPostCardProps = {
     title: string
     subtitle?: string
     summary?: string
+    preview?: string
     date: string
     tags?: string[]
+    author?: string
   }
 }
 
 export default function HuxPostCard({ post }: HuxPostCardProps) {
-  const preview = post.summary && post.summary !== post.subtitle ? post.summary : undefined
+  const preview = post.preview || (post.summary !== post.subtitle ? post.summary : undefined)
 
   return (
     <div className="post-preview">
-      <Link href={`/${post.path}`}>
+      <Link href={`/${post.path}/`}>
         <h2 className="post-title">{post.title}</h2>
         {post.subtitle && <h3 className="post-subtitle">{post.subtitle}</h3>}
         {preview && <div className="post-content-preview">{preview}</div>}
       </Link>
       <p className="post-meta">
-        Posted by {siteMetadata.author} on {formatHuxDate(post.date)}
+        Posted by {post.author || siteMetadata.author} on {formatHuxDate(post.date)}
       </p>
       {!!post.tags?.length && (
         <div className="tags">

@@ -15,6 +15,10 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
     'href',
     validAiPath
   )
+  await expect(page.getByText('FEATURED TAGS')).toBeVisible()
+  await expect(page.getByText('ABOUT ME')).toBeVisible()
+  await expect(page.getByText('FRIENDS')).toBeVisible()
+  await expect(page.getByText('這篇短文是')).toBeVisible()
   await expect(page.getByText('catalog-test')).toHaveCount(0)
 
   await page.goto('/archive/')

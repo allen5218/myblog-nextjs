@@ -107,6 +107,19 @@ function createSearchIndex(allBlogs) {
   }
 }
 
+function excerptFromMarkdown(raw: string, maxLength = 200) {
+  const text = raw
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[#>*_`~|-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text
+}
+
 const responsiveIframeHosts = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com']
 
 function classNames(value: unknown) {
@@ -268,6 +281,10 @@ export const Blog = defineDocumentType(() => ({
     summary: {
       type: 'string',
       resolve: (doc) => doc.summary || doc.subtitle || '',
+    },
+    preview: {
+      type: 'string',
+      resolve: (doc) => excerptFromMarkdown(doc.body.raw),
     },
     heroImage: {
       type: 'string',
