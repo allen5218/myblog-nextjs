@@ -659,6 +659,59 @@ body {
   overflow-x: auto;
 }
 
+.about-shell {
+  max-width: 780px;
+}
+
+.about-container {
+  width: 100%;
+  padding-top: 10px;
+}
+
+.language-switcher {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 0 20px;
+  color: var(--hux-muted);
+  font-size: 14px;
+}
+
+.language-switcher-link {
+  border: 1px solid var(--hux-border);
+  border-radius: 999px;
+  color: var(--hux-muted);
+  line-height: 28px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.language-switcher-link:hover,
+.language-switcher-link[aria-current='page'] {
+  border-color: #0085a1;
+  background: #0085a1;
+  color: #fff;
+}
+
+.about-profile {
+  margin: 0 0 18px;
+  color: var(--hux-muted);
+  font-style: italic;
+}
+
+.about-name {
+  margin: 0;
+  color: var(--hux-text);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.about-role,
+.about-location {
+  margin: 4px 0 0;
+}
+
 .pager {
   display: flex;
   gap: 16px;

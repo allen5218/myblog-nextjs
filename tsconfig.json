@@ -19,6 +19,8 @@
     "paths": {
       "@/components/*": ["components/*"],
       "@/data/*": ["data/*"],
+      "@/dictionaries/*": ["dictionaries/*"],
+      "@/lib/*": ["lib/*"],
       "@/layouts/*": ["layouts/*"],
       "@/css/*": ["css/*"],
       "contentlayer/generated": ["./.contentlayer/generated"],

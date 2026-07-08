@@ -1,0 +1,27 @@
+{
+  "common": {
+    "languageSwitcherLabel": "Switch language",
+    "languageNames": {
+      "zh-TW": "中文",
+      "en": "English"
+    }
+  },
+  "about": {
+    "title": "About",
+    "description": "「 Stay Hungry, Stay Foolish 」",
+    "ogLocale": "en_US",
+    "headerImg": "/img/bg-me-2022.jpg",
+    "headerMask": 0.3,
+    "profile": {
+      "name": "Allen",
+      "role": "Digital artisan / Student and builder",
+      "location": "Taiwan"
+    },
+    "body": [
+      "Hey, I'm Allen, a digital artisan with a passion for photography, technology and artificial intelligence. I'm obsessed with capturing light and shadow through my lens, and I'm passionate about building solid digital worlds with code and architecture.",
+      "I believe that networking and containerization are the cornerstones of modern technology, and I'm committed to exploring their limitless possibilities in AI applications and Homelab practices. You can think of me as an explorer between art and logic, a photographer and a believer in cloud natives.",
+      "Currently, I'm focusing on learning pgvector and langchain, hoping to build my own RAG knowledge base and connect it to various places through Model Context Protocol. I use Open WebUI and AnythingLLM on a daily basis, and I am interested in OPNsense, containerized deployment, CI/CD, and DevOps.",
+      "My physical activities are mainly in Taiwan, but I also like to travel around."
+    ]
+  }
+}

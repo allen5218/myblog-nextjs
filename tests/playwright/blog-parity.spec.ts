@@ -36,6 +36,8 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   expect(sitemapText).toContain(`<loc>${validAiUrl}</loc>`)
   expect(sitemapText).not.toContain(`<loc>${validAiUrlWithoutSlash}</loc>`)
   expect(sitemapText).not.toContain('<loc>https://blog.allenspace.de/projects/</loc>')
+  expect(sitemapText).toContain('<loc>https://blog.allenspace.de/about/</loc>')
+  expect(sitemapText).toContain('<loc>https://blog.allenspace.de/en/about/</loc>')
 
   const feed = await request.get('/feed.xml')
   expect(feed.ok()).toBe(true)
@@ -84,6 +86,20 @@ test('KaTeX renders math without MathJax', async ({ page }) => {
   await page.goto(mathPath)
   await expect(page.locator('.katex')).not.toHaveCount(0)
   await expect(page.locator('script[src*="mathjax" i]')).toHaveCount(0)
+})
+
+test('about page uses new i18n routes without changing legacy blog URLs', async ({ page }) => {
+  await page.goto('/about/')
+  await expect(page.locator('.site-heading h1')).toHaveText('About')
+  await expect(page.locator('article[lang="zh-TW"]')).toContainText('Hey，我是與倫')
+  await expect(page.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/en/about/')
+
+  await page.getByRole('link', { name: 'English' }).click()
+  await page.waitForURL('**/en/about/')
+  await expect(page.locator('article[lang="en"]')).toContainText("Hey, I'm Allen")
+  await expect(page.getByRole('link', { name: '中文' })).toHaveAttribute('href', '/about/')
+
+  await expect(page.locator('.navbar-brand')).toHaveAttribute('href', '/')
 })
 
 test('Hux visual shell keeps archive and post hero parity contracts', async ({ page }) => {

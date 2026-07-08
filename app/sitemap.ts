@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { allBlogs } from 'contentlayer/generated'
 import siteMetadata from '@/data/siteMetadata'
+import { localizedUrl } from '@/lib/i18n'
 
 export const dynamic = 'force-static'
 
@@ -20,5 +21,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date().toISOString().split('T')[0],
   }))
 
-  return [...routes, ...blogRoutes]
+  const aboutAlternates = {
+    languages: {
+      'zh-TW': localizedUrl('zh-TW', '/about/'),
+      en: localizedUrl('en', '/about/'),
+      'x-default': localizedUrl('zh-TW', '/about/'),
+    },
+  }
+
+  const localizedRoutes = [
+    {
+      url: localizedUrl('zh-TW', '/about/'),
+      lastModified: new Date().toISOString().split('T')[0],
+      alternates: aboutAlternates,
+    },
+    {
+      url: localizedUrl('en', '/about/'),
+      lastModified: new Date().toISOString().split('T')[0],
+      alternates: aboutAlternates,
+    },
+  ]
+
+  return [...routes, ...localizedRoutes, ...blogRoutes]
 }

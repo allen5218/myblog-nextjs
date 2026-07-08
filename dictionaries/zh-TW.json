@@ -1,0 +1,27 @@
+{
+  "common": {
+    "languageSwitcherLabel": "切換語言",
+    "languageNames": {
+      "zh-TW": "中文",
+      "en": "English"
+    }
+  },
+  "about": {
+    "title": "About",
+    "description": "「 Stay Hungry, Stay Foolish 」",
+    "ogLocale": "zh_TW",
+    "headerImg": "/img/bg-me-2022.jpg",
+    "headerMask": 0.3,
+    "profile": {
+      "name": "Allen",
+      "role": "數位工匠 / Student and builder",
+      "location": "Taiwan"
+    },
+    "body": [
+      "Hey，我是與倫，一個對攝影、技術與人工智慧充滿熱情的數位工匠。我著迷於用鏡頭捕捉光影，也熱衷於用程式碼與架構打造穩固的數位世界。",
+      "我相信網路與容器化是現代技術的基石，並致力於探索其在 AI 應用與 Homelab 實踐中的無限可能。你可以把我想像成一個遊走在藝術與邏輯之間的探索者，既是攝影師，也是雲端原生的信徒。",
+      "目前專注於學習 pgvector 與 langchain，希望打造專屬的 RAG 知識庫，並透過 Model Context Protocol 將知識庫連接到各個地方。日常使用 Open WebUI 和 AnythingLLM，並對 OPNsense、容器化部署、CI/CD 及 DevOps 有濃厚興趣。",
+      "目前的物理活動範圍主要在台灣，也喜歡到處旅行。"
+    ]
+  }
+}
