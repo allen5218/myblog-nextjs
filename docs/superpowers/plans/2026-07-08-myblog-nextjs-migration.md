@@ -201,7 +201,7 @@ Implement mobile nav toggle, old desktop nav sizing, footer social/copyright are
 - Consumes: all core Blog documents and generated search JSON.
 - Produces: archive `?tag=` filtering, search overlay, side catalog, table/video wrappers, and Medium Zoom client behavior.
 
-- [ ] **Step 1: Build archive page**
+- [x] **Step 1: Build archive page**
 
 Render `/archive/` with the old hero image, tag cloud, mini post list, and client `?tag=` filtering parity.
 
