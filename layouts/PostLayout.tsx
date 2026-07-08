@@ -30,7 +30,7 @@ interface LayoutProps {
 }
 
 export default function PostLayout({ content, authorDetails, next, prev, children }: LayoutProps) {
-  const { filePath, path, slug, date, title, tags } = content
+  const { filePath, path, date, title, tags } = content
   const basePath = path.split('/')[0]
 
   return (
@@ -107,7 +107,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                   className="pt-6 pb-6 text-center text-gray-700 dark:text-gray-300"
                   id="comment"
                 >
-                  <Comments slug={slug} />
+                  <Comments slug={`/${path}/`} />
                 </div>
               )}
             </div>

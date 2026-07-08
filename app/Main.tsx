@@ -21,9 +21,9 @@ export default function Home({ posts }) {
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
           {!posts.length && 'No posts found.'}
           {posts.slice(0, MAX_DISPLAY).map((post) => {
-            const { slug, date, title, summary, tags } = post
+            const { path, date, title, summary, tags } = post
             return (
-              <li key={slug} className="py-12">
+              <li key={path} className="py-12">
                 <article>
                   <div className="space-y-2 xl:grid xl:grid-cols-4 xl:items-baseline xl:space-y-0">
                     <dl>
@@ -36,10 +36,7 @@ export default function Home({ posts }) {
                       <div className="space-y-6">
                         <div>
                           <h2 className="text-2xl leading-8 font-bold tracking-tight">
-                            <Link
-                              href={`/blog/${slug}`}
-                              className="text-gray-900 dark:text-gray-100"
-                            >
+                            <Link href={`/${path}`} className="text-gray-900 dark:text-gray-100">
                               {title}
                             </Link>
                           </h2>
@@ -55,7 +52,7 @@ export default function Home({ posts }) {
                       </div>
                       <div className="text-base leading-6 font-medium">
                         <Link
-                          href={`/blog/${slug}`}
+                          href={`/${path}`}
                           className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
                           aria-label={`Read more: "${title}"`}
                         >

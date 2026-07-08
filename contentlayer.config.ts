@@ -25,6 +25,7 @@ import rehypePresetMinify from 'rehype-preset-minify'
 import siteMetadata from './data/siteMetadata'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 import prettier from 'prettier'
+import { legacyPathFromDateAndSlug, stripPostDatePrefix } from './lib/legacy-url'
 
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
@@ -46,17 +47,29 @@ const computedFields: ComputedFields = {
   readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
   slug: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath.replace(/^.+?(\/)/, ''),
+    resolve: (doc) => stripPostDatePrefix(doc._raw.sourceFileName),
   },
   path: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath,
+    resolve: (doc) =>
+      legacyPathFromDateAndSlug(doc.date, stripPostDatePrefix(doc._raw.sourceFileName)),
+  },
+  legacyPath: {
+    type: 'string',
+    resolve: (doc) =>
+      legacyPathFromDateAndSlug(doc.date, stripPostDatePrefix(doc._raw.sourceFileName)),
+  },
+  url: {
+    type: 'string',
+    resolve: (doc) =>
+      `/${legacyPathFromDateAndSlug(doc.date, stripPostDatePrefix(doc._raw.sourceFileName))}/`,
   },
   filePath: {
     type: 'string',
     resolve: (doc) => doc._raw.sourceFilePath,
   },
   toc: { type: 'json', resolve: (doc) => extractTocHeadings(doc.body.raw) },
+  listed: { type: 'boolean', resolve: (doc) => doc.hidden !== true },
 }
 
 /**
@@ -65,7 +78,7 @@ const computedFields: ComputedFields = {
 async function createTagCount(allBlogs) {
   const tagCount: Record<string, number> = {}
   allBlogs.forEach((file) => {
-    if (file.tags && (!isProduction || file.draft !== true)) {
+    if (file.tags && file.listed !== false && (!isProduction || file.draft !== true)) {
       file.tags.forEach((tag) => {
         const formattedTag = slug(tag)
         if (formattedTag in tagCount) {
@@ -87,7 +100,7 @@ function createSearchIndex(allBlogs) {
   ) {
     writeFileSync(
       `public/${path.basename(siteMetadata.search.kbarConfig.searchDocumentsPath)}`,
-      JSON.stringify(allCoreContent(sortPosts(allBlogs)))
+      JSON.stringify(allCoreContent(sortPosts(allBlogs.filter((post) => post.listed !== false))))
     )
     console.log('Local search index generated...')
   }
@@ -95,23 +108,44 @@ function createSearchIndex(allBlogs) {
 
 export const Blog = defineDocumentType(() => ({
   name: 'Blog',
-  filePathPattern: 'blog/**/*.mdx',
+  filePathPattern: 'blog/**/*.{md,markdown}',
   contentType: 'mdx',
   fields: {
     title: { type: 'string', required: true },
     date: { type: 'date', required: true },
     tags: { type: 'list', of: { type: 'string' }, default: [] },
-    lastmod: { type: 'date' },
+    update: { type: 'date' },
     draft: { type: 'boolean' },
-    summary: { type: 'string' },
+    subtitle: { type: 'string' },
     images: { type: 'json' },
     authors: { type: 'list', of: { type: 'string' } },
+    author: { type: 'string' },
     layout: { type: 'string' },
     bibliography: { type: 'string' },
     canonicalUrl: { type: 'string' },
+    headerImg: { type: 'string' },
+    headerBgCss: { type: 'string' },
+    headerMask: { type: 'json' },
+    catalog: { type: 'boolean' },
+    mathjax: { type: 'boolean' },
+    mermaid: { type: 'boolean' },
+    iframe: { type: 'string' },
+    hidden: { type: 'boolean' },
   },
   computedFields: {
     ...computedFields,
+    lastmod: {
+      type: 'date',
+      resolve: (doc) => doc.update || doc.lastmod || doc.date,
+    },
+    summary: {
+      type: 'string',
+      resolve: (doc) => doc.summary || doc.subtitle || '',
+    },
+    heroImage: {
+      type: 'string',
+      resolve: (doc) => doc.headerImg || '',
+    },
     structuredData: {
       type: 'json',
       resolve: (doc) => ({
@@ -119,10 +153,13 @@ export const Blog = defineDocumentType(() => ({
         '@type': 'BlogPosting',
         headline: doc.title,
         datePublished: doc.date,
-        dateModified: doc.lastmod || doc.date,
-        description: doc.summary,
-        image: doc.images ? doc.images[0] : siteMetadata.socialBanner,
-        url: `${siteMetadata.siteUrl}/${doc._raw.flattenedPath}`,
+        dateModified: doc.update || doc.lastmod || doc.date,
+        description: doc.summary || doc.subtitle,
+        image: doc.headerImg || (doc.images ? doc.images[0] : siteMetadata.socialBanner),
+        url: `${siteMetadata.siteUrl}/${legacyPathFromDateAndSlug(
+          doc.date,
+          stripPostDatePrefix(doc._raw.sourceFileName)
+        )}`,
       }),
     },
   },
