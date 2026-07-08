@@ -1,11 +1,14 @@
 import siteMetadata from '@/data/siteMetadata'
+import Link from '@/components/Link'
+import { formatHuxDate } from '../../lib/hux-date'
 
 type HuxHeroProps = {
-  variant?: 'home' | 'post'
+  variant?: 'archive' | 'home' | 'post'
   title: string
   subtitle?: string
   author?: string
   date?: string
+  update?: string
   tags?: string[]
   headerImg?: string
   headerBgCss?: string
@@ -19,21 +22,13 @@ function resolveHeaderImage(src?: string) {
   return `/${src}`
 }
 
-function formatPostDate(date?: string) {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString(siteMetadata.locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
 export default function HuxHero({
   variant = 'post',
   title,
   subtitle,
   author,
   date,
+  update,
   tags,
   headerImg,
   headerBgCss,
@@ -50,9 +45,13 @@ export default function HuxHero({
 
   return (
     <header
-      className={`hux-full-bleed intro-header ${variant === 'home' ? 'intro-header-home' : 'intro-header-post'} ${
-        hasIframe ? 'intro-header-keynote' : ''
-      }`}
+      className={`hux-full-bleed intro-header ${
+        variant === 'home'
+          ? 'intro-header-home'
+          : variant === 'archive'
+            ? 'intro-header-archive'
+            : 'intro-header-post'
+      } ${hasIframe ? 'intro-header-keynote' : ''}`}
       style={style}
     >
       {maskOpacity !== undefined && !Number.isNaN(maskOpacity) && (
@@ -68,28 +67,29 @@ export default function HuxHero({
         />
       )}
       <div className={hasIframe ? 'sr-only' : 'intro-header-content'}>
-        {variant === 'home' ? (
+        {variant === 'home' || variant === 'archive' ? (
           <div className="site-heading">
             <h1>{title}</h1>
             {subtitle && <span className="subheading">{subtitle}</span>}
           </div>
         ) : (
           <div className="post-heading">
-            <h1>{title}</h1>
-            {subtitle && <h2 className="subheading">{subtitle}</h2>}
-            {date && (
-              <span className="meta">
-                Posted by {author || siteMetadata.author} on {formatPostDate(date)}
-              </span>
-            )}
             {!!tags?.length && (
               <div className="tags">
                 {tags.map((tag) => (
-                  <span className="tag" key={tag}>
+                  <Link className="tag" href={`/archive/?tag=${encodeURIComponent(tag)}`} key={tag}>
                     {tag}
-                  </span>
+                  </Link>
                 ))}
               </div>
+            )}
+            <h1>{title}</h1>
+            {subtitle && <h2 className="subheading">{subtitle}</h2>}
+            {update && <span className="meta">Updated on {formatHuxDate(update)}</span>}
+            {date && (
+              <span className="meta">
+                Posted by {author || siteMetadata.author} on {formatHuxDate(date)}
+              </span>
             )}
           </div>
         )}

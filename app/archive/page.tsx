@@ -22,7 +22,7 @@ export default async function ArchivePage() {
   return (
     <>
       <HuxHero
-        variant="home"
+        variant="archive"
         title="Archive"
         subtitle="If you don't know, the thing to do is not to get scared, but to learn."
         headerImg="/img/bg-little-universe.jpg"

@@ -66,6 +66,26 @@ test('KaTeX renders math without MathJax', async ({ page }) => {
   await expect(page.locator('script[src*="mathjax" i]')).toHaveCount(0)
 })
 
+test('Hux visual shell keeps archive and post hero parity contracts', async ({ page }) => {
+  await page.goto('/archive/')
+  await expect
+    .poll(() => page.locator('.intro-header').evaluate((el) => el.getBoundingClientRect().height))
+    .toBe(228)
+  await expect(page.locator('.site-heading h1')).toHaveText('Archive')
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
+    .toBe('rgb(45, 45, 45)')
+
+  await page.goto(mathPath)
+  await expect(page.locator('.post-heading .tags + h1')).toHaveText(
+    '轉載-Typora下使用LaTex公式，Jekyll使用Mathjax顯示公式'
+  )
+  await expect(page.locator('.post-heading .meta')).toContainText([
+    'Updated on August 13, 2025',
+    'Posted by elmagnifico on April 30, 2021',
+  ])
+})
+
 test('post enhancers render responsive media and client Medium Zoom', async ({ page }) => {
   await page.goto(openWebUiPath)
 

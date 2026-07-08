@@ -1,5 +1,6 @@
 import Link from '@/components/Link'
 import siteMetadata from '@/data/siteMetadata'
+import { formatHuxDate } from '../../lib/hux-date'
 
 type HuxPostCardProps = {
   post: {
@@ -10,14 +11,6 @@ type HuxPostCardProps = {
     date: string
     tags?: string[]
   }
-}
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString(siteMetadata.locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 export default function HuxPostCard({ post }: HuxPostCardProps) {
@@ -31,7 +24,7 @@ export default function HuxPostCard({ post }: HuxPostCardProps) {
         {preview && <div className="post-content-preview">{preview}</div>}
       </Link>
       <p className="post-meta">
-        Posted by {siteMetadata.author} on {formatDate(post.date)}
+        Posted by {siteMetadata.author} on {formatHuxDate(post.date)}
       </p>
       {!!post.tags?.length && (
         <div className="tags">

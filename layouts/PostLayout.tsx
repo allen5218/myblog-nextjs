@@ -33,9 +33,11 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
     filePath,
     path,
     date,
+    update,
     title,
     subtitle,
     summary,
+    author,
     tags,
     headerImg,
     headerBgCss,
@@ -43,7 +45,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
     catalog,
     toc,
   } = content
-  const authorName = authorDetails[0]?.name || siteMetadata.author
+  const authorName = author || authorDetails[0]?.name || siteMetadata.author
 
   return (
     <>
@@ -54,6 +56,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
           subtitle={subtitle || summary}
           author={authorName}
           date={date}
+          update={update}
           tags={tags}
           headerImg={headerImg}
           headerBgCss={headerBgCss}

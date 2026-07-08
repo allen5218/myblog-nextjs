@@ -280,6 +280,10 @@ body {
   height: 270px;
 }
 
+.intro-header-archive {
+  height: 228px;
+}
+
 .intro-header-post {
   min-height: 402px;
 }
@@ -914,6 +918,10 @@ body {
 
   .intro-header-home {
     height: 418px;
+  }
+
+  .intro-header-archive {
+    height: 228px;
   }
 
   .intro-header-post {
