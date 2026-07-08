@@ -99,28 +99,6 @@ module.exports = () => {
         },
       ]
     },
-    async redirects() {
-      return [
-        {
-          source: '/about',
-          has: [{ type: 'query', key: 'lang', value: 'en' }],
-          destination: '/en/about/',
-          permanent: true,
-        },
-        {
-          source: '/about',
-          has: [{ type: 'query', key: 'lang', value: 'zh' }],
-          destination: '/about/',
-          permanent: true,
-        },
-        {
-          source: '/about',
-          has: [{ type: 'query', key: 'lang', value: 'zh-TW' }],
-          destination: '/about/',
-          permanent: true,
-        },
-      ]
-    },
     webpack: (config, options) => {
       config.module.rules.push({
         test: /\.svg$/,

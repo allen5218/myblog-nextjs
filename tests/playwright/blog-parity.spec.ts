@@ -96,10 +96,23 @@ test('about page uses new i18n routes without changing legacy blog URLs', async 
 
   await page.getByRole('link', { name: 'English' }).click()
   await page.waitForURL('**/en/about/')
+  await expect.poll(() => page.evaluate(() => document.documentElement.lang)).toBe('en')
   await expect(page.locator('article[lang="en"]')).toContainText("Hey, I'm Allen")
   await expect(page.getByRole('link', { name: '中文' })).toHaveAttribute('href', '/about/')
 
   await expect(page.locator('.navbar-brand')).toHaveAttribute('href', '/')
+
+  await page.goto('/about/?lang=en')
+  await page.waitForURL('**/en/about/')
+  expect(page.url()).not.toContain('lang=')
+
+  await page.goto('/about/?lang=zh')
+  await page.waitForURL('**/about/')
+  expect(page.url()).not.toContain('lang=')
+
+  await page.goto('/about/?lang=zh-TW')
+  await page.waitForURL('**/about/')
+  expect(page.url()).not.toContain('lang=')
 })
 
 test('Hux visual shell keeps archive and post hero parity contracts', async ({ page }) => {
