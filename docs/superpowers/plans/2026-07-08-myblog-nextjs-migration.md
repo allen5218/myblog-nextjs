@@ -205,7 +205,7 @@ Implement mobile nav toggle, old desktop nav sizing, footer social/copyright are
 
 Render `/archive/` with the old hero image, tag cloud, mini post list, and client `?tag=` filtering parity.
 
-- [ ] **Step 2: Build search overlay**
+- [x] **Step 2: Build search overlay**
 
 Use generated `search.json` with legacy paths. Keep overlay open/close and body scroll locking client-side.
 
