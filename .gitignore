@@ -11,6 +11,7 @@
 
 # testing
 /coverage
+/test-results
 .playwright-cli/
 .superpowers/
 

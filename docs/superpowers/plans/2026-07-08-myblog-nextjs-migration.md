@@ -236,22 +236,22 @@ Use MDX component mappings so tables are rendered inside responsive wrappers and
 - Consumes: MDX body and old front matter flags.
 - Produces: KaTeX rendering, build-time Mermaid SVG output if feasible, CSP/image domain compatibility, and visual parity checks.
 
-- [ ] **Step 1: Confirm KaTeX path**
+- [x] **Step 1: Confirm KaTeX path**
 
 Keep `remark-math`, `rehype-katex`, `rehype-katex-notranslate`, and import `katex/dist/katex.css` in post routes.
 
-- [ ] **Step 2: Add build-time Mermaid if feasible**
+- [x] **Step 2: Add build-time Mermaid if feasible**
 
 Research and implement build-time Mermaid SVG rendering for fenced `mermaid` blocks. If a headless browser dependency blocks local build, document the blocker and leave code blocks styled instead of adding client Mermaid.
 
-- [ ] **Step 3: Configure remote assets and frames**
+- [x] **Step 3: Configure remote assets and frames**
 
 Allow `img.allenspace.de` images and `slide.allenspace.de` frames in `next.config.js` CSP/image config.
 
-- [ ] **Step 4: Add parity checks**
+- [x] **Step 4: Add parity checks**
 
 Create Playwright checks for `/`, `/archive/`, `/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/`, `/2021/04/30/typora-latex-mathjax/`, `/2025/10/12/ai-learning-community/`, and the invalid `/2025/10/13/ai-learning-community/` 404 case.
 
-- [ ] **Step 5: Build and verify**
+- [x] **Step 5: Build and verify**
 
 Run `yarn build`. Then run Playwright parity checks against the local build and compare screenshots to `docs/research/live-screenshots/`.
