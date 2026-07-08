@@ -8,12 +8,13 @@ import { allBlogs } from '../.contentlayer/generated/index.mjs'
 import { sortPosts } from 'pliny/utils/contentlayer.js'
 
 const outputFolder = process.env.EXPORT ? 'out' : 'public'
+const pageUrl = (config, route = '') => `${config.siteUrl}/${route}`.replace(/\/?$/, '/')
 
 const generateRssItem = (config, post) => `
   <item>
-    <guid>${config.siteUrl}/${post.legacyPath}</guid>
+    <guid>${pageUrl(config, post.legacyPath)}</guid>
     <title>${escape(post.title)}</title>
-    <link>${config.siteUrl}/${post.legacyPath}</link>
+    <link>${pageUrl(config, post.legacyPath)}</link>
     ${post.summary && `<description>${escape(post.summary)}</description>`}
     <pubDate>${new Date(post.date).toUTCString()}</pubDate>
     <author>${config.email} (${config.author})</author>
@@ -25,7 +26,7 @@ const generateRss = (config, posts, page = 'feed.xml') => `
   <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
       <title>${escape(config.title)}</title>
-      <link>${config.siteUrl}/blog</link>
+      <link>${pageUrl(config, 'blog')}</link>
       <description>${escape(config.description)}</description>
       <language>${config.language}</language>
       <managingEditor>${config.email} (${config.author})</managingEditor>

@@ -5,6 +5,8 @@ const invalidAiPath = '/2025/10/13/ai-learning-community/'
 const hiddenPath = '/2025/08/16/catalog-test/'
 const openWebUiPath = '/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/'
 const mathPath = '/2021/04/30/typora-latex-mathjax/'
+const validAiUrl = `https://blog.allenspace.de${validAiPath}`
+const validAiUrlWithoutSlash = validAiUrl.replace(/\/$/, '')
 
 test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page, request }) => {
   await page.goto('/')
@@ -27,6 +29,20 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   const searchText = await searchIndex.text()
   expect(searchText).toContain('2025/10/12/ai-learning-community')
   expect(searchText).not.toContain('catalog-test')
+
+  const sitemap = await request.get('/sitemap.xml')
+  expect(sitemap.ok()).toBe(true)
+  const sitemapText = await sitemap.text()
+  expect(sitemapText).toContain(`<loc>${validAiUrl}</loc>`)
+  expect(sitemapText).not.toContain(`<loc>${validAiUrlWithoutSlash}</loc>`)
+
+  const feed = await request.get('/feed.xml')
+  expect(feed.ok()).toBe(true)
+  const feedText = await feed.text()
+  expect(feedText).toContain(`<guid>${validAiUrl}</guid>`)
+  expect(feedText).toContain(`<link>${validAiUrl}</link>`)
+  expect(feedText).not.toContain(`<guid>${validAiUrlWithoutSlash}</guid>`)
+  expect(feedText).not.toContain(`<link>${validAiUrlWithoutSlash}</link>`)
 
   const hidden = await request.get(hiddenPath)
   expect(hidden.status()).toBe(200)
