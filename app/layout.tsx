@@ -21,6 +21,8 @@ const chiron_sung_hk = Chiron_Sung_HK({
   preload: false,
   display: 'swap',
   variable: '--font-chiron-sung-hk',
+  // Chiron Sung HK 沒有 capsize fallback 度量,關閉自動 fallback 調整以消除 build 警告
+  adjustFontFallback: false,
 })
 
 export const metadata: Metadata = {
