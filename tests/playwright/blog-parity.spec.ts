@@ -71,7 +71,8 @@ test('starter KBar search opens with cyan active result and legacy navigation', 
   page,
 }) => {
   await page.goto('/')
-  await page.getByLabel('Search').click()
+  // 桌面與手機各有一個搜尋按鈕,限定桌面導覽區避免 strict-mode 命中兩個
+  await page.locator('.navbar-links').getByLabel('Search').click()
   await page.keyboard.type('AI')
 
   await expect

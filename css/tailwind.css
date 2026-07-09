@@ -236,17 +236,16 @@ body {
   background: #fff;
 }
 
+/* 桌面版橫排導覽;手機版隱藏(手機改用 .navbar-mobile) */
 .navbar-links {
-  clear: both;
   display: none;
-  padding: 8px 15px 14px;
-  background: rgba(45, 45, 45, 0.92);
 }
 
-.navbar-links-open {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* 手機版頂欄工具列:深淺切換 + 搜尋 + 漢堡,常駐並靠右 */
+.navbar-mobile {
+  float: right;
+  align-items: center;
+  gap: 14px;
 }
 
 .navbar-links a,
@@ -1044,6 +1043,10 @@ body {
   }
 
   .navbar-toggle {
+    display: none;
+  }
+
+  .navbar-mobile {
     display: none;
   }
 
