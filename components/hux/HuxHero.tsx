@@ -39,10 +39,16 @@ export default function HuxHero({
   const maskOpacity = headerMask == null || headerMask === '' ? undefined : Number(headerMask)
   const iframeSrc = resolveHeroIframeSrc(iframe)
   const hasIframe = Boolean(iframeSrc)
+  // frontmatter 的 headerBgCss 常帶著從 CSS 片段複製貼上留下的尾隨分號(如
+  // "linear-gradient(...);");當成純 HTML style 屬性字串沒問題,但 React 走
+  // client 端渲染(SPA 導覽、非 SSR hydration)時是透過 CSSOM setter 賦值,分號
+  // 會讓整個值被判定無效而整個跳過不套用 —— 這正是「站內連結進來背景消失、重新
+  // 整理才正常」的成因,先在這裡把它清乾淨,不管資料來源有沒有分號都能用。
+  const cleanedBgCss = headerBgCss?.trim().replace(/;+\s*$/, '')
   const style = hasIframe
     ? undefined
-    : headerBgCss
-      ? { background: headerBgCss }
+    : cleanedBgCss
+      ? { background: cleanedBgCss }
       : { backgroundImage: `url(${resolveHeaderImage(headerImg)})` }
 
   return (

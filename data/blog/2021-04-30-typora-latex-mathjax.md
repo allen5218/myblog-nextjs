@@ -6,7 +6,7 @@ date:       2021-04-30
 update:     2025-08-13
 author:     "elmagnifico"
 headerImg: ""
-headerBgCss: "linear-gradient(to right, #1e3a8a, #3b82f6);"
+headerBgCss: "linear-gradient(to right, #1e3a8a, #3b82f6)"
 catalog:    true
 mathjax:    true
 tags:
