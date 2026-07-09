@@ -14,7 +14,11 @@ export async function generateMetadata(props: {
 }): Promise<Metadata> {
   const params = await props.params
   const tag = decodeURI(params.tag)
-  return genPageMetadata({ title: `${tag} - Page ${params.page}` })
+  return genPageMetadata({
+    title: `${tag} - Page ${params.page}`,
+    // 分頁的標籤頁同樣不索引,理由同 /tags/[tag]。
+    robots: { index: false, follow: true },
+  })
 }
 
 export const generateStaticParams = async () => {

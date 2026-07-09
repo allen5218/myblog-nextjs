@@ -23,6 +23,9 @@ export async function generateMetadata(props: {
         'application/rss+xml': `${siteMetadata.siteUrl}/tags/${tag}/feed.xml`,
       },
     },
+    // 單一標籤頁不進 sitemap、也不給搜尋引擎索引(內容都是文章列表的重複組合,
+    // 索引它們對 SEO 沒有幫助反而稀釋權重);仍可正常瀏覽與內部連結,只是不出現在搜尋結果。
+    robots: { index: false, follow: true },
   })
 }
 

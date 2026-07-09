@@ -426,6 +426,12 @@ body {
   margin-left: calc(50% - min(585px, 50vw));
 }
 
+/* 手機版預設就要有跟舊站 Bootstrap .container 一樣的左右留白(0 15px),
+   否則內容會頂到螢幕邊緣;桌面版 @media(min-width:768px) 會再設一次(套用 grid-column 時)。 */
+.postlist-container {
+  padding: 0 15px;
+}
+
 .post-preview {
   padding: 22px 0;
   border-bottom: 1px solid var(--hux-border);
@@ -486,6 +492,7 @@ body {
 
 .sidebar-container {
   margin-top: 30px;
+  padding: 0 15px;
   color: var(--hux-muted);
   font-size: 14px;
 }
@@ -550,6 +557,13 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* .hux-sns 的 justify-content:center 是給置中的頁尾版準備的,在原始碼順序上排在
+   .sidebar-social 之後,同特異度下會覆蓋掉它;側欄要跟上方文字左對齊,用組合選擇器
+   (0,2,0)蓋過單一 .hux-sns(0,1,0)。 */
+.hux-sns.sidebar-social {
+  justify-content: flex-start;
 }
 
 .sidebar-social-text {
