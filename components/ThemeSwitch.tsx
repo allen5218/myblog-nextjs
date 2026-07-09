@@ -66,7 +66,11 @@ const ThemeSwitch = () => {
       <Menu as="div" className="relative inline-block text-left">
         <div className="hover:text-primary-500 dark:hover:text-primary-400 flex items-center justify-center">
           <MenuButton aria-label="Theme switcher" className="theme-switch-button">
-            <span className="theme-switch-text">Dark</span>
+            {/* 桌面顯示的文字標籤,反映目前實際套用的模式(淺色→Light、深色→Dark)。
+                mounted 前用 'Dark' 佔位以避免 hydration 不一致(此站預設深色)。 */}
+            <span className="theme-switch-text">
+              {mounted ? (resolvedTheme === 'dark' ? 'Dark' : 'Light') : 'Dark'}
+            </span>
             <span className="theme-switch-icon">
               {mounted ? resolvedTheme === 'dark' ? <Moon /> : <Sun /> : <Blank />}
             </span>
