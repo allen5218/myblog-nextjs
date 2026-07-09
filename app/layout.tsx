@@ -61,6 +61,10 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     images: [siteMetadata.socialBanner],
   },
+  // 沿用舊站 Google Search Console 的網站驗證(產生 google-site-verification meta)
+  verification: {
+    google: 'F77wA9Qrfxwh0iy2yZkXb1RIjO62y3rZocFJBgEz9uA',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

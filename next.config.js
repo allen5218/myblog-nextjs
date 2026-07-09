@@ -10,11 +10,11 @@ const ContentSecurityPolicy = `
   base-uri 'self';
   object-src 'none';
   frame-ancestors 'none';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://giscus.app https://analytics.umami.is https://us.umami.is;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://giscus.app https://www.googletagmanager.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' https://img.allenspace.de https://picsum.photos blob: data:;
+  img-src 'self' https://img.allenspace.de https://picsum.photos https://www.google-analytics.com https://www.googletagmanager.com blob: data:;
   media-src 'self' https://*.s3.amazonaws.com;
-  connect-src 'self' https://giscus.app https://analytics.umami.is https://us.umami.is;
+  connect-src 'self' https://giscus.app https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
   font-src 'self';
   frame-src https://giscus.app https://slide.allenspace.de https://www.youtube-nocookie.com https://youtube-nocookie.com https://player.vimeo.com;
   form-action 'self';
