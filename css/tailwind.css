@@ -879,16 +879,10 @@ body {
 
 .side-catalog {
   width: 195px;
-  height: 100%;
   overflow: auto;
   color: var(--hux-muted);
   font-size: 14px;
   padding-bottom: 40px;
-}
-
-.side-catalog.fixed {
-  position: fixed;
-  top: -21px;
 }
 
 .side-catalog hr {
@@ -1282,6 +1276,12 @@ body {
     grid-column: 3;
     display: block;
     padding-top: 28px;
+    /* 用 sticky 讓目錄留在右欄(grid-column 3),滾動時黏在頂端,
+       取代舊 Hux 的 position:fixed(在 grid 版型下水平位置會塌陷疊到正文) */
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    max-height: calc(100vh - 40px);
   }
 }
 

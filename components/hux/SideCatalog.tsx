@@ -24,27 +24,12 @@ function headingIdFromUrl(url: string) {
 
 export default function SideCatalog({ toc, enabled = true }: SideCatalogProps) {
   const [folded, setFolded] = useState(false)
-  const [fixed, setFixed] = useState(false)
   const [activeUrl, setActiveUrl] = useState(toc?.[0]?.url || '')
 
   const items = useMemo(
     () => (enabled ? toc?.filter((item) => item.url && item.value) || [] : []),
     [enabled, toc]
   )
-
-  useEffect(() => {
-    if (!items.length) return
-
-    function handleScroll() {
-      const hero = document.querySelector<HTMLElement>('.intro-header')
-      setFixed(window.scrollY > (hero?.offsetHeight || 0) + 41)
-    }
-
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [items.length])
 
   useEffect(() => {
     if (!items.length) return
@@ -77,7 +62,7 @@ export default function SideCatalog({ toc, enabled = true }: SideCatalogProps) {
 
   return (
     <aside
-      className={`catalog-container side-catalog ${folded ? 'fold' : ''} ${fixed ? 'fixed' : ''}`}
+      className={`catalog-container side-catalog ${folded ? 'fold' : ''}`}
       aria-label="Post catalog"
     >
       <hr />
