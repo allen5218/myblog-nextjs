@@ -1,4 +1,4 @@
-import ListLayout from '@/layouts/ListLayoutWithTags'
+import HuxListLayout from '@/layouts/HuxListLayout'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer'
 import { allBlogs } from 'contentlayer/generated'
 import { notFound } from 'next/navigation'
@@ -24,21 +24,13 @@ export default async function Page(props: { params: Promise<{ page: string }> })
   if (pageNumber <= 0 || pageNumber > totalPages || isNaN(pageNumber)) {
     return notFound()
   }
-  const initialDisplayPosts = posts.slice(
-    POSTS_PER_PAGE * (pageNumber - 1),
-    POSTS_PER_PAGE * pageNumber
-  )
-  const pagination = {
-    currentPage: pageNumber,
-    totalPages: totalPages,
-  }
+  const displayPosts = posts.slice(POSTS_PER_PAGE * (pageNumber - 1), POSTS_PER_PAGE * pageNumber)
 
   return (
-    <ListLayout
+    <HuxListLayout
       posts={posts}
-      initialDisplayPosts={initialDisplayPosts}
-      pagination={pagination}
-      title="All Posts"
+      displayPosts={displayPosts}
+      pagination={{ currentPage: pageNumber, totalPages }}
     />
   )
 }
