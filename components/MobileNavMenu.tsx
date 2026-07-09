@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Link from './Link'
+import SearchButton from './SearchButton'
 import headerNavLinks from '@/data/headerNavLinks'
 
 // 手機版導覽:漢堡按鈕點擊後彈出圓角卡片下拉,樣式與 ThemeSwitch 的彈窗一致
@@ -32,7 +33,7 @@ const MobileNavMenu = () => {
                   <Link
                     href={link.href}
                     className={`${
-                      focus ? 'bg-primary-600 text-white' : 'text-gray-700 dark:text-gray-200'
+                      focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
                     } block rounded-md px-3 py-2 text-sm font-semibold tracking-wide`}
                   >
                     {link.title}
@@ -40,6 +41,17 @@ const MobileNavMenu = () => {
                 )}
               </MenuItem>
             ))}
+            {/* 搜尋移入漢堡下拉,純文字列觸發 KBar */}
+            <MenuItem>
+              {({ focus }) => (
+                <SearchButton
+                  label="Search"
+                  className={`${
+                    focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
+                  } block w-full rounded-md px-3 py-2 text-left text-sm font-semibold tracking-wide`}
+                />
+              )}
+            </MenuItem>
           </div>
         </MenuItems>
       </Transition>

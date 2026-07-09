@@ -203,6 +203,10 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 0 15px;
+  /* 手機版:品牌與右側工具列以 flex 置中共線(桌面在 @media 改回 block 用 float) */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .navbar-brand {
@@ -248,6 +252,15 @@ body {
   gap: 14px;
 }
 
+/* HeadlessUI 下拉選單裡的按鈕不應繼承導覽列工具列的大寫/小字/字距樣式,
+   讓 theme 彈窗與漢堡下拉的搜尋項與其他項目一致 */
+.navbar-custom [role='menu'] button {
+  text-transform: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
 .navbar-links a,
 .navbar-tools button {
   color: #fff;
@@ -266,6 +279,11 @@ body {
 
 .navbar-tools svg {
   color: #fff;
+}
+
+.theme-switch-button {
+  display: inline-flex;
+  align-items: center;
 }
 
 .theme-switch-text {
@@ -1038,6 +1056,11 @@ body {
     min-height: 61px;
   }
 
+  /* 桌面版恢復 block + float 排版(維持舊站版型) */
+  .navbar-inner {
+    display: block;
+  }
+
   .navbar-brand {
     padding: 20px;
   }
@@ -1080,6 +1103,39 @@ body {
   .navbar-search-tool svg {
     width: 14px;
     height: 14px;
+  }
+
+  /* 電腦版滾動浮動導覽(Hux):向下滾把列藏到視窗上緣,向上滾以半透明列滑入 */
+  .navbar-custom.is-fixed {
+    position: fixed;
+    top: -61px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid #f2f2f2;
+    transition: transform 0.3s;
+  }
+
+  .navbar-custom.is-visible {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  /* 浅色浮動列需把原本白色的文字/圖示轉深色 */
+  .navbar-custom.is-fixed .navbar-brand,
+  .navbar-custom.is-fixed .navbar-links a,
+  .navbar-custom.is-fixed .navbar-tools button,
+  .navbar-custom.is-fixed .navbar-tools svg {
+    color: #2d2d2d;
+  }
+
+  .dark .navbar-custom.is-fixed {
+    background-color: rgba(45, 45, 45, 0.9);
+    border-bottom-color: #535353;
+  }
+
+  .dark .navbar-custom.is-fixed .navbar-brand,
+  .dark .navbar-custom.is-fixed .navbar-links a,
+  .dark .navbar-custom.is-fixed .navbar-tools button,
+  .dark .navbar-custom.is-fixed .navbar-tools svg {
+    color: #fff;
   }
 
   .intro-header {
