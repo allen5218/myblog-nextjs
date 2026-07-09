@@ -1,14 +1,5 @@
 import type { IframeHTMLAttributes } from 'react'
-
-const responsiveHosts = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com']
-
-function isResponsiveEmbed(src?: string) {
-  if (!src) {
-    return false
-  }
-
-  return responsiveHosts.some((host) => src.includes(host))
-}
+import { isResponsiveIframeSrc } from '@/lib/iframe'
 
 export default function ResponsiveIframe(props: IframeHTMLAttributes<HTMLIFrameElement>) {
   const iframe = (
@@ -20,7 +11,7 @@ export default function ResponsiveIframe(props: IframeHTMLAttributes<HTMLIFrameE
     />
   )
 
-  if (!isResponsiveEmbed(props.src)) {
+  if (!isResponsiveIframeSrc(props.src)) {
     return iframe
   }
 

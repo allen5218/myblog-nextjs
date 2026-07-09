@@ -18,7 +18,7 @@ const generateRssItem = (config, post) => `
     ${post.summary && `<description>${escape(post.summary)}</description>`}
     <pubDate>${new Date(post.date).toUTCString()}</pubDate>
     <author>${config.email} (${config.author})</author>
-    ${post.tags && post.tags.map((t) => `<category>${t}</category>`).join('')}
+    ${post.tags && post.tags.map((t) => `<category>${escape(t)}</category>`).join('')}
   </item>
 `
 
@@ -51,6 +51,8 @@ async function generateRSS(config, allBlogs, page = 'feed.xml') {
       const filteredPosts = publishPosts.filter((post) =>
         post.tags.map((t) => slug(t)).includes(tag)
       )
+      if (filteredPosts.length === 0) continue
+
       const rss = generateRss(config, filteredPosts, `tags/${tag}/${page}`)
       const rssPath = path.join(outputFolder, 'tags', tag)
       mkdirSync(rssPath, { recursive: true })

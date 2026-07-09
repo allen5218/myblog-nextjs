@@ -27,6 +27,7 @@ import siteMetadata from './data/siteMetadata'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 import prettier from 'prettier'
 import { legacyPathFromDateAndSlug, stripPostDatePrefix } from './lib/legacy-url'
+import { isResponsiveIframeSrc } from './lib/iframe'
 
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
@@ -120,8 +121,6 @@ function excerptFromMarkdown(raw: string, maxLength = 200) {
   return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text
 }
 
-const responsiveIframeHosts = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com']
-
 function classNames(value: unknown) {
   if (Array.isArray(value)) return value.map(String)
   if (typeof value === 'string') return value.split(/\s+/).filter(Boolean)
@@ -164,7 +163,7 @@ function responsiveIframeTransform() {
       }
 
       const src = String(node.properties?.src || '')
-      if (!responsiveIframeHosts.some((host) => src.includes(host))) {
+      if (!isResponsiveIframeSrc(src)) {
         return
       }
 
@@ -204,7 +203,7 @@ function responsiveIframeTransform() {
       }
 
       const src = String(mdxAttributeValue(node, 'src') || '')
-      if (!responsiveIframeHosts.some((host) => src.includes(host))) {
+      if (!isResponsiveIframeSrc(src)) {
         return
       }
 

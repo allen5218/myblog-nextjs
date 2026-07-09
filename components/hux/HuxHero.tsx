@@ -1,6 +1,7 @@
 import siteMetadata from '@/data/siteMetadata'
 import Link from '@/components/Link'
 import { formatHuxDate } from '../../lib/hux-date'
+import { resolveHeroIframeSrc } from '@/lib/iframe'
 
 type HuxHeroProps = {
   variant?: 'archive' | 'home' | 'post'
@@ -36,7 +37,8 @@ export default function HuxHero({
   iframe,
 }: HuxHeroProps) {
   const maskOpacity = headerMask == null || headerMask === '' ? undefined : Number(headerMask)
-  const hasIframe = Boolean(iframe)
+  const iframeSrc = resolveHeroIframeSrc(iframe)
+  const hasIframe = Boolean(iframeSrc)
   const style = hasIframe
     ? undefined
     : headerBgCss
@@ -60,7 +62,7 @@ export default function HuxHero({
       {hasIframe && (
         <iframe
           className="keynote-frame"
-          src={iframe?.startsWith('//') ? `https:${iframe}` : iframe}
+          src={iframeSrc}
           title={title}
           loading="lazy"
           allowFullScreen
