@@ -921,7 +921,12 @@ body {
 
 .side-catalog {
   width: 195px;
-  overflow: auto;
+  /* overflow:hidden(不是 auto/scroll):目錄框身高受限時仍會裁切內容,但滑鼠滾輪/
+     觸控板不會被它「接管」——瀏覽器只把捲動輸入導向 overflow:auto/scroll 的容器,
+     hidden 的容器對使用者輸入完全透明,一定會直接讓頁面捲動(不會重現舊的 wheel-trap
+     bug)。要讓目前閱讀到的標題不被裁掉,改用 SideCatalog.tsx 裡的 JS 把作用中項目
+     的 scrollTop 捲進可視範圍,而不是讓使用者用滾輪去捲這個框。 */
+  overflow: hidden;
   color: var(--hux-muted);
   font-size: 14px;
   padding-bottom: 40px;
@@ -1375,9 +1380,14 @@ body {
     padding-top: 28px;
     /* 用 sticky 讓目錄留在右欄(grid-column 3),滾動時黏在頂端,
        取代舊 Hux 的 position:fixed(在 grid 版型下水平位置會塌陷疊到正文)。
-       用自然高度、不設 max-height,避免目錄變成內部捲動容器攔截滑鼠滾輪(否則游標在目錄上會拉不動頁面) */
+       目錄很長、視窗較矮時,自然高度會超出視窗,底部項目在 sticky 期間永遠看不到、
+       要捲到文章結尾目錄脫離 sticky 才會露出。加回 max-height 讓目錄不超出視窗,
+       裁掉的部分交給 SideCatalog.tsx 用 JS 把作用中項目捲進視野——因為框身是
+       overflow:hidden(見上面 .side-catalog 規則),裁切不會變成滑鼠滾輪能操控的
+       捲動容器,不會重現先前「游標在目錄上拉不動頁面」的 bug。 */
     position: sticky;
     top: 20px;
+    max-height: calc(100vh - 40px);
     align-self: start;
   }
 }
