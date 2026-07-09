@@ -2,16 +2,11 @@ import { ReactNode } from 'react'
 import { CoreContent } from 'pliny/utils/contentlayer'
 import type { Blog, Authors } from 'contentlayer/generated'
 import Comments from '@/components/Comments'
-import Link from '@/components/Link'
 import siteMetadata from '@/data/siteMetadata'
 import HuxHero from '@/components/hux/HuxHero'
 import HuxPager from '@/components/hux/HuxPager'
 import BackTop from '@/components/hux/BackTop'
 import SideCatalog from '@/components/hux/SideCatalog'
-
-const editUrl = (path) => `${siteMetadata.siteRepo}/blob/main/data/${path}`
-const discussUrl = (path) =>
-  `https://mobile.twitter.com/search?q=${encodeURIComponent(`${siteMetadata.siteUrl}/${path}`)}`
 
 const postDateTemplate: Intl.DateTimeFormatOptions = {
   weekday: 'long',
@@ -30,7 +25,6 @@ interface LayoutProps {
 
 export default function PostLayout({ content, authorDetails, next, prev, children }: LayoutProps) {
   const {
-    filePath,
     path,
     date,
     update,
@@ -67,13 +61,6 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
           <div className="post-container">
             <div className="prose dark:prose-invert max-w-none">{children}</div>
             <HuxPager next={next} prev={prev} />
-            <div className="post-actions">
-              <Link href={discussUrl(path)} rel="nofollow">
-                Discuss on Twitter
-              </Link>
-              {` | `}
-              <Link href={editUrl(filePath)}>View on GitHub</Link>
-            </div>
             {siteMetadata.comments && (
               <div className="comments hux-comments" id="comment">
                 <Comments slug={`/${path}/`} />

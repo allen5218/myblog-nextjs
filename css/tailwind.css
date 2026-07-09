@@ -857,9 +857,25 @@ body {
   line-height: 20px;
   padding: 15px 25px;
   text-transform: uppercase;
+  transition: all 0.3s ease;
 }
 
-.post-actions,
+/* 文章切換(上/下一篇)與首頁 Older Posts 共用此 pager,還原原站 hover 變色效果。
+   原站以 --post-link-hover 變數區分:淺色 #0085a1、深色 #66c7e0(參考圖為深色故呈淺青)。 */
+.pager a:hover,
+.pager a:focus {
+  background-color: #0085a1;
+  border-color: #0085a1;
+  color: #fff;
+}
+
+.dark .pager a:hover,
+.dark .pager a:focus {
+  background-color: #66c7e0;
+  border-color: #66c7e0;
+  color: #fff;
+}
+
 .hux-comments {
   border-top: 1px solid var(--hux-border);
   color: var(--hux-muted);
