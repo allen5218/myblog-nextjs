@@ -1017,6 +1017,54 @@ body {
   justify-content: center;
 }
 
+/* Hux SNS 圓形圖標:自訂 SVG 重現舊站的圓形反色 + hover 浮動特效 */
+.hux-sns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hux-sns a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #404040;
+  color: #fff;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.hux-sns a:hover {
+  background: #0085a1;
+  color: #fff;
+  transform: translateY(-3px);
+}
+
+.hux-sns .hux-sns-glyph {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.dark .hux-sns a {
+  background: #fff;
+  color: #404040;
+}
+
+.dark .hux-sns a:hover {
+  background: #0085a1;
+  color: #fff;
+}
+
 .copyright {
   display: flex;
   gap: 8px;

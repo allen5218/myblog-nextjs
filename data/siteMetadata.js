@@ -22,6 +22,8 @@ const siteMetadata = {
   instagram: '',
   medium: '',
   bluesky: '',
+  reddit: '',
+  buymeacoffee: 'https://www.buymeacoffee.com/allenspace',
   locale: 'zh-TW',
   // set to true if you want a navbar fixed to the top
   stickyNav: false,

@@ -1,6 +1,6 @@
 import Image from '@/components/Image'
 import Link from '@/components/Link'
-import SocialIcon from '@/components/social-icons'
+import HuxSocial from '@/components/hux/HuxSocial'
 import siteMetadata from '@/data/siteMetadata'
 
 type SidebarPost = {
@@ -67,13 +67,7 @@ export default function HuxSidebar({ posts }: HuxSidebarProps) {
             <br />
             聯絡信箱: <Link href={`mailto:${siteMetadata.email}`}>{siteMetadata.email}</Link>
           </p>
-          <div className="sidebar-social">
-            <Link aria-label="RSS Feed" className="sidebar-social-text" href="/feed.xml">
-              RSS
-            </Link>
-            <SocialIcon kind="github" href={siteMetadata.github} size={6} />
-            <SocialIcon kind="linkedin" href={siteMetadata.linkedin} size={6} />
-          </div>
+          <HuxSocial className="sidebar-social" />
         </div>
       </section>
 
