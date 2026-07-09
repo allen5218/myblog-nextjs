@@ -1146,6 +1146,13 @@ body {
     padding: 20px;
   }
 
+  /* HeadlessUI 選單是行內渲染,主題彈窗按鈕會被上面 .navbar-tools button 的 20px 波及而撐高。
+     這裡(權重 0,2,1 > .navbar-tools button 的 0,1,1)把彈窗按鈕 padding 收回 px-2 py-2 的意圖。
+     僅桌面套用;手機選單在 .navbar-mobile(此斷點下 display:none),不受影響。 */
+  .navbar-custom [role='menu'] button {
+    padding: 0.5rem;
+  }
+
   .navbar-tools {
     gap: 0;
   }
