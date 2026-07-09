@@ -4,7 +4,7 @@ import siteMetadata from '@/data/siteMetadata'
 
 export const dynamic = 'force-static'
 
-const provider = siteMetadata.newsletter?.provider
+const provider = siteMetadata.newsletter?.provider?.trim()
 
 const handler = provider
   ? NewsletterAPI({
