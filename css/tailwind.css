@@ -281,6 +281,13 @@ body {
   color: #fff;
 }
 
+/* HeadlessUI 選單是行內渲染,選單項的圖標(svg)會被上面 .navbar-tools svg{color:#fff} 染白,
+   在淺色下拉(白底)時看不見、只有 hover 變青底才顯現。這裡(0,2,1 > .navbar-tools svg 的 0,1,1)
+   讓選單圖標改為 inherit 按鈕本身的文字色,淺/深色與 hover 皆正常可見。 */
+.navbar-custom [role='menu'] svg {
+  color: inherit;
+}
+
 .theme-switch-button {
   display: inline-flex;
   align-items: center;
@@ -858,6 +865,11 @@ body {
   padding: 15px 25px;
   text-transform: uppercase;
   transition: all 0.3s ease;
+}
+
+/* 深色模式下 pager 按鈕(Older Posts / 上一篇・下一篇)非 hover 的邊框改為淺灰 #DDDDDD */
+.dark .pager a {
+  border-color: #dddddd;
 }
 
 /* 文章切換(上/下一篇)與首頁 Older Posts 共用此 pager,還原原站 hover 變色效果。
