@@ -1325,11 +1325,11 @@ body {
     display: block;
     padding-top: 28px;
     /* 用 sticky 讓目錄留在右欄(grid-column 3),滾動時黏在頂端,
-       取代舊 Hux 的 position:fixed(在 grid 版型下水平位置會塌陷疊到正文) */
+       取代舊 Hux 的 position:fixed(在 grid 版型下水平位置會塌陷疊到正文)。
+       用自然高度、不設 max-height,避免目錄變成內部捲動容器攔截滑鼠滾輪(否則游標在目錄上會拉不動頁面) */
     position: sticky;
     top: 20px;
     align-self: start;
-    max-height: calc(100vh - 40px);
   }
 }
 
