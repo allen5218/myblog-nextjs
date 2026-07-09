@@ -2,7 +2,7 @@ import 'css/tailwind.css'
 import 'pliny/search/algolia.css'
 import 'remark-github-blockquote-alert/alert.css'
 
-import { Space_Grotesk } from 'next/font/google'
+import { Chiron_Sung_HK } from 'next/font/google'
 import { Analytics, AnalyticsConfig } from 'pliny/analytics'
 import { SearchProvider, SearchConfig } from 'pliny/search'
 import Header from '@/components/Header'
@@ -13,10 +13,14 @@ import siteMetadata from '@/data/siteMetadata'
 import { ThemeProviders } from './theme-providers'
 import { Metadata } from 'next'
 
-const space_grotesk = Space_Grotesk({
-  subsets: ['latin'],
+// Chiron Sung HK 是全套 CJK 變量字型(weight 200–900)。
+// CJK 字型會被拆成 100+ 個 woff2,因此關閉 preload(否則全部 preload 會拖慢首屏);
+// preload 關閉後 font-display 預設為 swap。不指定 subsets 以避免 google-fonts-missing-subsets。
+// next/font 會在 build 時自動 self-host 這些字型,CSP 維持 font-src 'self' 即可。
+const chiron_sung_hk = Chiron_Sung_HK({
+  preload: false,
   display: 'swap',
-  variable: '--font-space-grotesk',
+  variable: '--font-chiron-sung-hk',
 })
 
 export const metadata: Metadata = {
@@ -65,7 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang={siteMetadata.language}
-      className={`${space_grotesk.variable} scroll-smooth`}
+      className={`${chiron_sung_hk.variable} scroll-smooth`}
       suppressHydrationWarning
     >
       <link

@@ -7,9 +7,12 @@
 /* Core theme configuration */
 @theme {
   /* Font families */
+  /* 全站主字體改用 Chiron Sung HK(昭源宋體,CJK 襯線)。 */
+  /* 因為是襯線字型,fallback 也選 CJK 襯線系統字型,讓 font-display: swap 的替補不至於風格跳動。 */
   --font-sans:
-    var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    var(--font-chiron-sung-hk), ui-serif, 'Songti TC', 'Songti SC', 'Noto Serif CJK TC',
+    'Source Han Serif TC', 'Noto Serif TC', serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
 
   /* Colors */
   /* Copied from https://tailwindcss.com/docs/theme#default-theme-variable-reference */
