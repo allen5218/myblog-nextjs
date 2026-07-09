@@ -14,23 +14,23 @@
   },
   "dependencies": {
     "@headlessui/react": "2.2.9",
-    "@next/bundle-analyzer": "15.5.12",
+    "@next/bundle-analyzer": "15.5.18",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.19",
     "body-scroll-lock": "^3.1.5",
     "contentlayer2": "0.5.8",
-    "esbuild": "0.27.3",
+    "esbuild": "0.28.1",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "hast-util-from-html-isomorphic": "^2.0.0",
     "image-size": "2.0.2",
     "medium-zoom": "^1.1.0",
-    "next": "15.5.12",
+    "next": "15.5.18",
     "next-contentlayer2": "0.5.8",
     "next-themes": "^0.4.6",
     "pliny": "0.4.1",
-    "postcss": "^8.5.6",
+    "postcss": "8.5.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "reading-time": "1.5.0",
@@ -68,6 +68,11 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^5.9.3"
+  },
+  "resolutions": {
+    "esbuild": "0.28.1",
+    "postcss": "8.5.10",
+    "uuid": "11.1.1"
   },
   "lint-staged": {
     "*.+(js|jsx|ts|tsx)": [
