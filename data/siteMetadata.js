@@ -3,7 +3,7 @@ const siteMetadata = {
   title: "Allen's Blog",
   author: 'Allen',
   headerTitle: "Allen's Blog",
-  description: '這裡是Allen的部落格，分享技術和生活',
+  description: '對世界保持好奇，並親手驗證。這裡是我探索技術、分享知識、記錄生活的實驗場',
   language: 'zh-TW',
   theme: 'dark', // system, dark or light
   siteUrl: 'https://blog.allenspace.de',

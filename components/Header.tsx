@@ -7,6 +7,12 @@ import ThemeSwitch from './ThemeSwitch'
 import SearchButton from './SearchButton'
 import { useState } from 'react'
 
+const huxNavLinks = [
+  { href: '/', title: 'Home' },
+  { href: '/about', title: 'About' },
+  { href: '/archive', title: 'Archive' },
+]
+
 const Header = () => {
   const [open, setOpen] = useState(false)
 
@@ -28,16 +34,16 @@ const Header = () => {
           <span className="icon-bar" />
         </button>
         <div className={`navbar-links ${open ? 'navbar-links-open' : ''}`}>
-          {headerNavLinks
-            .filter((link) => link.href !== '/')
-            .map((link) => (
-              <Link key={link.title} href={link.href} onClick={() => setOpen(false)}>
-                {link.title}
-              </Link>
-            ))}
-          <div className="navbar-tools">
-            <SearchButton />
+          <div className="navbar-tools navbar-theme-tool">
             <ThemeSwitch />
+          </div>
+          {(open ? headerNavLinks : huxNavLinks).map((link) => (
+            <Link key={link.title} href={link.href} onClick={() => setOpen(false)}>
+              {link.title}
+            </Link>
+          ))}
+          <div className="navbar-tools navbar-search-tool">
+            <SearchButton />
           </div>
         </div>
       </nav>
