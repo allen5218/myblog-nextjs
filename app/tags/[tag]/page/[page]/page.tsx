@@ -1,11 +1,21 @@
 import { slug } from 'github-slugger'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer'
-import ListLayout from '@/layouts/ListLayoutWithTags'
+import HuxListLayout from '@/layouts/HuxListLayout'
 import { allBlogs } from 'contentlayer/generated'
 import tagData from 'app/tag-data.json'
+import { genPageMetadata } from 'app/seo'
+import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 const POSTS_PER_PAGE = 5
+
+export async function generateMetadata(props: {
+  params: Promise<{ tag: string; page: string }>
+}): Promise<Metadata> {
+  const params = await props.params
+  const tag = decodeURI(params.tag)
+  return genPageMetadata({ title: `${tag} - Page ${params.page}` })
+}
 
 export const generateStaticParams = async () => {
   const tagCounts = tagData as Record<string, number>
@@ -37,20 +47,17 @@ export default async function TagPage(props: { params: Promise<{ tag: string; pa
   if (pageNumber <= 0 || pageNumber > totalPages || isNaN(pageNumber)) {
     return notFound()
   }
-  const initialDisplayPosts = filteredPosts.slice(
+  const displayPosts = filteredPosts.slice(
     POSTS_PER_PAGE * (pageNumber - 1),
     POSTS_PER_PAGE * pageNumber
   )
-  const pagination = {
-    currentPage: pageNumber,
-    totalPages: totalPages,
-  }
 
   return (
-    <ListLayout
+    <HuxListLayout
       posts={filteredPosts}
-      initialDisplayPosts={initialDisplayPosts}
-      pagination={pagination}
+      displayPosts={displayPosts}
+      pagination={{ currentPage: pageNumber, totalPages }}
+      basePath={`tags/${params.tag}`}
       title={title}
     />
   )
