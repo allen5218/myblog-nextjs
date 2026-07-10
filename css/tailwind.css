@@ -763,8 +763,11 @@ body {
 }
 
 /* 舊站 blockquote p{margin:0},引言內的段落不額外加上 .prose 通用段落間距(25px 0),
-   否則會跟 blockquote 自己的 padding 疊加,造成文字上下留白過大。 */
-.post-container .prose blockquote :where(p) {
+   否則會跟 blockquote 自己的 padding 疊加,造成文字上下留白過大。
+   這裡不能用 :where(p)——:where() 不貢獻權重,會讓本規則降到 (0,2,1),與後面
+   @media (min-width: 768px) 內的 `.post-container .prose p { margin: 30px 0 }`
+   同分,再由來源順序判給後者,導致桌機版失效。 */
+.post-container .prose blockquote p {
   margin: 0;
 }
 
