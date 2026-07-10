@@ -60,7 +60,11 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
         <div className="post-shell">
           <div className="post-container">
             <div className="prose dark:prose-invert max-w-none">{children}</div>
-            <HuxPager next={next} prev={prev} />
+            {/* 文章間的上一篇/下一篇。HuxPager 收完整 href,這裡負責把 content path 轉成網址。 */}
+            <HuxPager
+              next={next && { href: `/${next.path}`, title: next.title }}
+              prev={prev && { href: `/${prev.path}`, title: prev.title }}
+            />
             {siteMetadata.comments && (
               <div className="comments hux-comments" id="comment">
                 <Comments slug={`/${path}/`} />

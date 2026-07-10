@@ -136,6 +136,20 @@ const nextConfig = {
       },
     ]
   },
+  // 分頁改回 jekyll-paginate 的語意:首頁就是第 1 頁,第 2 頁起是 /pageN/。
+  // 舊的 /blog 列表與它的 page/1 分身曾與首頁內容完全相同,一律永久導向新網址。
+  // 注意:redirects() 在 EXPORT=1 靜態匯出下不會生效,屆時要改由網頁伺服器承接。
+  async redirects() {
+    return [
+      { source: '/blog', destination: '/', permanent: true },
+      // 必須排在下面的數字規則之前,否則 page/1 會被導到不存在的 /page1/。
+      { source: '/blog/page/1', destination: '/', permanent: true },
+      // 帶參數的 destination 不會被 trailingSlash 正規化,結尾斜線要自己補,
+      // 否則 Location 是 /page2,瀏覽器還得再吃一次 308 才到 /page2/(多餘的轉址鏈)。
+      { source: '/blog/page/:page(\\d+)', destination: '/page:page/', permanent: true },
+      { source: '/tags/:tag/page/1', destination: '/tags/:tag/', permanent: true },
+    ]
+  },
   webpack: (config) => {
     config.module.rules.push({
       test: /\.svg$/,

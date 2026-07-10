@@ -6,8 +6,7 @@ import { allBlogs } from 'contentlayer/generated'
 import tagData from 'app/tag-data.json'
 import { genPageMetadata } from 'app/seo'
 import { Metadata } from 'next'
-
-const POSTS_PER_PAGE = 5
+import { POSTS_PER_PAGE, tagPageHref, totalPagesFor } from '@/lib/pagination'
 
 export async function generateMetadata(props: {
   params: Promise<{ tag: string }>
@@ -48,7 +47,7 @@ export default async function TagPage(props: { params: Promise<{ tag: string }> 
       )
     )
   )
-  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE)
+  const totalPages = totalPagesFor(filteredPosts.length)
   const displayPosts = filteredPosts.slice(0, POSTS_PER_PAGE)
 
   return (
@@ -56,7 +55,7 @@ export default async function TagPage(props: { params: Promise<{ tag: string }> 
       posts={filteredPosts}
       displayPosts={displayPosts}
       pagination={{ currentPage: 1, totalPages }}
-      basePath={`tags/${params.tag}`}
+      pageHref={(page) => tagPageHref(params.tag, page)}
       title={title}
     />
   )

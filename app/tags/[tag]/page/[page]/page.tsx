@@ -6,8 +6,7 @@ import tagData from 'app/tag-data.json'
 import { genPageMetadata } from 'app/seo'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-
-const POSTS_PER_PAGE = 5
+import { POSTS_PER_PAGE, tagPageHref, totalPagesFor } from '@/lib/pagination'
 
 export async function generateMetadata(props: {
   params: Promise<{ tag: string; page: string }>
@@ -24,11 +23,12 @@ export async function generateMetadata(props: {
 export const generateStaticParams = async () => {
   const tagCounts = tagData as Record<string, number>
   return Object.keys(tagCounts).flatMap((tag) => {
-    const postCount = tagCounts[tag]
-    const totalPages = Math.max(1, Math.ceil(postCount / POSTS_PER_PAGE))
-    return Array.from({ length: totalPages }, (_, i) => ({
+    const totalPages = totalPagesFor(tagCounts[tag])
+
+    // 從第 2 頁開始:第 1 頁是 /tags/[tag]/ 本身,不再生一個 /page/1/ 分身。
+    return Array.from({ length: totalPages - 1 }, (_, index) => ({
       tag: encodeURI(tag),
-      page: (i + 1).toString(),
+      page: (index + 2).toString(),
     }))
   })
 }
@@ -45,10 +45,11 @@ export default async function TagPage(props: { params: Promise<{ tag: string; pa
       )
     )
   )
-  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE)
+  const totalPages = totalPagesFor(filteredPosts.length)
 
-  // Return 404 for invalid page numbers or empty pages
-  if (pageNumber <= 0 || pageNumber > totalPages || isNaN(pageNumber)) {
+  // 第 1 頁不是合法網址(它是 /tags/[tag]/,由 next.config 轉址過去),
+  // 超出總頁數或非數字同樣 404。
+  if (pageNumber <= 1 || pageNumber > totalPages || isNaN(pageNumber)) {
     return notFound()
   }
   const displayPosts = filteredPosts.slice(
@@ -61,7 +62,7 @@ export default async function TagPage(props: { params: Promise<{ tag: string; pa
       posts={filteredPosts}
       displayPosts={displayPosts}
       pagination={{ currentPage: pageNumber, totalPages }}
-      basePath={`tags/${params.tag}`}
+      pageHref={(page) => tagPageHref(params.tag, page)}
       title={title}
     />
   )
