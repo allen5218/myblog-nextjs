@@ -1279,23 +1279,10 @@ body {
     height: 418px;
   }
 
-  .intro-header-archive {
-    height: 228px;
-  }
-
-  .intro-header-post {
-    height: auto;
-    min-height: 0;
-  }
-
   .intro-header-post .intro-header-content {
     display: block;
     height: auto;
     padding: 150px 15px;
-  }
-
-  .intro-header-post .post-heading {
-    margin: 0 auto;
   }
 
   .intro-header-keynote {
