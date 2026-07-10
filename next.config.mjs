@@ -11,7 +11,8 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
 // git commit hash 當作 offline fallback 的 precache revision;沒有 git 資訊時(例如
 // 打包環境沒帶 .git)退回隨機 uuid,反正只是用來讓 workbox 判斷是否需要更新這筆快取。
 const revision =
-  spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).stdout?.trim() || crypto.randomUUID()
+  spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).stdout?.trim() ||
+  crypto.randomUUID()
 
 const withSerwist = withSerwistInit({
   swSrc: 'app/sw.ts',
@@ -45,7 +46,7 @@ const ContentSecurityPolicy = `
   style-src 'self' 'unsafe-inline';
   img-src 'self' https://img.allenspace.de https://www.google-analytics.com https://www.googletagmanager.com blob: data:;
   media-src 'self';
-  connect-src 'self' https://giscus.app https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
+  connect-src 'self' https://img.allenspace.de https://giscus.app https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
   font-src 'self';
   frame-src https://giscus.app https://slide.allenspace.de https://www.youtube-nocookie.com https://youtube-nocookie.com https://player.vimeo.com;
   form-action 'self';

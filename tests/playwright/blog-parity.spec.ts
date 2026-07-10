@@ -232,3 +232,31 @@ test('post enhancers render responsive media and client Medium Zoom', async ({ p
     .poll(() => page.locator('.table-responsive').evaluate((el) => el.scrollWidth > el.clientWidth))
     .toBe(true)
 })
+
+test('service worker keeps the cross-origin post hero image available', async ({ page }) => {
+  await page.goto(openWebUiPath)
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready
+    if (navigator.serviceWorker.controller) return
+    await new Promise<void>((resolve) => {
+      navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true })
+    })
+  })
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+
+  const heroImageWidth = await page.locator('.intro-header-post').evaluate(async (hero) => {
+    const backgroundImage = getComputedStyle(hero).backgroundImage
+    const url = backgroundImage.match(/^url\(["']?(.*?)["']?\)$/)?.[1]
+    if (!url) return 0
+
+    return new Promise<number>((resolve) => {
+      const image = new Image()
+      image.onload = () => resolve(image.naturalWidth)
+      image.onerror = () => resolve(0)
+      image.src = `${url}?service-worker-probe=${Date.now()}`
+    })
+  })
+
+  expect(heroImageWidth).toBeGreaterThan(0)
+})
