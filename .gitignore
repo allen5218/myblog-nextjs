@@ -20,6 +20,7 @@
 /out/
 public/sitemap.xml
 .vercel
+tsconfig.tsbuildinfo
 
 # Serwist (generated service worker, source is app/sw.ts)
 public/sw*
