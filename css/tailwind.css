@@ -170,8 +170,6 @@ input:-webkit-autofill:focus {
   --hux-muted: rgb(128, 128, 128);
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
-  --hux-code-bg: rgb(249, 242, 244);
-  --hux-code-text: rgb(199, 37, 78);
   --hux-quote-bg: rgb(245, 245, 245);
 }
 
@@ -433,7 +431,10 @@ body {
   margin-top: 12px;
 }
 
-.tag {
+/* 限定在 .tags 容器內才生效——Prism 語法標記(rehype-prism-plus)也會產生
+   class="token tag"(JSX 標籤 token),裸的 .tag 選擇器會連它一起吃到,
+   在程式碼區塊裡的 <PageTitle> 之類標籤外面套一圈白色膠囊外框。 */
+.tags .tag {
   display: inline-block;
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 999px;
@@ -502,9 +503,9 @@ body {
   color: var(--hux-muted);
 }
 
-.post-preview .tag,
-.post-container .tag,
-.side-catalog .tag {
+.post-preview .tags .tag,
+.post-container .tags .tag,
+.side-catalog .tags .tag {
   border-color: var(--hux-text);
   /* .post-preview .tags 的 color: var(--hux-muted) 會被 .tag 的 color: inherit
      繼承下來,只改 border-color 邊框會亮但文字還是暗淡,這裡直接蓋掉文字顏色。 */
@@ -789,29 +790,14 @@ body {
   margin: 0;
 }
 
-.post-container .prose :where(code):not(pre code) {
-  border-radius: 4px;
-  background: var(--hux-code-bg);
-  color: var(--hux-code-text);
-  font-size: 14.4px;
-  padding: 2px 4px;
-}
-
+/* 行內 code 與 pre 的顏色/字體交還給 @tailwindcss/typography 的預設值(連帶吃到
+   dark:prose-invert),只保留手機版滿版出血需要的版面屬性——回退 tailwind-nextjs-starter-blog
+   原本的深色 code block 外觀,搭配 prism.css 本來就是為深底設計的 Night Owl 配色。 */
 .post-container .prose pre {
   width: calc(100vw);
   max-width: none;
   margin-left: -15px;
   border-radius: 0;
-  background: rgb(240, 240, 240);
-  color: rgb(85, 85, 85);
-  font-size: 14px;
-  line-height: 21px;
-  overflow-x: auto;
-  padding: 16px;
-}
-
-.post-container .prose pre code {
-  color: inherit;
 }
 
 .post-container .prose img {
@@ -1155,20 +1141,49 @@ body {
   font-size: 14px;
 }
 
+/* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。
+   Hover 色沿用 .pager a:hover 的既有配色慣例(#0085a1 / #66c7e0),
+   而非按鈕自己原本的深色 hover(#4db8d1)——為了與站內其他控制項一致,經確認採用。 */
 .back-top {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: 20px;
+  bottom: 110px;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  border: 1px solid #bfbfbf;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.7);
+  color: #bfbfbf;
   font-size: 22px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.back-top:hover,
+.back-top:focus-visible {
+  background-color: #0085a1;
+  border-color: #0085a1;
+  color: #fff;
+}
+
+.dark .back-top {
+  background: rgba(45, 45, 45, 0.9);
+}
+
+.dark .back-top:hover,
+.dark .back-top:focus-visible {
+  background-color: #66c7e0;
+  border-color: #66c7e0;
+  color: #fff;
 }
 
 .back-top-visible {
@@ -1177,6 +1192,10 @@ body {
 }
 
 @media (min-width: 768px) {
+  .back-top {
+    right: 4%;
+  }
+
   .navbar-custom {
     min-height: 61px;
   }
@@ -1364,7 +1383,6 @@ body {
   .post-container .prose pre {
     width: 100%;
     margin-left: 0;
-    border-radius: 6px;
   }
 
   .hux-home-layout {
@@ -1420,18 +1438,36 @@ body {
   overflow: auto hidden;
 }
 
+/* 舊站用 AnchorJS(icon:'#'),標題錨點是純文字 #,顏色沿用文章連結色
+   (--post-link / --post-link-hover 的淺色數值,深色模式在下面覆寫)。 */
 .content-header-link {
+  margin-left: 0.4em;
+  font-size: 1.1em;
+  font-weight: 400;
+  color: #337ab7;
+  text-decoration: none;
   opacity: 0;
-  margin-left: -24px;
-  padding-right: 4px;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
 }
 
 .content-header:hover .content-header-link,
-.content-header-link:hover {
+.content-header-link:hover,
+.content-header-link:focus {
   opacity: 1;
 }
 
-.linkicon {
-  display: inline-block;
-  vertical-align: middle;
+.content-header-link:hover,
+.content-header-link:focus {
+  color: #0085a1;
+}
+
+.dark .content-header-link {
+  color: #4db8d1;
+}
+
+.dark .content-header-link:hover,
+.dark .content-header-link:focus {
+  color: #66c7e0;
 }

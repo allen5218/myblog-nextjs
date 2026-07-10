@@ -32,18 +32,11 @@ import { isResponsiveIframeSrc } from './lib/iframe'
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
 
-// heroicon mini link
-const icon = fromHtmlIsomorphic(
-  `
-  <span class="content-header-link">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 linkicon">
-  <path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z" />
-  <path d="M11.603 7.963a.75.75 0 0 0-.977 1.138 2.5 2.5 0 0 1 .142 3.667l-3 3a2.5 2.5 0 0 1-3.536-3.536l1.225-1.224a.75.75 0 0 0-1.061-1.06l-1.224 1.224a4 4 0 1 0 5.656 5.656l3-3a4 4 0 0 0-.225-5.865Z" />
-  </svg>
-  </span>
-`,
-  { fragment: true }
-)
+// 舊站(Jekyll)用 AnchorJS 的 icon: '#' 選項,標題錨點就是一個純文字 #,
+// 不是圖示字型也不是 SVG——比照移植,樣式交給 css/tailwind.css 的 .content-header-link。
+const icon = fromHtmlIsomorphic('<span class="content-header-link">#</span>', {
+  fragment: true,
+})
 
 const computedFields: ComputedFields = {
   readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
@@ -346,7 +339,7 @@ export default makeSource({
       [
         rehypeAutolinkHeadings,
         {
-          behavior: 'prepend',
+          behavior: 'append',
           headingProperties: {
             className: ['content-header'],
           },

@@ -5,7 +5,6 @@ import Comments from '@/components/Comments'
 import siteMetadata from '@/data/siteMetadata'
 import HuxHero from '@/components/hux/HuxHero'
 import HuxPager from '@/components/hux/HuxPager'
-import BackTop from '@/components/hux/BackTop'
 import SideCatalog from '@/components/hux/SideCatalog'
 
 const postDateTemplate: Intl.DateTimeFormatOptions = {
@@ -43,7 +42,6 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
 
   return (
     <>
-      <BackTop />
       <article>
         <HuxHero
           title={title}
