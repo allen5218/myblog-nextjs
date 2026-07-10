@@ -103,17 +103,27 @@ Hux Blog 的視覺語言,並以 Serwist 提供 PWA 支援。
 
 ## 4. 路由
 
-| 路由                      | 用途                                                |
-| ------------------------- | --------------------------------------------------- |
-| `/`                       | 首頁:Hux hero、側欄(關於我/精選標籤/友站)、文章預覽 |
-| `/YYYY/MM/DD/slug/`       | 文章頁(相容舊站的 canonical 網址)                   |
-| `/blog/`、`/blog/page/N/` | 分頁列表(「Older Posts」翻頁)                       |
-| `/archive/`               | Archive 時間軸,含標籤篩選                           |
-| `/tags/`、`/tags/[tag]/`  | 標籤索引與各標籤列表(含分頁與各標籤 RSS)            |
-| `/about/`、`/en/about/`   | 中英文 about 頁                                     |
-| `/offline/`               | PWA 離線後備頁                                      |
-| `/api/newsletter`         | 未設定供應商時停用(404)                             |
-| `/projects/`              | 刻意移除 — 404                                      |
+| 路由                      | 用途                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| `/`                       | 首頁,同時**就是分頁列表的第 1 頁**                   |
+| `/pageN/`(N≥2)            | 分頁列表第 2 頁起(「Older Posts」翻頁)               |
+| `/YYYY/MM/DD/slug/`       | 文章頁(相容舊站的 canonical 網址)                    |
+| `/blog/`、`/blog/page/N/` | 舊網址,308 永久導向 `/` 或 `/pageN/`                 |
+| `/archive/`               | Archive 時間軸,含標籤篩選                            |
+| `/tags/`、`/tags/[tag]/`  | 標籤索引與各標籤列表(noindex;第 2 頁起才有 `page/N`) |
+| `/about/`、`/en/about/`   | 中英文 about 頁                                      |
+| `/offline/`               | PWA 離線後備頁                                       |
+| `/api/newsletter`         | 未設定供應商時停用(404)                              |
+| `/projects/`              | 刻意移除 — 404                                       |
+
+分頁網址由 `lib/pagination.ts` 單一決定(`blogPageHref` / `tagPageHref` /
+`parseBlogPageSegment`),對齊原站 jekyll-paginate 的語意:**第 1 頁沒有獨立網址**。
+不要在頁面元件裡拼分頁路徑 —— 過去 `/` 與 `/blog/` 各自切前 5 篇,悄悄變成同一頁,
+使用者按「Older Posts」得按兩次才會真的翻頁。
+
+`/pageN/` 實作在 `app/[year]/page.tsx`:App Router 不允許同一層有兩個名字不同的
+dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共用該 slot,只接受
+`pageN`,其餘(含真正的年份 `/2025/`)一律 404。
 
 ## 5. 搜尋、留言、分析
 
@@ -130,8 +140,10 @@ Hux Blog 的視覺語言,並以 Serwist 提供 PWA 支援。
 
 - `feed.xml` — 主 RSS(已列出、非草稿文章),由 `scripts/rss.mjs` 在 postbuild 產生。
   各標籤 feed 在 `/tags/<tag>/feed.xml`(標籤沒有已列出文章時跳過)。
-- `sitemap.xml` — 首頁、`/blog/`、`/tags/`、兩個 about 頁(含語言 alternates)、已列出的
-  非草稿文章。
+- `sitemap.xml` — 首頁、`/archive/`、`/tags/`、兩個 about 頁(含語言 alternates)、已列出的
+  非草稿文章。**不收會轉址的網址**(如 `/blog/`),也不收 `/pageN/` 與各標籤頁(前者從
+  首頁 pager 直接可達,後者刻意 noindex)。首頁/封存/標籤索引的 `lastmod` 取自**最新
+  文章的日期**,不要改成 `new Date()` —— 那會讓每次部署都對爬蟲謊稱內容變動過。
 - `robots.ts` — 標準 allow-all 加 sitemap 指標。
 - 文章頁輸出 JSON-LD `BlogPosting` 結構化資料與 OpenGraph/Twitter meta。
 
@@ -216,17 +228,22 @@ Hux Blog 的視覺語言,並以 Serwist 提供 PWA 支援。
 
 - **Node 伺服器 / Vercel(預設)**:全功能 — `next.config.mjs` 的安全 header、
   `/about/?lang=` 轉址 middleware、圖片最佳化都有效。
-- **靜態匯出(`EXPORT=1 UNOPTIMIZED=1`)**:`headers()` 與 `middleware.ts` **不會**生效。
-  CSP/安全 header 必須改在網頁伺服器(nginx/CDN)宣告,舊制 `?lang=` 轉址也要改成
-  伺服器層規則。PWA 仍可運作(SW 是靜態檔案)。
+- **靜態匯出(`EXPORT=1 UNOPTIMIZED=1`)**:`headers()`、`redirects()` 與 `middleware.ts`
+  **都不會**生效。CSP/安全 header 必須改在網頁伺服器(nginx/CDN)宣告;舊制 `?lang=`
+  轉址與 `/blog/*` → `/pageN/` 的分頁轉址也要改成伺服器層規則。PWA 仍可運作(SW 是
+  靜態檔案)。
 
 ## 11. 測試與維護
 
 - `tests/unit/iframe.test.ts` — 16 個測試,涵蓋 iframe 主機允許清單(精確與子網域比對、
   惡意主機拒絕)。
-- `tests/playwright/blog-parity.spec.ts` — 6 個端到端契約:legacy 網址行為、隱藏文章排除、
-  KaTeX 無 MathJax、i18n about 路由、Hux 視覺外殼 parity、MDX 增強器(響應式媒體 +
-  Medium Zoom)。
+- `tests/unit/pagination.test.ts` — 8 個測試,釘住分頁網址契約(第 1 頁沒有獨立網址、
+  `/pageN/` 從 2 起算、不接受 `page1` 與前導零)。
+- `tests/playwright/blog-parity.spec.ts` — 8 個端到端契約:legacy 網址行為、隱藏文章排除、
+  KaTeX 無 MathJax、i18n about 路由、Hux 視覺外殼 parity、文章 hero/導覽幾何、MDX 增強器
+  (響應式媒體 + Medium Zoom)、service worker 的跨網域 hero 圖。
+- `tests/playwright/pagination.spec.ts` — 7 個契約:「Older Posts」一次點擊抵達真正不同的
+  一頁、舊 `/blog/*` 轉址、sitemap 的內容與 `lastmod` 誠實性。
 - 出貨前的完整驗證慣例:`yarn tsc --noEmit && yarn lint && yarn build && yarn test:unit
 && yarn test:parity`。
 - `faq/` 目錄保留三份上游 starter 指南(自訂 MDX 元件、KBar 客製、Docker 部署)作為參考。
