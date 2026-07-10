@@ -12,7 +12,7 @@ export default function NotFound() {
   return (
     <>
       <HuxHero variant="archive" title="404" subtitle="Oops! 404:(" headerImg="/img/404-bg.webp" />
-      <div className="mx-auto max-w-md py-8 text-center">
+      <div className="mx-auto max-w-md px-4 py-8 text-center">
         <p className="mb-8">這個頁面不存在,可能已被移動或刪除。</p>
         <ul className="pager">
           <li>

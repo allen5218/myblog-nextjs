@@ -17,7 +17,7 @@ export default function OfflinePage() {
         subtitle="閱讀過的頁面可以在離線時訪問哦 ;)"
         headerImg="/img/404-bg.webp"
       />
-      <div className="mx-auto max-w-md py-8 text-center">
+      <div className="mx-auto max-w-md px-4 py-8 text-center">
         <p className="mb-8">已瀏覽過的頁面仍會從快取顯示,重新連線後即可繼續閱讀其他文章。</p>
         <ul className="pager">
           <li>

@@ -107,7 +107,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fff" />
       <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000" />
       <link rel="alternate" type="application/rss+xml" href={`${basePath}/feed.xml`} />
-      <body className="flex min-h-screen flex-col pl-[calc(100vw-100%)] antialiased">
+      {/* 不要加回 pl-[calc(100vw-100%)](上游模板防捲軸跳動的 hack)。它只補左側,
+          傳統捲軸下 body 的內容盒就不再置中,.hux-full-bleed 會整組偏移半個捲軸寬。 */}
+      <body className="flex min-h-screen flex-col antialiased">
         <SerwistProvider swUrl={`${basePath}/sw.js`}>
           <HtmlLangSync />
           <FocusVisibleFix />
