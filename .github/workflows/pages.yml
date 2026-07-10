@@ -1,9 +1,8 @@
 # Inspired from https://github.com/actions/starter-workflows/blob/main/pages/nextjs.yml
 name: GitHub Pages
 
+# 僅限手動觸發:本站不經由 GitHub Pages 自動部署
 on:
-  push:
-    branches: main
   workflow_dispatch:
 
 permissions:
