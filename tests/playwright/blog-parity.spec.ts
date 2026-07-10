@@ -154,9 +154,7 @@ test('post hero and navigation geometry matches the legacy layout', async ({ pag
   const desktopGeometry = await page.evaluate(() => {
     const brand = document.querySelector<HTMLElement>('.navbar-brand')!.getBoundingClientRect()
     const links = document.querySelector<HTMLElement>('.navbar-links')!.getBoundingClientRect()
-    const tags = document
-      .querySelector<HTMLElement>('.post-heading .tags')!
-      .getBoundingClientRect()
+    const tags = document.querySelector<HTMLElement>('.post-heading .tags')!.getBoundingClientRect()
     const title = document
       .querySelector<HTMLElement>('.post-heading .tags + h1')!
       .getBoundingClientRect()
@@ -178,13 +176,9 @@ test('post hero and navigation geometry matches the legacy layout', async ({ pag
   const mobileGeometry = await page.evaluate(() => {
     const brand = document.querySelector<HTMLElement>('.navbar-brand')!.getBoundingClientRect()
     const tools = document.querySelector<HTMLElement>('.navbar-mobile')!.getBoundingClientRect()
-    const hero = document
-      .querySelector<HTMLElement>('.intro-header-post')!
-      .getBoundingClientRect()
+    const hero = document.querySelector<HTMLElement>('.intro-header-post')!.getBoundingClientRect()
     const heading = document.querySelector<HTMLElement>('.post-heading')!.getBoundingClientRect()
-    const tags = document
-      .querySelector<HTMLElement>('.post-heading .tags')!
-      .getBoundingClientRect()
+    const tags = document.querySelector<HTMLElement>('.post-heading .tags')!.getBoundingClientRect()
     const title = document
       .querySelector<HTMLElement>('.post-heading .tags + h1')!
       .getBoundingClientRect()
