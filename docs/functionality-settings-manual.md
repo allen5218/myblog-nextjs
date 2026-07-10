@@ -1,187 +1,260 @@
 # Functionality and Settings Manual
 
-This manual describes the current Next.js blog behavior after the migration. It is written for site maintenance and deployment, not for application-code changes.
+> 繁體中文版:[functionality-settings-manual.zh-TW.md](./functionality-settings-manual.zh-TW.md)
 
-## Blog Content
+This manual describes how to operate, configure, and maintain Allen's Blog (the Next.js
+migration of the old Jekyll/Hux site at `blog.allenspace.de`). It is written for site
+maintenance and content authoring, not for application-code changes.
 
-Blog posts live under `data/blog/**/*.md` or `data/blog/**/*.markdown` and are processed as MDX.
+Stack overview: Next.js 15 (App Router) + Contentlayer2 + Tailwind CSS v4 + Pliny, with the
+Hux Blog visual language ported on top and PWA support via Serwist.
 
-Supported front matter fields:
+## 1. Writing Posts
 
-- `title` required. Display title, SEO title, search title, feed title, and structured-data headline.
-- `date` required. Publication date. The legacy public URL is generated from this date plus the filename slug: `/YYYY/MM/DD/slug/`.
-- `tags` optional list of strings. Used for tag pages, archive filters, feeds, and post headers.
-- `update` optional date. Used as `lastmod` and displayed as the updated date when present.
-- `draft` optional boolean. Draft posts are excluded from sitemap and RSS. Tag counts exclude drafts in production.
-- `subtitle` optional string. Used as the visible subtitle and fallback `summary`.
-- `images` optional string or list. Used for SEO/social images when no `headerImg` is present.
-- `authors` optional list and `author` optional string. Layouts mainly use `authors`, defaulting to `default`.
-- `layout` optional string. Supported layouts are `PostLayout`, `PostSimple`, and `PostBanner`; unknown values fall back to `PostLayout`.
-- `bibliography` optional string. Used by citation processing.
-- `canonicalUrl` optional string. Defined in content schema, but the current post route emits the generated legacy canonical path.
-- `headerImg` optional string. Hero image and SEO image fallback.
-- `headerBgCss` optional string. Custom CSS background for the hero.
-- `headerMask` optional number or JSON-compatible value. Controls hero mask opacity.
-- `catalog` optional boolean. Preserved migration field for catalog/table-of-contents behavior.
-- `mathjax` optional boolean. Legacy compatibility field only; MathJax is not loaded.
-- `mermaid` optional boolean. Legacy compatibility field only; no client Mermaid runtime is initialized.
-- `iframe` optional string. Renders a full hero iframe, currently used for slide/keynote-style posts.
-- `hidden` optional boolean. When `true`, the post remains available at its direct legacy URL but is excluded from homepage, blog listing, tags, archive, search JSON, sitemap, and RSS.
+Posts live under `data/blog/**/*.md` or `*.markdown` and are processed as MDX.
 
-Filename slug behavior:
+### Filename and URL rules
 
-- A filename date prefix like `2025-10-13-my-post.md` is stripped.
-- The front matter `date`, not the filename date, controls `/YYYY/MM/DD/`.
-- Keep migrated post dates stable to preserve comment, SEO, feed, and legacy inbound-link compatibility.
+- A filename date prefix like `2025-10-13-my-post.md` is stripped to produce the slug
+  (`my-post`).
+- The public URL is `/YYYY/MM/DD/slug/` — generated from the **front matter `date`**, not
+  the filename date. Trailing slash is mandatory site-wide (`trailingSlash: true`).
+- Keep migrated post dates stable: the URL feeds giscus comment mapping, SEO, feeds, and
+  legacy inbound links.
 
-## About Page and i18n
+### Front matter fields
 
-The localized about pages are:
+| Field          | Type        | Required | Behavior                                                                                         |
+| -------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `title`        | string      | ✅       | Display/SEO/search/feed title and structured-data headline.                                      |
+| `date`         | date        | ✅       | Publication date; determines the `/YYYY/MM/DD/` URL prefix.                                      |
+| `tags`         | string list |          | Tag pages, archive filter, feeds, post header. Tag pages use slugified names.                    |
+| `update`       | date        |          | Shown as the updated date; becomes `lastmod` for sitemap/SEO.                                    |
+| `draft`        | boolean     |          | Drafts are excluded from listings, sitemap, RSS, and tag counts in production builds.            |
+| `subtitle`     | string      |          | Visible subtitle; also the fallback `summary` for SEO/feeds.                                     |
+| `images`       | string/list |          | SEO/social images when no `headerImg` is present.                                                |
+| `authors`      | string list |          | References `data/authors/*.mdx` by filename; defaults to `default`.                              |
+| `author`       | string      |          | Legacy single-author field; layouts mainly use `authors`.                                        |
+| `layout`       | string      |          | `PostLayout` (default), `PostSimple`, or `PostBanner`; unknown values fall back to `PostLayout`. |
+| `bibliography` | string      |          | BibTeX file for `rehype-citation` (see `data/references-data.bib`).                              |
+| `canonicalUrl` | string      |          | Schema field only; the post route emits the generated legacy canonical path regardless.          |
+| `headerImg`    | string      |          | Hero image; also the SEO image fallback.                                                         |
+| `headerBgCss`  | string      |          | Custom CSS background for the hero (alternative to `headerImg`).                                 |
+| `headerMask`   | number/json |          | Hero mask opacity.                                                                               |
+| `iframe`       | string      |          | Full-hero iframe (slide/keynote posts). Source must pass the allowlist in `lib/iframe.ts`.       |
+| `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px) on the post page.                   |
+| `hidden`       | boolean     |          | See "Hidden posts" below.                                                                        |
+| `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.     |
+| `mermaid`      | boolean     |          | Legacy migration flag only — no client Mermaid runtime exists.                                   |
 
-- `/about/` for `zh-TW`, the default locale.
-- `/en/about/` for English.
+Computed automatically (do not set manually): reading time, table of contents, excerpt
+preview (~200 chars from body), and JSON-LD structured data.
 
-Content comes from JSON dictionaries:
+### Draft vs. hidden
 
-- `dictionaries/zh-TW.json`
-- `dictionaries/en.json`
+- `draft: true` — unpublished. Excluded everywhere in production.
+- `hidden: true` — published but unlisted. The direct `/YYYY/MM/DD/slug/` URL works, but the
+  post is excluded from homepage, blog listing, tags, archive, search index, sitemap, and
+  RSS. Note: the URL itself is not secret; do not rely on `hidden` for confidentiality.
 
-Each dictionary contains common language switcher labels plus the about page title, description, Open Graph locale, hero image, hero mask, profile fields, and body paragraphs. To update about content, edit both dictionaries so the two localized routes stay aligned.
+## 2. Markdown / MDX Capabilities
 
-Legacy compatibility:
+- **GFM** (tables, task lists, strikethrough) plus GitHub-style alert blockquotes
+  (`> [!NOTE]`, `> [!WARNING]`, …).
+- **Math**: KaTeX via `remark-math` + `rehype-katex`. Write `$inline$` and `$$block$$`.
+  MathJax must not be reintroduced.
+- **Code blocks**: Prism highlighting (`rehype-prism-plus`), line numbers/highlighting
+  supported, default language `js`. ` ```lang:title ` adds a code title bar.
+- **Citations**: `rehype-citation` with `bibliography` front matter or
+  `data/references-data.bib`.
+- **Images**: converted to `next/image` where sizes are known; every post image gets
+  client-side Medium Zoom (zoom background follows light/dark theme).
+- **Iframes**: YouTube / YouTube nocookie / youtu.be / Vimeo sources are auto-wrapped in
+  responsive 16:9 containers (host-checked in `lib/iframe.ts`). Other iframe sources are
+  left alone — and will be blocked by CSP `frame-src` unless allowlisted (see §8).
+- **Tables**: wrapped in horizontally scrollable containers for mobile.
+- **Headings**: get slug anchors with a prepended link icon on hover.
+- MDX is code-capable. Treat everything under `data/` as trusted author content; never
+  accept untrusted MDX submissions without a separate security design.
 
-- `/about/?lang=en` redirects permanently to `/en/about/`.
-- `/about/?lang=zh` and `/about/?lang=zh-TW` redirect permanently to `/about/`.
-- The redirect removes the query string.
+## 3. Site Configuration
 
-The root HTML language starts as `zh-TW`; a client helper updates it to `en` on `/en/...` routes.
+### `data/siteMetadata.js`
 
-## Analytics
+The central config: site title/description, `siteUrl` (`https://blog.allenspace.de`),
+default theme (`dark`), language/locale (`zh-TW`), social links, analytics, comments,
+search. Highlights:
 
-Analytics are rendered by Pliny's `Analytics` component from `siteMetadata.analytics`.
+- **Social links** (`github`, `linkedin`, `x`, `facebook`, `reddit`, `buymeacoffee`, …):
+  rendered by `components/hux/HuxSocial.tsx` as the Hux-style circular icons (custom SVGs,
+  no icon-font dependency). **Empty string = icon hidden.** RSS is always shown and links
+  to `/feed.xml`.
+- **Analytics**: GA4 via `googleAnalytics.googleAnalyticsId` (`G-M2HR0MGKVL`, carried over
+  from the old site). Umami/Plausible/PostHog remain as commented examples — switching
+  providers also requires updating the CSP in `next.config.mjs` (see §8). Google Search
+  Console verification meta is set in the root layout.
+- **Newsletter**: `provider` is intentionally blank. The `/api/newsletter` route returns
+  `404 Newsletter is not configured` while blank. Leave it blank unless a provider is
+  deliberately configured and reviewed.
 
-Currently configured:
+### Navigation, sidebar, authors
 
-- Umami is enabled structurally through `umamiAnalytics`.
-- Set `NEXT_UMAMI_ID` to the Umami website ID.
-- The CSP already allows `analytics.umami.is`.
+- **Nav links**: `data/headerNavLinks.ts` (Home / Archive / Tags / About).
+- **Friends list** (sidebar "FRIENDS" section): hardcoded `friends` array at the top of
+  `components/hux/HuxSidebar.tsx`.
+- **Sidebar Featured Tags**: derived automatically from tag counts.
+- **Author profiles**: `data/authors/*.mdx` (front matter: name, avatar, occupation,
+  company, email, github, linkedin, …). `default.mdx` is the site owner; posts reference
+  others via the `authors` front matter list.
+- **About page content**: NOT in authors files — it comes from the i18n dictionaries
+  (`dictionaries/zh-TW.json`, `dictionaries/en.json`). Edit **both** files to keep `/about/`
+  (zh-TW) and `/en/about/` aligned. Legacy `?lang=` URLs 308-redirect to the right route.
 
-Currently not active unless edited in `data/siteMetadata.js`:
+## 4. Routes
 
-- Google Analytics GA4 is only present as a commented example. To use GA4, set `googleAnalytics.googleAnalyticsId` in `siteMetadata.analytics` and update CSP for the script and connection endpoints used by GA.
-- Plausible, Simple Analytics, and PostHog are also only commented examples.
+| Route                     | Purpose                                                                     |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `/`                       | Home: Hux hero, sidebar (about-me / featured tags / friends), post previews |
+| `/YYYY/MM/DD/slug/`       | Post pages (legacy-compatible canonical URLs)                               |
+| `/blog/`, `/blog/page/N/` | Paginated listing ("Older Posts" pager)                                     |
+| `/archive/`               | Archive timeline with tag filtering                                         |
+| `/tags/`, `/tags/[tag]/`  | Tag index and per-tag listings (with pagination and per-tag RSS)            |
+| `/about/`, `/en/about/`   | Localized about pages                                                       |
+| `/offline/`               | PWA offline fallback                                                        |
+| `/api/newsletter`         | Disabled (404) while no provider configured                                 |
+| `/projects/`              | Intentionally removed — 404                                                 |
 
-## Comments
+## 5. Search, Comments, Analytics
 
-Comments use Giscus through Pliny. The user must click `Load Comments` before the Giscus widget loads.
+- **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
+  excludes hidden posts. The index is public — never put secrets in listed posts. Active
+  result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
+- **Comments**: giscus (GitHub Discussions on `allen5218/myblog`), loaded only after the
+  reader clicks "Load Comments". Mapping is `pathname` — comment threads are tied to the
+  exact `/YYYY/MM/DD/slug/` path, another reason URLs must stay stable. Config comes from
+  `NEXT_PUBLIC_GISCUS_*` env vars with committed fallbacks. Language `zh-TW`; light/dark
+  theme follows the site theme.
+- **Analytics**: GA4 (see §3). CSP already allows googletagmanager / google-analytics
+  endpoints.
 
-Giscus settings come from environment variables with committed fallbacks:
+## 6. Feeds, Sitemap, SEO
 
-- `NEXT_PUBLIC_GISCUS_REPO`
-- `NEXT_PUBLIC_GISCUS_REPOSITORY_ID`
-- `NEXT_PUBLIC_GISCUS_CATEGORY`
-- `NEXT_PUBLIC_GISCUS_CATEGORY_ID`
+- `feed.xml` — main RSS (listed, non-draft posts), generated by `scripts/rss.mjs` during
+  postbuild. Tag feeds at `/tags/<tag>/feed.xml` (skipped when a tag has no listed posts).
+- `sitemap.xml` — home, `/blog/`, `/tags/`, both about pages (with language alternates),
+  and listed non-draft posts.
+- `robots.ts` — standard allow-all with sitemap pointer.
+- Post pages emit JSON-LD `BlogPosting` structured data and OpenGraph/Twitter meta.
 
-Current behavior:
+## 7. PWA (Serwist)
 
-- Provider: `giscus`
-- Mapping: `pathname`
-- Language: `zh-TW`
-- Reactions and metadata are disabled.
+- Service worker source: `app/sw.ts`, built by `@serwist/next` to `public/sw.js`
+  (gitignored). Runtime registration happens via `SerwistProvider` in `app/layout.tsx`.
+- Behavior: Next.js-aware runtime caching (`defaultCache`); previously visited pages work
+  offline; unvisited navigations fall back to `/offline/` (precached, revision = git commit
+  hash).
+- Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
+  blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
+  PWA icons.
+- Favicons: full set regenerated from the same logo (`favicon.ico` also copied to site root
+  because browsers request `/favicon.ico` unconditionally). Known accepted exception:
+  `safari-pinned-tab.svg` still carries the old starter mark (deprecated Safari feature;
+  deliberately not regenerated).
+- SW/TS note: `app/sw.ts` and `public/sw.js` are excluded from `tsconfig.json` and ESLint
+  (webworker lib conflicts with the app's `dom` lib; the Serwist webpack plugin bundles the
+  SW independently).
 
-Because mapping is `pathname`, discussions are tied to exact URL paths. Preserving `/YYYY/MM/DD/slug/` is important for comment continuity. Redirect-only paths like `/blog/...` should not become the canonical comment path.
+## 8. Security
 
-## Search
+- **CSP** is defined in `next.config.mjs` and applied via `headers()` to all routes:
+  - `script-src`: `'self'` + giscus + googletagmanager. `'unsafe-eval'` is included **in dev
+    only** (Fast Refresh needs it); production has no `unsafe-eval`. `'unsafe-inline'` is
+    kept by decision (Next App Router inline hydration scripts; nonce-based CSP would force
+    the whole site dynamic and kill SSG — do not revisit without new premises).
+  - `img-src`: self + `img.allenspace.de` + GA endpoints + blob/data. The starter's
+    `picsum.photos` and `media-src` S3 wildcard are **disabled** (commented with risk notes
+    in the config — read those before re-enabling anything).
+  - `frame-src`: giscus, `slide.allenspace.de`, YouTube nocookie, Vimeo only.
+  - **Adding a third-party script/embed/image host requires updating the CSP** in the same
+    change, and (for images) `images.remotePatterns`.
+- **Hero iframe allowlist**: `lib/iframe.ts` — front matter `iframe` sources resolve only
+  against `https://slide.allenspace.de`. Extend the allowlist and CSP `frame-src` together.
+- Other headers: HSTS, X-Content-Type-Options, Referrer-Policy, X-Frame-Options DENY +
+  `frame-ancestors 'none'`, Permissions-Policy (camera/mic/geolocation off).
+- **Dependency pinning** (`package.json` resolutions): `pliny/js-yaml: 4.3.0` (merge-key DoS
+  fix; scoped so gray-matter's v3 line is untouched) and `mdx-bundler/uuid: 11.1.1`
+  (buffer bounds fix; patched only in 11.x). Keep the dependent-scoped form when adding
+  future resolutions. Known accepted audit item: `@opentelemetry/core` via contentlayer2
+  (build-time only, zero exposure; waiting on upstream).
+- Trust boundary: MDX/front matter under `data/` is trusted author content.
 
-Search uses the starter/Pliny KBar provider.
+## 9. Theming and Typography
 
-- Public search index path: `/search.json`.
-- Generated from Contentlayer during build.
-- `hidden: true` posts are excluded.
-- The selected/active search color is `#4db8d1` via the Tailwind primary color configuration.
+- Dark/light theme via `next-themes`; default is **dark**. The switch lives in the navbar
+  (sun/moon/monitor menu).
+- Site-wide font: **Chiron Sung HK** (CJK serif, variable 200–900) via `next/font/google`,
+  self-hosted at build time — `font-src 'self'` stays valid, no runtime Google Fonts
+  requests.
+- Focus outline: brand cyan, visible **only for keyboard navigation** (Tab), hidden for
+  mouse clicks (`components/FocusVisibleFix.tsx` + `user-is-tabbing` class).
 
-The search JSON is public, so do not put private content, secrets, unpublished drafts, or sensitive hidden details in listed posts. Hidden posts are excluded from search, but their direct URLs still work.
+## 10. Commands, Environment Variables, Deployment
 
-## Feed, Sitemap, and URLs
+### Commands
 
-The app uses `trailingSlash: true`. Public canonical post URLs should end with `/`.
+| Command            | Purpose                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| `yarn dev`         | Dev server at `http://localhost:3000`                                 |
+| `yarn build`       | Production build + postbuild (RSS/tag feeds)                          |
+| `yarn serve`       | Serve the production build (`next start`)                             |
+| `yarn lint`        | ESLint (+prettier) with `--fix`                                       |
+| `yarn test:unit`   | Vitest unit tests (`tests/unit/`)                                     |
+| `yarn test:parity` | Playwright parity suite (`tests/playwright/`, binds `127.0.0.1:3012`) |
+| `yarn analyze`     | Build with bundle analyzer                                            |
 
-Generated surfaces:
+Operational caveats:
 
-- `sitemap.xml` includes home, `/blog/`, `/tags/`, localized about pages, and listed non-draft posts.
-- `feed.xml` includes listed non-draft posts.
-- Tag feeds are written under `/tags/<tag>/feed.xml`.
-- Hidden posts are excluded from sitemap and feeds.
-- `/about/` and `/en/about/` are included in the sitemap with language alternates.
+- Do **not** run `yarn build` and `yarn dev`/`yarn test:parity` concurrently — they race on
+  `.next`.
+- Dev-only quirk: the first click on a cold (not-yet-compiled) route can appear dead for
+  ~1.5s and double-clicking into that window stalls the dev router. This is `next dev`
+  on-demand compilation, not a bug; production navigates in ~15ms. Never judge interaction
+  latency from the dev server.
 
-The old `/projects/` page has been removed and should 404.
+### Environment variables
 
-## Math and Mermaid
+| Variable                                                                    | Purpose                                      |
+| --------------------------------------------------------------------------- | -------------------------------------------- |
+| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus overrides (committed fallbacks exist) |
+| `BASE_PATH`                                                                 | Optional subpath deployment prefix           |
+| `EXPORT=1`                                                                  | Static export output                         |
+| `UNOPTIMIZED=1`                                                             | Disable image optimization (pair w/ EXPORT)  |
+| `ANALYZE=true`                                                              | Bundle analyzer                              |
 
-Math:
+### Deployment modes
 
-- KaTeX is used through `remark-math`, `rehype-katex`, and `rehype-katex-notranslate`.
-- Post routes import `katex/dist/katex.css`.
-- MathJax must not be reintroduced.
-- Legacy posts may mention MathJax in their article text, but no MathJax script should load.
+- **Node server / Vercel (default)**: everything works — security headers from
+  `next.config.mjs`, the `/about/?lang=` redirect middleware, image optimization.
+- **Static export (`EXPORT=1 UNOPTIMIZED=1`)**: `headers()` and `middleware.ts` do **not**
+  apply. CSP/security headers must be re-declared on the web server (nginx/CDN), and the
+  legacy `?lang=` redirects need server-level rules. The PWA still works (the SW is a
+  static file).
 
-Mermaid:
+## 11. Testing and Maintenance
 
-- The content schema preserves a `mermaid` flag for migrated posts.
-- No Mermaid client runtime is initialized.
-- Prefer build-time Mermaid rendering if support is added later. Do not add client-side Mermaid initialization without approval.
+- `tests/unit/iframe.test.ts` — 16 tests covering the iframe host allowlist (exact and
+  subdomain matching, malicious-host rejection).
+- `tests/playwright/blog-parity.spec.ts` — 6 end-to-end contracts: legacy URL behavior,
+  hidden-post exclusion, KaTeX-without-MathJax, i18n about routes, Hux visual shell parity,
+  and MDX enhancers (responsive media + Medium Zoom).
+- Full verification convention before shipping: `yarn tsc --noEmit && yarn lint && yarn
+build && yarn test:unit && yarn test:parity`.
+- The `faq/` directory keeps three upstream starter guides (custom MDX components, KBar
+  customization, Docker deploys) as reference material.
 
-## MDX Runtime Enhancers
+## 12. Licensing
 
-MDX rendering uses custom components for images, links, iframes, code blocks, tables, and the wrapper.
-
-Current enhancer behavior:
-
-- Medium Zoom is client-side only and attaches to `.post-container img`.
-- Zoom background follows the current light/dark theme.
-- Tables render in responsive wrappers.
-- YouTube, YouTube nocookie, youtu.be, and Vimeo iframes are wrapped in responsive aspect-ratio containers after URL host matching.
-
-MDX is code-capable content. Treat files under `data/` as trusted author content, not as untrusted user submissions.
-
-## Deployment Settings
-
-Site metadata:
-
-- `siteUrl` is `https://blog.allenspace.de`.
-- `language` and `locale` are `zh-TW`.
-- The font behavior follows `tailwind-nextjs-starter-blog` with `Space_Grotesk` from `next/font/google` and `--font-space-grotesk`.
-
-Build and hosting environment variables:
-
-- `NEXT_UMAMI_ID`: Umami website ID.
-- `NEXT_PUBLIC_GISCUS_REPO`: Giscus repository.
-- `NEXT_PUBLIC_GISCUS_REPOSITORY_ID`: Giscus repository ID.
-- `NEXT_PUBLIC_GISCUS_CATEGORY`: Giscus category.
-- `NEXT_PUBLIC_GISCUS_CATEGORY_ID`: Giscus category ID.
-- `BASE_PATH`: optional subpath deployment prefix.
-- `EXPORT=1`: enables static export output.
-- `UNOPTIMIZED=1`: disables Next image optimization, usually needed with static export.
-- `ANALYZE=true`: enables bundle analyzer.
-
-Security headers and CSP:
-
-- CSP is defined in `next.config.js` and applied to all routes.
-- Current `frame-src` allows Giscus, `slide.allenspace.de`, and YouTube nocookie domains.
-- Current image optimization remote patterns allow `picsum.photos` and `img.allenspace.de`.
-- Current CSP image policy allows images from any origin; tightening it requires auditing existing Markdown and remote images first.
-- Current CSP connect policy allows all origins; tighten it before adding more third-party scripts.
-- Current script policy includes `unsafe-inline` and `unsafe-eval` for compatibility with the current stack. Treat this as a deployment risk and avoid adding untrusted MDX or arbitrary inline scripts.
-
-Iframe allowlist:
-
-- The CSP allows only configured frame origins.
-- Hero iframes are resolved through `lib/iframe.ts` and currently allow only `https://slide.allenspace.de`.
-- Responsive MDX iframe wrapping also uses `lib/iframe.ts` for host matching, but it remains display logic rather than a complete content security policy.
-- Only use trusted iframe sources, and keep CSP `frame-src` synchronized with approved embed hosts.
-
-Newsletter:
-
-- The newsletter API route exists, but `siteMetadata.newsletter.provider` is blank.
-- When the provider is blank, the route returns `404` with `Newsletter is not configured`.
-- Leave it blank unless a provider is intentionally configured and reviewed.
+Apache-2.0 for this repository (see `LICENSE`, `NOTICE.md`); based on
+[timlrx/tailwind-nextjs-starter-blog](https://github.com/timlrx/tailwind-nextjs-starter-blog)
+(MIT, preserved at `licenses/tailwind-nextjs-starter-blog-MIT.txt`) with the visual language
+of [Hux Blog](https://github.com/Huxpro/huxpro.github.io) ported onto it.
