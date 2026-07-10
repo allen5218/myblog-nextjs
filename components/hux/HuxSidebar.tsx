@@ -49,7 +49,7 @@ export default function HuxSidebar({ posts }: HuxSidebarProps) {
         </section>
       )}
 
-      <section className="short-about-section">
+      <section className="short-about-section hidden md:block">
         <hr />
         <h5>
           <Link href="/about/">ABOUT ME</Link>

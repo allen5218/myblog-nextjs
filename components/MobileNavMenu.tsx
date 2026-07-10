@@ -25,7 +25,12 @@ const MobileNavMenu = () => {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <MenuItems className="ring-opacity-5 absolute right-0 z-50 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black focus:outline-hidden dark:bg-gray-800">
+        {/* 沒有明確指定 top 時,絕對定位的下拉在垂直方向會退回「原本沒被抽離文件流時
+            應該在的位置」去估算,.navbar-toggle 是 52px 高的大圓形按鈕,這個估算跟正常
+            的「貼在按鈕下方」對不上,導致下拉整個蓋住按鈕本身。明確加上 top-full,
+            下拉頂端固定對齊到按鈕(這個 relative 容器)的下緣,正常顯示在按鈕正下方
+            而不是蓋住它;right-0 貼齊漢堡按鈕自己的右緣,維持在按鈕正下方,不偏移。 */}
+        <MenuItems className="ring-opacity-5 absolute top-full right-0 z-50 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black focus:outline-hidden dark:bg-gray-800">
           <div className="p-1">
             {headerNavLinks.map((link) => (
               <MenuItem key={link.title}>

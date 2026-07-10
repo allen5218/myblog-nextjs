@@ -481,7 +481,10 @@ body {
 .post-preview .tag,
 .post-container .tag,
 .side-catalog .tag {
-  border-color: var(--hux-muted);
+  border-color: var(--hux-text);
+  /* .post-preview .tags 的 color: var(--hux-muted) 會被 .tag 的 color: inherit
+     繼承下來,只改 border-color 邊框會亮但文字還是暗淡,這裡直接蓋掉文字顏色。 */
+  color: var(--hux-text);
 }
 
 .archive-wrap {
@@ -521,9 +524,9 @@ body {
 
 .sidebar-container .tags a {
   display: inline-block;
-  border: 1px solid var(--hux-border);
+  border: 1px solid var(--hux-text);
   border-radius: 999px;
-  color: var(--hux-muted);
+  color: var(--hux-text);
   font-size: 12px;
   line-height: 24px;
   padding: 0 10px;
@@ -746,11 +749,17 @@ body {
   border-left: 5px solid #777;
   border-radius: 5px;
   background: var(--hux-quote-bg);
-  color: var(--hux-muted);
+  color: var(--hux-text);
   font-size: 15.2px;
   font-style: italic;
   line-height: 25.84px;
   padding: 15px 20px;
+}
+
+/* 舊站 blockquote p{margin:0},引言內的段落不額外加上 .prose 通用段落間距(25px 0),
+   否則會跟 blockquote 自己的 padding 疊加,造成文字上下留白過大。 */
+.post-container .prose blockquote :where(p) {
+  margin: 0;
 }
 
 .post-container .prose :where(code):not(pre code) {
@@ -927,7 +936,7 @@ body {
      bug)。要讓目前閱讀到的標題不被裁掉,改用 SideCatalog.tsx 裡的 JS 把作用中項目
      的 scrollTop 捲進可視範圍,而不是讓使用者用滾輪去捲這個框。 */
   overflow: hidden;
-  color: var(--hux-muted);
+  color: var(--hux-text);
   font-size: 14px;
   padding-bottom: 40px;
 }
@@ -943,7 +952,7 @@ body {
 }
 
 .side-catalog .catalog-toggle {
-  color: var(--hux-muted);
+  color: var(--hux-text);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 1px;
@@ -989,7 +998,7 @@ body {
   max-width: 180px;
   height: 30px;
   overflow: hidden;
-  color: var(--hux-muted);
+  color: var(--hux-text);
   line-height: 30px;
   padding-left: 10px;
   text-decoration: none;
