@@ -69,16 +69,22 @@
     border-color: var(--color-gray-200, currentColor);
   }
 
-  a,
-  button {
-    outline-color: var(--color-primary-500);
-  }
-
+  /* 瀏覽器原生 :focus-visible 對 <button> 點擊後也會顯示焦點框(規格上刻意如此,
+     因為按鈕也能用 Enter/Space 鍵觸發,瀏覽器無法確定是滑鼠點擊還是鍵盤操作)。
+     這裡預設不顯示,只有偵測到鍵盤 Tab 操作時(見 components/FocusVisibleFix.tsx,
+     它會幫 <html> 加上 user-is-tabbing)才顯示焦點框,滑鼠點擊一律不顯示。 */
   a:focus-visible,
   button:focus-visible {
+    outline: none;
+  }
+
+  .user-is-tabbing a:focus-visible,
+  .user-is-tabbing button:focus-visible {
     outline: 2px solid;
+    /* --color-primary-500 是 Tailwind 預設的桃紅,沒改過(只有 -600 為了 KBar
+       改成本站的青色 #4db8d1),焦點框沿用已客製的 -600。 */
+    outline-color: var(--color-primary-600);
     border-radius: var(--radius-sm);
-    outline-color: var(--color-primary-500);
   }
 }
 

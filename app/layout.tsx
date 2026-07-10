@@ -11,6 +11,7 @@ import SectionContainer from '@/components/SectionContainer'
 import Footer from '@/components/Footer'
 import KBarSearchPlaceholder from '@/components/KBarSearchPlaceholder'
 import HtmlLangSync from '@/components/i18n/HtmlLangSync'
+import FocusVisibleFix from '@/components/FocusVisibleFix'
 import siteMetadata from '@/data/siteMetadata'
 import { ThemeProviders } from './theme-providers'
 import { Metadata } from 'next'
@@ -109,6 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-screen flex-col pl-[calc(100vw-100%)] antialiased">
         <SerwistProvider swUrl={`${basePath}/sw.js`}>
           <HtmlLangSync />
+          <FocusVisibleFix />
           <ThemeProviders>
             <Analytics analyticsConfig={siteMetadata.analytics as AnalyticsConfig} />
             <SectionContainer>
