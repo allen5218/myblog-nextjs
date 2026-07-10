@@ -5,6 +5,7 @@ const invalidAiPath = '/2025/10/13/ai-learning-community/'
 const hiddenPath = '/2025/08/16/catalog-test/'
 const openWebUiPath = '/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/'
 const mathPath = '/2021/04/30/typora-latex-mathjax/'
+const learningPath = '/2026/04/26/learning-how-to-learn/'
 const validAiUrl = `https://blog.allenspace.de${validAiPath}`
 const validAiUrlWithoutSlash = validAiUrl.replace(/\/$/, '')
 
@@ -144,6 +145,67 @@ test('Hux visual shell keeps archive and post hero parity contracts', async ({ p
     'Updated on August 13, 2025',
     'Posted by elmagnifico on April 30, 2021',
   ])
+})
+
+test('post hero and navigation geometry matches the legacy layout', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(learningPath)
+
+  const desktopGeometry = await page.evaluate(() => {
+    const brand = document.querySelector<HTMLElement>('.navbar-brand')!.getBoundingClientRect()
+    const links = document.querySelector<HTMLElement>('.navbar-links')!.getBoundingClientRect()
+    const tags = document
+      .querySelector<HTMLElement>('.post-heading .tags')!
+      .getBoundingClientRect()
+    const title = document
+      .querySelector<HTMLElement>('.post-heading .tags + h1')!
+      .getBoundingClientRect()
+
+    return {
+      brandLeft: brand.left,
+      linksRight: links.right,
+      tagToTitleGap: title.top - tags.bottom,
+    }
+  })
+
+  expect(desktopGeometry.brandLeft).toBeCloseTo(0, 0)
+  expect(desktopGeometry.linksRight).toBeCloseTo(1440, 0)
+  expect(desktopGeometry.tagToTitleGap).toBeCloseTo(15, 0)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload()
+
+  const mobileGeometry = await page.evaluate(() => {
+    const brand = document.querySelector<HTMLElement>('.navbar-brand')!.getBoundingClientRect()
+    const tools = document.querySelector<HTMLElement>('.navbar-mobile')!.getBoundingClientRect()
+    const hero = document
+      .querySelector<HTMLElement>('.intro-header-post')!
+      .getBoundingClientRect()
+    const heading = document.querySelector<HTMLElement>('.post-heading')!.getBoundingClientRect()
+    const tags = document
+      .querySelector<HTMLElement>('.post-heading .tags')!
+      .getBoundingClientRect()
+    const title = document
+      .querySelector<HTMLElement>('.post-heading .tags + h1')!
+      .getBoundingClientRect()
+
+    return {
+      brandLeft: brand.left,
+      toolsRight: tools.right,
+      heroHeight: hero.height,
+      headingTop: heading.top,
+      tagToTitleGap: title.top - tags.bottom,
+    }
+  })
+
+  expect(mobileGeometry.brandLeft).toBeCloseTo(0, 0)
+  expect(mobileGeometry.toolsRight).toBeCloseTo(390, 0)
+  expect(mobileGeometry.heroHeight).toBeGreaterThanOrEqual(300)
+  expect(mobileGeometry.heroHeight).toBeLessThanOrEqual(320)
+  expect(mobileGeometry.headingTop).toBeCloseTo(85, 0)
+  expect(mobileGeometry.tagToTitleGap).toBeCloseTo(15, 0)
+  await expect(page.locator('.navbar-mobile').getByLabel('Theme switcher')).toBeVisible()
+  await expect(page.getByRole('menu', { name: 'Toggle navigation' })).toHaveCount(0)
 })
 
 test('post enhancers render responsive media and client Medium Zoom', async ({ page }) => {
