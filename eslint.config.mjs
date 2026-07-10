@@ -14,7 +14,10 @@ const compat = new FlatCompat({
 
 export default [
   {
-    ignores: ['next-env.d.ts', 'next.config.js'],
+    // app/sw.ts 用到 webworker 全域型別,不在主專案的 tsconfig.json 型別檢查範圍內
+    // (見 tsconfig.json 的 exclude 註解),typescript-eslint 的 project-aware 規則
+    // 因此無法解析這個檔案,一併排除;public/sw.js 是它編譯後的產物。
+    ignores: ['next-env.d.ts', 'next.config.mjs', 'app/sw.ts', 'public/sw.js'],
   },
   js.configs.recommended,
   ...compat.extends(

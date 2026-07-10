@@ -1,7 +1,22 @@
-const { withContentlayer } = require('next-contentlayer2')
+import { spawnSync } from 'node:child_process'
+import crypto from 'node:crypto'
+import withBundleAnalyzerInit from '@next/bundle-analyzer'
+import withSerwistInit from '@serwist/next'
+import { withContentlayer } from 'next-contentlayer2'
 
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
+const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true',
+})
+
+// git commit hash 當作 offline fallback 的 precache revision;沒有 git 資訊時(例如
+// 打包環境沒帶 .git)退回隨機 uuid,反正只是用來讓 workbox 判斷是否需要更新這筆快取。
+const revision =
+  spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).stdout?.trim() || crypto.randomUUID()
+
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  additionalPrecacheEntries: [{ url: '/offline/', revision }],
 })
 
 // You might need to insert additional domains in script-src if you are using external services
@@ -64,53 +79,52 @@ const basePath = process.env.BASE_PATH || undefined
 const unoptimized = process.env.UNOPTIMIZED ? true : undefined
 
 /**
- * @type {import('next/dist/next-server/server/config').NextConfig}
+ * @type {import('next').NextConfig}
  **/
-module.exports = () => {
-  const plugins = [withContentlayer, withBundleAnalyzer]
-  return plugins.reduce((acc, next) => next(acc), {
-    output,
-    basePath,
-    reactStrictMode: true,
-    trailingSlash: true,
-    turbopack: {
-      root: process.cwd(),
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+const nextConfig = {
+  output,
+  basePath,
+  reactStrictMode: true,
+  trailingSlash: true,
+  turbopack: {
+    root: process.cwd(),
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
-    pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
-    images: {
-      remotePatterns: [
-        {
-          protocol: 'https',
-          hostname: 'picsum.photos',
-        },
-        {
-          protocol: 'https',
-          hostname: 'img.allenspace.de',
-        },
-      ],
-      unoptimized,
-    },
-    async headers() {
-      return [
-        {
-          source: '/(.*)',
-          headers: securityHeaders,
-        },
-      ]
-    },
-    webpack: (config, options) => {
-      config.module.rules.push({
-        test: /\.svg$/,
-        use: ['@svgr/webpack'],
-      })
+  },
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.allenspace.de',
+      },
+    ],
+    unoptimized,
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ]
+  },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    })
 
-      return config
-    },
-  })
+    return config
+  },
 }
+
+export default withSerwist(withBundleAnalyzer(withContentlayer(nextConfig)))

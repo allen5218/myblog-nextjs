@@ -21,6 +21,10 @@
 public/sitemap.xml
 .vercel
 
+# Serwist (generated service worker, source is app/sw.ts)
+public/sw*
+public/swe-worker*
+
 # production
 /build
 *.xml
