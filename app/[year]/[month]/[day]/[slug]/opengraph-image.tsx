@@ -8,6 +8,7 @@ import {
   selectSocialCardBackground,
   selectSocialCardSummary,
 } from '@/lib/social-card'
+import { loadSocialCardFonts } from '@/lib/social-card-font'
 
 type LegacyParams = {
   year: string
@@ -19,6 +20,7 @@ type LegacyParams = {
 export const alt = `${siteMetadata.title} post social card`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
+export const runtime = 'nodejs'
 
 function routePath(params: LegacyParams) {
   return `${params.year}/${params.month}/${params.day}/${params.slug}`
@@ -46,6 +48,7 @@ export default async function Image({ params }: { params: Promise<LegacyParams> 
     )
   )
   const summary = selectSocialCardSummary(post.subtitle, post.preview)
+  const fonts = await loadSocialCardFonts()
 
   return new ImageResponse(
     <SocialCard
@@ -54,6 +57,6 @@ export default async function Image({ params }: { params: Promise<LegacyParams> 
       summary={summary}
       background={background}
     />,
-    size
+    { ...size, fonts }
   )
 }

@@ -10,6 +10,8 @@ type SocialCardProps = {
 export default function SocialCard({ siteName, title, summary, background }: SocialCardProps) {
   const isPhoto = background.kind === 'image'
   const usesBackgroundImage = isPhoto || background.kind === 'gradient-image'
+  const brandName = siteName.endsWith(' Blog') ? siteName.slice(0, -5) : siteName
+  const brandSuffix = siteName.endsWith(' Blog') ? 'Blog' : ''
 
   return (
     <div
@@ -20,6 +22,7 @@ export default function SocialCard({ siteName, title, summary, background }: Soc
         backgroundSize: 'cover',
         color: '#f8fafc',
         display: 'flex',
+        fontFamily: 'Chiron Sung HK',
         height: '100%',
         overflow: 'hidden',
         position: 'relative',
@@ -44,23 +47,18 @@ export default function SocialCard({ siteName, title, summary, background }: Soc
           width: '100%',
         }}
       >
-        <div
-          style={{
-            color: '#67e8f9',
-            display: 'flex',
-            fontSize: 30,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-          }}
-        >
-          {siteName}
+        <div style={{ alignItems: 'baseline', display: 'flex', fontSize: 48 }}>
+          <span style={{ color: '#f8fafc', fontWeight: 700 }}>{brandName}</span>
+          {brandSuffix ? (
+            <span style={{ color: '#67e8f9', fontWeight: 400, marginLeft: 12 }}>{brandSuffix}</span>
+          ) : null}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 980 }}>
           <div
             style={{
               display: 'flex',
-              fontSize: title.length > 32 ? 58 : 68,
-              fontWeight: 800,
+              fontSize: title.length > 42 ? 62 : title.length > 28 ? 72 : 82,
+              fontWeight: 700,
               letterSpacing: '-0.035em',
               lineHeight: 1.16,
               textShadow: '0 3px 18px rgba(0, 0, 0, 0.38)',
@@ -73,11 +71,11 @@ export default function SocialCard({ siteName, title, summary, background }: Soc
               style={{
                 color: '#e2e8f0',
                 display: 'flex',
-                fontSize: 30,
-                fontWeight: 500,
+                fontSize: 36,
+                fontWeight: 400,
                 lineHeight: 1.42,
                 marginTop: 28,
-                maxHeight: 86,
+                maxHeight: 104,
                 overflow: 'hidden',
                 textShadow: '0 2px 12px rgba(0, 0, 0, 0.45)',
               }}

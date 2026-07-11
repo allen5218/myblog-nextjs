@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SOCIAL_CARD_FALLBACK,
   normalizeSocialCardBackgroundForImageResponse,
+  pageSocialImagePath,
   postSocialImagePath,
   selectSocialCardBackground,
   selectSocialCardSummary,
@@ -123,6 +124,14 @@ describe('postSocialImagePath', () => {
     )
     expect(postSocialImagePath('/2026/04/26/learning-how-to-learn/')).toBe(
       '/2026/04/26/learning-how-to-learn/opengraph-image'
+    )
+  })
+})
+
+describe('pageSocialImagePath', () => {
+  it('把一般頁面的標題與摘要安全編碼進品牌 OG 圖網址', () => {
+    expect(pageSocialImagePath('Page 2', 'Allen & friends')).toBe(
+      '/social-card?title=Page+2&summary=Allen+%26+friends'
     )
   })
 })
