@@ -192,9 +192,11 @@ authored social image anywhere in the repo.
     On Vercel, `check:og-font` skips the glyph check instead of failing when `hb-shape` is missing
     (`scripts/og-font-check-policy.mjs`, gated on `VERCEL=1`).
     The GitHub Action `og-font-check` (`.github/workflows/og-font-check.yml`) covers that gap:
-    on pushes/PRs touching content or fonts it runs the same check on a runner with HarfBuzz
-    installed, so a missing glyph alerts within minutes (it does not block the Vercel deploy —
-    it is an early alarm).
+    on every push/PR (no paths filter — it's a required status check for branch protection,
+    and a conditionally-triggered workflow never reports a status when its condition doesn't
+    match, which would leave the PR stuck pending forever) it runs the same check on a runner
+    with HarfBuzz installed, so a missing glyph blocks the merge within minutes (it does not
+    affect the Vercel deploy cadence — it's a PR-level gate).
 - Adding a post or dictionary string with a character outside the current subset (an uncommon CJK
   glyph, an emoji, etc.) fails `check:og-font` at build time — run `yarn update:og-font` and commit
   the regenerated `.ttf` files.

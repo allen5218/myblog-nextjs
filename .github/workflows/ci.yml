@@ -1,0 +1,36 @@
+# PR 合併前的必過檢查(見 branch protection)。og-font-check.yml 獨立成另一個
+# workflow 是因為它只在動到內容/字體時才需要跑;這裡跑的是每次 push/PR 都該過的
+# 基本品質關卡:lint、型別、單元測試。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - run: yarn
+      # app/、layouts/ 有多處 import 'contentlayer/generated' — 這個模組是
+      # contentlayer2 在 build/dev 時才產生的(.contentlayer/generated,
+      # gitignore),乾淨 checkout 沒有這個目錄,tsc 會直接報 TS2307 找不到模組。
+      - name: Generate contentlayer types
+        run: yarn contentlayer2 build
+      # CI 要能真的失敗,不用 package.json 裡帶 --fix 的 yarn lint(那是本機用的,
+      # 會默默改完就過)
+      - name: Lint
+        run: yarn next lint --dir pages --dir app --dir components --dir lib --dir layouts --dir scripts
+      - name: Typecheck
+        run: yarn tsc --noEmit
+      - name: Unit tests
+        run: yarn test:unit
