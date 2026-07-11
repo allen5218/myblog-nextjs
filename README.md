@@ -12,10 +12,12 @@ and the Hux visual language intact.
 - **[Functionality and Settings Manual (English)](./docs/functionality-settings-manual.md)**
 
 兩份說明書涵蓋:文章撰寫與 front matter 全欄位、Markdown/MDX 能力、站點設定、搜尋/留言/
-分析、feed 與 SEO、PWA、資安(CSP 與允許清單)、主題字體、指令與部署模式、測試慣例。
+分析、feed 與 SEO、動態社群卡片(OG 圖片)、PWA、資安(CSP 與允許清單)、主題字體、指令與
+部署模式、測試慣例。
 The manuals cover post authoring and every front matter field, MDX capabilities, site
-configuration, search/comments/analytics, feeds and SEO, PWA, security (CSP and
-allowlists), theming, commands, deployment modes, and testing conventions.
+configuration, search/comments/analytics, feeds and SEO, dynamic social cards (OG images),
+PWA, security (CSP and allowlists), theming, commands, deployment modes, and testing
+conventions.
 
 ## Tech Stack
 
@@ -33,6 +35,9 @@ allowlists), theming, commands, deployment modes, and testing conventions.
   comment threads.
 - **Bilingual about page** — `/about/` (繁體中文) and `/en/about/`, dictionary-driven,
   with permanent redirects from the old `?lang=` URLs.
+- **Dynamic social cards** — every page gets an auto-generated 1200×630 `og:image`/Twitter
+  card (post hero image or brand gradient background, locally subsetted Chiron Sung HK
+  font) — no manually authored social images.
 - **PWA** — visited pages readable offline; unvisited navigations fall back to a styled
   `/offline/` page.
 - **Hardened by default** — strict CSP (no `unsafe-eval` in production), iframe host
@@ -72,6 +77,8 @@ dictionaries/         about-page i18n (zh-TW / en)
 app/                  App Router routes (incl. sw.ts, manifest.ts)
 components/hux/       Hux visual components (hero, sidebar, catalog, …)
 layouts/              post/list layouts
+lib/                  pagination, iframe allowlist, social-card generation
+scripts/              postbuild feeds + OG font subsetting tools
 docs/                 manuals and maintenance docs
 faq/                  upstream starter guides (MDX components, KBar, Docker)
 tests/                unit + Playwright parity suites
