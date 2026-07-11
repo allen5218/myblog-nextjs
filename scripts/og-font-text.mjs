@@ -45,7 +45,9 @@ export async function collectOgFontText(root) {
   )
   const dictionaries = await Promise.all(
     ['zh-TW.json', 'en.json'].map(async (file) =>
-      dictionaryStrings(JSON.parse(await fs.readFile(path.join(root, 'dictionaries', file), 'utf8')))
+      dictionaryStrings(
+        JSON.parse(await fs.readFile(path.join(root, 'dictionaries', file), 'utf8'))
+      )
     )
   )
   const requireFromRoot = createRequire(path.join(root, 'package.json'))
