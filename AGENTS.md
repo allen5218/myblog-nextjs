@@ -54,6 +54,12 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   (`enabledManagers: ["github-actions"]`)— 只有 `.github/workflows/*.yml` 裡
   釘死的 action 版本(如 `actions/checkout@v4`)有新版時會自動開 PR,**不動
   npm/yarn 依賴**。這是刻意的範圍限制,擴大範圍前要先跟人類確認。
+  - **自動合併**(`renovate.json` 的 `packageRules`,`matchManagers:
+    ["github-actions"]`)已開啟,靠 repo 層 `allow_auto_merge` + GitHub 原生
+    auto-merge:兩個必過檢查(`ci`、`check`)綠燈就自動合,不需要人看著。
+    這條規則刻意限定在 `matchManagers: ["github-actions"]`,不是全域
+    `automerge: true` —— 未來若擴大 Renovate scope 到 npm/yarn,新 manager
+    不會連坐繼承自動合併,要另外決定。
   - 2026-07-12 前曾自架在 repo 自己的 Actions 裡跑 `renovatebot/github-action`,
     改用官方 App 後已移除 —— 自架版需要自己追 Renovate 本體版本、還需要開
     repo 層「Allow Actions to create and approve pull requests」這個範圍比
