@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     description: siteMetadata.description,
     url: './',
     siteName: siteMetadata.title,
-    images: [siteMetadata.socialBanner],
+    images: ['/opengraph-image'],
     locale: 'en_US',
     type: 'website',
   },
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
   twitter: {
     title: siteMetadata.title,
     card: 'summary_large_image',
-    images: [siteMetadata.socialBanner],
+    images: ['/opengraph-image'],
   },
   // 沿用舊站 Google Search Console 的網站驗證(產生 google-site-verification meta)
   verification: {

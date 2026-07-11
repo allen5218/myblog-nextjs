@@ -59,7 +59,7 @@ export default function HuxSidebar({ posts }: HuxSidebarProps) {
             alt={`${siteMetadata.title} 作者頭像`}
             className="short-about-avatar"
             height={160}
-            src="https://img.allenspace.de/20250820060315_ada51ln5j8.8ado5b4i6s.webp"
+            src="/static/images/sidebar-avatar.webp"
             width={160}
           />
           <p>

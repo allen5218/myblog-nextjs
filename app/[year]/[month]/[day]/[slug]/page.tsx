@@ -12,6 +12,7 @@ import PostBanner from '@/layouts/PostBanner'
 import { Metadata } from 'next'
 import siteMetadata from '@/data/siteMetadata'
 import { notFound } from 'next/navigation'
+import { postSocialImagePath } from '@/lib/social-card'
 
 const defaultLayout = 'PostLayout'
 const layouts = {
@@ -53,19 +54,8 @@ export async function generateMetadata(props: {
   const publishedAt = new Date(post.date).toISOString()
   const modifiedAt = new Date(post.lastmod || post.date).toISOString()
   const authors = authorDetails.map((author) => author.name)
-  const imageList = post.heroImage
-    ? [post.heroImage]
-    : post.images
-      ? typeof post.images === 'string'
-        ? [post.images]
-        : post.images
-      : [siteMetadata.socialBanner]
-  const ogImages = imageList.map((img) => {
-    return {
-      url: img && img.includes('http') ? img : siteMetadata.siteUrl + img,
-    }
-  })
   const canonicalPath = `/${post.legacyPath}/`
+  const socialImage = new URL(postSocialImagePath(post.legacyPath), siteMetadata.siteUrl).href
 
   return {
     title: post.title,
@@ -82,14 +72,14 @@ export async function generateMetadata(props: {
       publishedTime: publishedAt,
       modifiedTime: modifiedAt,
       url: canonicalPath,
-      images: ogImages,
+      images: [socialImage],
       authors: authors.length > 0 ? authors : [siteMetadata.author],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.summary,
-      images: imageList,
+      images: [socialImage],
     },
   }
 }
