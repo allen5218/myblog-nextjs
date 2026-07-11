@@ -21,6 +21,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   Action `og-font-check` 補(push/PR 動到內容/字體時跑同一道檢查,只警報不擋部署)。
   GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
   任何會跑 `yarn build` 的新 workflow 都要記得裝。
+- `app/`、`layouts/` 多處 `import` 自 `contentlayer/generated`(`.contentlayer/`,
+  gitignore),這是 `contentlayer2` 在 `next dev`/`next build` 時才產生的模組,
+  乾淨 checkout(CI runner、新 clone)沒有這個目錄。在 CI 裡單獨跑 `tsc --noEmit`
+  或任何不經過 `next build`/`next dev` 的型別檢查前,先跑 `yarn contentlayer2 build`
+  產生型別,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
 
 ## Git 工作流程(2026-07-12 起)
 

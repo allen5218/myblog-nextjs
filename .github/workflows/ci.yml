@@ -21,6 +21,11 @@ jobs:
           node-version: '20'
           cache: yarn
       - run: yarn
+      # app/、layouts/ 有多處 import 'contentlayer/generated' — 這個模組是
+      # contentlayer2 在 build/dev 時才產生的(.contentlayer/generated,
+      # gitignore),乾淨 checkout 沒有這個目錄,tsc 會直接報 TS2307 找不到模組。
+      - name: Generate contentlayer types
+        run: yarn contentlayer2 build
       # CI 要能真的失敗,不用 package.json 裡帶 --fix 的 yarn lint(那是本機用的,
       # 會默默改完就過)
       - name: Lint
