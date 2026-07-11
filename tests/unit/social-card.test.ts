@@ -133,5 +133,8 @@ describe('pageSocialImagePath', () => {
     expect(pageSocialImagePath('Page 2', 'Allen & friends')).toBe(
       '/social-card?title=Page+2&summary=Allen+%26+friends'
     )
+    expect(pageSocialImagePath('Page 1234567890', 'Pagination')).toContain(
+      'title=Page+1234567890'
+    )
   })
 })

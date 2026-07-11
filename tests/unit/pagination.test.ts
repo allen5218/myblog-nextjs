@@ -59,5 +59,7 @@ describe('totalPagesFor', () => {
     expect(totalPagesFor(6)).toBe(2)
     expect(totalPagesFor(5)).toBe(1)
     expect(totalPagesFor(0)).toBe(1)
+    expect(totalPagesFor(11)).toBe(3)
+    expect(totalPagesFor(16)).toBe(4)
   })
 })
