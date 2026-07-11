@@ -48,15 +48,17 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     check 兩者兼得。
   - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
-- **Renovate**(`.github/workflows/renovate.yml` + `renovate.json`)自架在這個
-  repo 的 Actions 裡(沒裝 GitHub App),範圍**只限 GitHub Actions 版本**
+- **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
+  這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
+  `renovate.json`,範圍**只限 GitHub Actions 版本**
   (`enabledManagers: ["github-actions"]`)— 只有 `.github/workflows/*.yml` 裡
   釘死的 action 版本(如 `actions/checkout@v4`)有新版時會自動開 PR,**不動
   npm/yarn 依賴**。這是刻意的範圍限制,擴大範圍前要先跟人類確認。
-  - 需要 repo Settings → Actions → General → Workflow permissions →
-    「Allow GitHub Actions to create and approve pull requests」打開,
-    `GITHUB_TOKEN` 才有權限開 PR — 這個開關**同時管控「建立」和「核准」PR**,
-    比「讓 Renovate 開 PR」這個需求本身要廣,agent 不該自己開,要請人類手動點。
+  - 2026-07-12 前曾自架在 repo 自己的 Actions 裡跑 `renovatebot/github-action`,
+    改用官方 App 後已移除 —— 自架版需要自己追 Renovate 本體版本、還需要開
+    repo 層「Allow Actions to create and approve pull requests」這個範圍比
+    實際需求廣的開關;App 版兩者都不需要。除非 App 被移除,否則不要走回自架
+    這條路。
   - 第三方 action(非 `actions/*`、`github/*`)一律釘 commit SHA,版本號用註解
     (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
 
