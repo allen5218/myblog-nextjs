@@ -72,3 +72,23 @@ test('header-image post generates a valid dedicated social card', async ({ reque
   expect(response.headers()['content-type']).toContain('image/png')
   expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
 })
+
+test('hub and pagination pages use branded page-specific social cards', async ({ page, request }) => {
+  const paths = ['/page2/', '/archive/', '/tags/', '/about/', '/en/about/']
+
+  for (const path of paths) {
+    await page.goto(path)
+    const ogImage = await page.locator('meta[property="og:image"]').getAttribute('content')
+    const twitterImage = await page.locator('meta[name="twitter:image"]').getAttribute('content')
+
+    expect(ogImage).toContain('/social-card?')
+    expect(ogImage).not.toContain('/static/images/twitter-card.png')
+    expect(twitterImage).toBe(ogImage)
+
+    const socialImageUrl = new URL(ogImage as string)
+    const response = await request.get(`${socialImageUrl.pathname}${socialImageUrl.search}`)
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain('image/png')
+    expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
+  }
+})

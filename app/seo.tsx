@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import siteMetadata from '@/data/siteMetadata'
+import { pageSocialImagePath } from '@/lib/social-card'
 
 interface PageSEOProps {
   title: string
@@ -17,22 +18,25 @@ export function genPageMetadata({
   locale = siteMetadata.locale,
   ...rest
 }: PageSEOProps): Metadata {
+  const pageDescription = description || siteMetadata.description
+  const socialImage = image || pageSocialImagePath(title, pageDescription)
+
   return {
     title,
-    description: description || siteMetadata.description,
+    description: pageDescription,
     openGraph: {
       title: `${title} | ${siteMetadata.title}`,
-      description: description || siteMetadata.description,
+      description: pageDescription,
       url: './',
       siteName: siteMetadata.title,
-      images: image ? [image] : [siteMetadata.socialBanner],
+      images: [socialImage],
       locale,
       type: 'website',
     },
     twitter: {
       title: `${title} | ${siteMetadata.title}`,
       card: 'summary_large_image',
-      images: image ? [image] : [siteMetadata.socialBanner],
+      images: [socialImage],
     },
     ...rest,
   }

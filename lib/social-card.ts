@@ -89,3 +89,8 @@ function linearGradientSvg(gradient: string): string {
 export function postSocialImagePath(legacyPath: string) {
   return `/${legacyPath.replace(/^\/+|\/+$/g, '')}/opengraph-image`
 }
+
+export function pageSocialImagePath(title: string, summary: string) {
+  const searchParams = new URLSearchParams({ title, summary })
+  return `/social-card?${searchParams.toString()}`
+}
