@@ -17,6 +17,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   對 HarfBuzz(或任何 CLI)傳非 ASCII 文字**一律用 `--text-file`/stdin,不要走 argv**
   — argv 會經過呼叫端 locale 的編碼轉換,在沒設 UTF-8 locale 的 shell(CI、
   非互動環境)會直接炸。
+- Vercel 上沒有 HarfBuzz,`check:og-font` 在那裡跳過(`VERCEL=1`);缺口由 GitHub
+  Action `og-font-check` 補(push/PR 動到內容/字體時跑同一道檢查,只警報不擋部署)。
+  GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
+  任何會跑 `yarn build` 的新 workflow 都要記得裝。
 
 ## 除錯守則
 

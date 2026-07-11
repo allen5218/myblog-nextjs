@@ -1,0 +1,44 @@
+# Vercel 的 build 機器沒有 HarfBuzz,check:og-font 在那裡會跳過字符檢查
+# (scripts/og-font-check-policy.mjs,以 VERCEL=1 判斷)。若新文章沒經本機
+# build 就直接 push,子集外的字符會讓 OG 卡片默默出現豆腐字。這個 workflow
+# 在 push/PR 時於裝得起 HarfBuzz 的 runner 上補跑同一道檢查,失敗會在幾分鐘
+# 內通知,而不是部署後才發現。
+name: OG font check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/**'
+      - 'dictionaries/**'
+      - 'public/static/fonts/**'
+      - 'scripts/og-font-text.mjs'
+      - 'scripts/og-font-check-policy.mjs'
+      - 'scripts/check-og-font.mjs'
+      - '.github/workflows/og-font-check.yml'
+  pull_request:
+    paths:
+      - 'data/**'
+      - 'dictionaries/**'
+      - 'public/static/fonts/**'
+      - 'scripts/og-font-text.mjs'
+      - 'scripts/og-font-check-policy.mjs'
+      - 'scripts/check-og-font.mjs'
+      - '.github/workflows/og-font-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+      - name: Install HarfBuzz CLI
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-bin
+      - run: yarn
+      - run: yarn check:og-font

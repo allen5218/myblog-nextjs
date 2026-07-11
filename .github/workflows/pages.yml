@@ -32,6 +32,10 @@ jobs:
           key: ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
+      # yarn build 會先跑 check:og-font,需要 hb-shape(runner 沒有預裝,
+      # 這裡也沒有 VERCEL=1 的跳過條件)
+      - name: Install HarfBuzz CLI
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-bin
       - run: yarn
       - run: yarn build
         env:

@@ -191,6 +191,10 @@ authored social image anywhere in the repo.
   - Both require the HarfBuzz CLI locally (`hb-shape`, `hb-subset`, e.g. `brew install harfbuzz`).
     On Vercel, `check:og-font` skips the glyph check instead of failing when `hb-shape` is missing
     (`scripts/og-font-check-policy.mjs`, gated on `VERCEL=1`).
+    The GitHub Action `og-font-check` (`.github/workflows/og-font-check.yml`) covers that gap:
+    on pushes/PRs touching content or fonts it runs the same check on a runner with HarfBuzz
+    installed, so a missing glyph alerts within minutes (it does not block the Vercel deploy —
+    it is an early alarm).
 - Adding a post or dictionary string with a character outside the current subset (an uncommon CJK
   glyph, an emoji, etc.) fails `check:og-font` at build time — run `yarn update:og-font` and commit
   the regenerated `.ttf` files.
@@ -273,7 +277,8 @@ Operational caveats:
   latency from the dev server.
 - `yarn build` / `yarn check:og-font` / `yarn update:og-font` need the HarfBuzz CLI (`hb-shape`,
   `hb-subset`; e.g. `brew install harfbuzz`) installed locally. Vercel builds skip the glyph
-  check instead of failing (see §6) — HarfBuzz is not installed there.
+  check instead of failing (see §6) — HarfBuzz is not installed there; the GitHub Action
+  `og-font-check` re-runs the check on pushes/PRs (see §6).
 
 ### Environment variables
 
