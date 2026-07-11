@@ -233,6 +233,22 @@ test('post enhancers render responsive media and client Medium Zoom', async ({ p
     .toBe(true)
 })
 
+test('mobile keynote is compact and light pager borders match the classic theme', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(validAiPath)
+
+  const keynote = page.locator('.intro-header-keynote')
+  await expect(keynote).toHaveCSS('height', '633px')
+  await expect(keynote).toHaveCSS('min-height', '0px')
+
+  await page.goto('/')
+  const pagerLink = page.locator('.pager a').first()
+  await expect(pagerLink).toBeVisible()
+  await expect(pagerLink).toHaveCSS('border-color', 'rgb(221, 221, 221)')
+})
+
 test('service worker keeps the cross-origin post hero image available', async ({ page }) => {
   await page.goto(openWebUiPath)
   await page.evaluate(async () => {

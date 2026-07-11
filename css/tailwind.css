@@ -344,6 +344,13 @@ body {
   border: 0;
 }
 
+@media (max-width: 767px) {
+  .intro-header-keynote {
+    height: 75vh;
+    min-height: 0;
+  }
+}
+
 .header-mask {
   position: absolute;
   inset: 0;
@@ -893,7 +900,7 @@ body {
 .pager a {
   display: inline-block;
   max-width: 339px;
-  border: 1px solid var(--hux-border);
+  border: 1px solid #dddddd;
   color: var(--hux-link);
   font-size: 14px;
   font-weight: 800;
