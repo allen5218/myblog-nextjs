@@ -27,3 +27,33 @@ test('home exposes a generated 1200x630 large social card', async ({ page, reque
   expect(response.headers()['content-type']).toContain('image/png')
   expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
 })
+
+test('gradient-backed post exposes its dedicated social card', async ({ page, request }) => {
+  const postPath = '/2026/04/26/learning-how-to-learn/'
+  const imagePath = '/2026/04/26/learning-how-to-learn/opengraph-image'
+
+  await page.goto(postPath)
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    'content',
+    new RegExp(`${imagePath}$`)
+  )
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
+    'content',
+    new RegExp(`${imagePath}$`)
+  )
+
+  const response = await request.get(imagePath)
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain('image/png')
+  expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
+})
+
+test('header-image post generates a valid dedicated social card', async ({ request }) => {
+  const response = await request.get(
+    '/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/opengraph-image'
+  )
+
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain('image/png')
+  expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
+})

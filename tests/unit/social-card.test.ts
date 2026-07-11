@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   SOCIAL_CARD_FALLBACK,
+  normalizeSocialCardBackgroundForImageResponse,
   postSocialImagePath,
   selectSocialCardBackground,
   selectSocialCardSummary,
 } from '@/lib/social-card'
+import sharp from 'sharp'
 
 const siteUrl = 'https://blog.allenspace.de'
 
@@ -56,6 +58,41 @@ describe('selectSocialCardBackground', () => {
       kind: 'fallback',
       value: SOCIAL_CARD_FALLBACK,
     })
+  })
+})
+
+describe('normalizeSocialCardBackgroundForImageResponse', () => {
+  it('把 ImageResponse 不支援的 WebP 背景轉成 PNG data URL', async () => {
+    const webp = await sharp({
+      create: {
+        width: 2,
+        height: 2,
+        channels: 3,
+        background: '#5d4e6d',
+      },
+    })
+      .webp()
+      .toBuffer()
+    const fetcher = async () => new Response(webp, { headers: { 'content-type': 'image/webp' } })
+
+    const result = await normalizeSocialCardBackgroundForImageResponse(
+      { kind: 'image', value: 'https://img.allenspace.de/post.webp' },
+      fetcher
+    )
+
+    expect(result.kind).toBe('image')
+    expect(result.value).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it('圖片抓取失敗時回退品牌背景', async () => {
+    const fetcher = async () => new Response('missing', { status: 404 })
+
+    await expect(
+      normalizeSocialCardBackgroundForImageResponse(
+        { kind: 'image', value: 'https://img.allenspace.de/missing.webp' },
+        fetcher
+      )
+    ).resolves.toEqual({ kind: 'fallback', value: SOCIAL_CARD_FALLBACK })
   })
 })
 
