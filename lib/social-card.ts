@@ -1,5 +1,4 @@
-export const SOCIAL_CARD_FALLBACK =
-  'linear-gradient(135deg, #111827 0%, #164e63 55%, #0891b2 100%)'
+export const SOCIAL_CARD_FALLBACK = 'linear-gradient(135deg, #111827 0%, #164e63 55%, #0891b2 100%)'
 
 export type SocialCardBackground =
   | { kind: 'image'; value: string }
