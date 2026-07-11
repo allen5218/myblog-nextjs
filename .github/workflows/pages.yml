@@ -24,7 +24,7 @@ jobs:
           node-version: '20'
           cache: yarn
       - id: configurepages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Restore cache
         uses: actions/cache@v6
         with:
