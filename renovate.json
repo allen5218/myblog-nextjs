@@ -4,5 +4,14 @@
   "enabledManagers": ["github-actions"],
   "labels": ["github-actions"],
   "commitMessagePrefix": "chore(actions):",
-  "schedule": ["before 6am on monday"]
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "只自動合併 github-actions manager 的更新 — 未來若擴大 scope 到 npm/yarn,不要連坐繼承這條規則",
+      "matchManagers": ["github-actions"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    }
+  ]
 }
