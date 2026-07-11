@@ -2,9 +2,35 @@
 
 import { Fragment } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { useKBar } from 'kbar'
 import Link from './Link'
-import SearchButton from './SearchButton'
 import headerNavLinks from '@/data/headerNavLinks'
+import siteMetadata from '@/data/siteMetadata'
+
+// Search 項必須讓 render prop 直接回傳宿主 <button>,MenuItem 注入的 props
+// (role="menuitem"、選中後關閉選單的 handler)才能落地。先前用 SearchButton
+// 包 pliny 的 KBarButton,注入的 props 全被丟棄 —— 點 Search 後選單不會關,
+// 殘留在 kbar 底下,kbar 的第一次 tap 會被 HeadlessUI 的 outside-click 拿去
+// 關選單、click 被吞掉,觸控裝置上就成了「要按兩次」。useKBar 需要
+// KBarProvider,所以拆成獨立元件,只在 kbar 搜尋啟用時渲染。
+const SearchMenuItem = () => {
+  const { query } = useKBar()
+  return (
+    <MenuItem>
+      {({ focus }) => (
+        <button
+          type="button"
+          onClick={() => query.toggle()}
+          className={`${
+            focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
+          } block w-full rounded-md px-3 py-2 text-left text-sm font-semibold tracking-wide`}
+        >
+          Search
+        </button>
+      )}
+    </MenuItem>
+  )
+}
 
 // 手機版導覽:漢堡按鈕點擊後彈出圓角卡片下拉,樣式與 ThemeSwitch 的彈窗一致
 // (不再沿用 Hux 的整條深色下拉)。深淺切換已移到頂欄常駐,不放進這裡。
@@ -47,16 +73,7 @@ const MobileNavMenu = () => {
               </MenuItem>
             ))}
             {/* 搜尋移入漢堡下拉,純文字列觸發 KBar */}
-            <MenuItem>
-              {({ focus }) => (
-                <SearchButton
-                  label="Search"
-                  className={`${
-                    focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
-                  } block w-full rounded-md px-3 py-2 text-left text-sm font-semibold tracking-wide`}
-                />
-              )}
-            </MenuItem>
+            {siteMetadata.search?.provider === 'kbar' && <SearchMenuItem />}
           </div>
         </MenuItems>
       </Transition>
