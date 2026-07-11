@@ -5,6 +5,7 @@ import {
   normalizeSocialCardBackgroundForImageResponse,
   SOCIAL_CARD_FALLBACK,
 } from '@/lib/social-card'
+import { loadSocialCardFonts } from '@/lib/social-card-font'
 
 export const runtime = 'nodejs'
 
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
     kind: 'fallback',
     value: SOCIAL_CARD_FALLBACK,
   })
+  const fonts = await loadSocialCardFonts()
 
   return new ImageResponse(
     <SocialCard
@@ -32,6 +34,7 @@ export async function GET(request: Request) {
     />,
     {
       ...size,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
