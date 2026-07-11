@@ -1,10 +1,20 @@
 import { test, expect } from '@playwright/test'
+import sharp from 'sharp'
 
 function pngDimensions(buffer: Buffer) {
   return {
     width: buffer.readUInt32BE(16),
     height: buffer.readUInt32BE(20),
   }
+}
+
+async function pixelAt(buffer: Buffer, x: number, y: number) {
+  const { data, info } = await sharp(buffer)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const offset = (y * info.width + x) * info.channels
+  return { red: data[offset], green: data[offset + 1], blue: data[offset + 2] }
 }
 
 test('home exposes a generated 1200x630 large social card', async ({ page, request }) => {
@@ -45,7 +55,12 @@ test('gradient-backed post exposes its dedicated social card', async ({ page, re
   const response = await request.get(imagePath)
   expect(response.ok()).toBe(true)
   expect(response.headers()['content-type']).toContain('image/png')
-  expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
+  const image = await response.body()
+  expect(pngDimensions(image)).toEqual({ width: 1200, height: 630 })
+  const gradientPixel = await pixelAt(image, 150, 250)
+  expect(Math.max(gradientPixel.red, gradientPixel.green, gradientPixel.blue)).toBeGreaterThan(70)
+  expect(gradientPixel.blue - gradientPixel.red).toBeGreaterThan(8)
+  expect(gradientPixel.red - gradientPixel.green).toBeGreaterThan(5)
 })
 
 test('header-image post generates a valid dedicated social card', async ({ request }) => {

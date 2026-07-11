@@ -8,13 +8,14 @@ type SocialCardProps = {
 }
 
 export default function SocialCard({ siteName, title, summary, background }: SocialCardProps) {
-  const isImage = background.kind === 'image'
+  const isPhoto = background.kind === 'image'
+  const usesBackgroundImage = isPhoto || background.kind === 'gradient-image'
 
   return (
     <div
       style={{
         alignItems: 'stretch',
-        backgroundImage: isImage ? `url(${background.value})` : background.value,
+        backgroundImage: usesBackgroundImage ? `url(${background.value})` : background.value,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
         color: '#f8fafc',
@@ -27,9 +28,7 @@ export default function SocialCard({ siteName, title, summary, background }: Soc
     >
       <div
         style={{
-          background: isImage
-            ? 'linear-gradient(90deg, rgba(2, 6, 23, 0.92) 0%, rgba(2, 6, 23, 0.72) 58%, rgba(2, 6, 23, 0.38) 100%)'
-            : 'linear-gradient(180deg, rgba(2, 6, 23, 0.08) 0%, rgba(2, 6, 23, 0.38) 100%)',
+          backgroundColor: isPhoto ? 'rgba(2, 6, 23, 0.58)' : 'rgba(2, 6, 23, 0.16)',
           display: 'flex',
           inset: 0,
           position: 'absolute',

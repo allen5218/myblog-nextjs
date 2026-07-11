@@ -28,10 +28,7 @@ describe('selectSocialCardBackground', () => {
 
   it('保留遠端 headerImg 網址', () => {
     expect(
-      selectSocialCardBackground(
-        { headerImg: 'https://img.allenspace.de/post.webp' },
-        siteUrl
-      )
+      selectSocialCardBackground({ headerImg: 'https://img.allenspace.de/post.webp' }, siteUrl)
     ).toEqual({
       kind: 'image',
       value: 'https://img.allenspace.de/post.webp',
@@ -73,7 +70,8 @@ describe('normalizeSocialCardBackgroundForImageResponse', () => {
     })
       .webp()
       .toBuffer()
-    const fetcher = async () => new Response(webp, { headers: { 'content-type': 'image/webp' } })
+    const fetcher = async () =>
+      new Response(new Uint8Array(webp), { headers: { 'content-type': 'image/webp' } })
 
     const result = await normalizeSocialCardBackgroundForImageResponse(
       { kind: 'image', value: 'https://img.allenspace.de/post.webp' },
@@ -87,12 +85,26 @@ describe('normalizeSocialCardBackgroundForImageResponse', () => {
   it('圖片抓取失敗時回退品牌背景', async () => {
     const fetcher = async () => new Response('missing', { status: 404 })
 
-    await expect(
-      normalizeSocialCardBackgroundForImageResponse(
-        { kind: 'image', value: 'https://img.allenspace.de/missing.webp' },
-        fetcher
-      )
-    ).resolves.toEqual({ kind: 'fallback', value: SOCIAL_CARD_FALLBACK })
+    const result = await normalizeSocialCardBackgroundForImageResponse(
+      { kind: 'image', value: 'https://img.allenspace.de/missing.webp' },
+      fetcher
+    )
+
+    expect(result.kind).toBe('gradient-image')
+    expect(result.value).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it('把合法 linear-gradient 轉成保留色彩的 PNG 圖片', async () => {
+    const result = await normalizeSocialCardBackgroundForImageResponse({
+      kind: 'gradient',
+      value: 'linear-gradient(to right, #5d4e6d, #4a5568)',
+    })
+
+    expect(result.kind).toBe('gradient-image')
+    expect(result.value).toMatch(/^data:image\/png;base64,/)
+    const png = Buffer.from(result.value.split(',')[1], 'base64')
+    const { data } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    expect(data[2] - data[1]).toBeGreaterThan(8)
   })
 })
 
