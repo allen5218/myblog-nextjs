@@ -22,6 +22,30 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
   任何會跑 `yarn build` 的新 workflow 都要記得裝。
 
+## Git 工作流程(2026-07-12 起)
+
+- **main 分支保護,不直接 push main** — 一律開分支 → PR → 合併。不需要別人核准
+  (單人專案,required_approving_review_count=0),但 PR 必須等必過檢查(CI、
+  OG font check,見下)綠燈才能合併,且對 admin 也生效(`enforce_admins`)。
+- **必過檢查**:
+  - `CI`(`.github/workflows/ci.yml`)— 每次 push/PR 都跑:lint(不帶 `--fix`,
+    要真的能失敗)、`tsc --noEmit`、`test:unit`。
+  - `OG font check`(`.github/workflows/og-font-check.yml`)— 只在動到
+    `data/`、`dictionaries/`、字體檔、check 腳本時跑(見上一節)。
+  - 這兩個都**只是警報/PR 閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
+    邏輯部署 `main` 的每個 commit。
+- **Renovate**(`.github/workflows/renovate.yml` + `renovate.json`)自架在這個
+  repo 的 Actions 裡(沒裝 GitHub App),範圍**只限 GitHub Actions 版本**
+  (`enabledManagers: ["github-actions"]`)— 只有 `.github/workflows/*.yml` 裡
+  釘死的 action 版本(如 `actions/checkout@v4`)有新版時會自動開 PR,**不動
+  npm/yarn 依賴**。這是刻意的範圍限制,擴大範圍前要先跟人類確認。
+  - 需要 repo Settings → Actions → General → Workflow permissions →
+    「Allow GitHub Actions to create and approve pull requests」打開,
+    `GITHUB_TOKEN` 才有權限開 PR — 這個開關**同時管控「建立」和「核准」PR**,
+    比「讓 Renovate 開 PR」這個需求本身要廣,agent 不該自己開,要請人類手動點。
+  - 第三方 action(非 `actions/*`、`github/*`)一律釘 commit SHA,版本號用註解
+    (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
+
 ## 除錯守則
 
 背景:本 repo 付過兩次同型學費 — pagination「Older Posts 要按兩次」(先誤診為
