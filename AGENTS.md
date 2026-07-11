@@ -32,12 +32,21 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - **main 分支保護,不直接 push main** — 一律開分支 → PR → 合併。不需要別人核准
   (單人專案,required_approving_review_count=0),但 PR 必須等必過檢查(CI、
   OG font check,見下)綠燈才能合併,且對 admin 也生效(`enforce_admins`)。
-- **必過檢查**:
-  - `CI`(`.github/workflows/ci.yml`)— 每次 push/PR 都跑:lint(不帶 `--fix`,
-    要真的能失敗)、`tsc --noEmit`、`test:unit`。
-  - `OG font check`(`.github/workflows/og-font-check.yml`)— 只在動到
-    `data/`、`dictionaries/`、字體檔、check 腳本時跑(見上一節)。
-  - 這兩個都**只是警報/PR 閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
+- **必過檢查**(GitHub context 名稱:`ci`、`check`;branch protection 的
+  `required_status_checks.contexts` 認的是這兩個字面字串,workflow/job 改名
+  要記得同步改 protection 設定):
+  - `CI`(`.github/workflows/ci.yml`,job 名 `ci`)— 每次 push/PR 都跑:
+    lint(不帶 `--fix`,要真的能失敗)、先 `yarn contentlayer2 build` 再
+    `tsc --noEmit`、`test:unit`。
+  - `OG font check`(`.github/workflows/og-font-check.yml`,job 名 `check`)—
+    每次 push/PR 都跑,**故意不用 paths 過濾**。
+  - **必過檢查不能有條件跳過**:GitHub 對 required status check 的語意是
+    「等到它回報結果為止」;workflow 用 `paths:` 過濾、條件不符時根本不會
+    觸發,就永遠不會回報狀態,PR 會卡死在 pending 動彈不得(PR #5 上真的踩過
+    這個坑,才把 og-font-check 的 paths 過濾拿掉)。要嘛必過檢查每次都跑,
+    要嘛就不能設為必過 —— 兩者只能選一個,不要試圖用 paths 過濾 + required
+    check 兩者兼得。
+  - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
 - **Renovate**(`.github/workflows/renovate.yml` + `renovate.json`)自架在這個
   repo 的 Actions 裡(沒裝 GitHub App),範圍**只限 GitHub Actions 版本**
