@@ -60,6 +60,15 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     這條規則刻意限定在 `matchManagers: ["github-actions"]`,不是全域
     `automerge: true` —— 未來若擴大 Renovate scope 到 npm/yarn,新 manager
     不會連坐繼承自動合併,要另外決定。
+  - **一次開多個 PR 時,排隊的會卡在 `BEHIND` 動不了**:必過檢查設了
+    `strict: true`(分支要跟 base 同步才能合併),repo 沒開自動更新分支
+    (`allow_update_branch`)。2026-07-12 手動觸發「一次全開」7 個 PR 時實測:
+    每合併一個進 main,其餘還在排隊的 PR 分支立刻落後,卡在
+    `mergeStateStatus: BEHIND`,自己不會動——等 Mend 下一輪重新 rebase 才會
+    解開(實測約數分鐘到十幾分鐘)。目前選擇**不處理**(單人 repo、Renovate
+    平時一次頂多開一兩個 PR,不太會撞到這個情境);真的常卡再考慮開 GitHub
+    merge queue 或把 `strict` 關掉。遇到「PR 一直不合併但檢查都綠燈」先查
+    `gh pr view <N> --json mergeStateStatus`,不用重新從頭診斷。
   - 2026-07-12 前曾自架在 repo 自己的 Actions 裡跑 `renovatebot/github-action`,
     改用官方 App 後已移除 —— 自架版需要自己追 Renovate 本體版本、還需要開
     repo 層「Allow Actions to create and approve pull requests」這個範圍比
