@@ -1,23 +1,8 @@
-import { spawnSync } from 'node:child_process'
-import crypto from 'node:crypto'
 import withBundleAnalyzerInit from '@next/bundle-analyzer'
-import withSerwistInit from '@serwist/next'
-import { withContentlayer } from 'next-contentlayer2'
+import { withSerwist } from '@serwist/turbopack'
 
 const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true',
-})
-
-// git commit hash 當作 offline fallback 的 precache revision;沒有 git 資訊時(例如
-// 打包環境沒帶 .git)退回隨機 uuid,反正只是用來讓 workbox 判斷是否需要更新這筆快取。
-const revision =
-  spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).stdout?.trim() ||
-  crypto.randomUUID()
-
-const withSerwist = withSerwistInit({
-  swSrc: 'app/sw.ts',
-  swDest: 'public/sw.js',
-  additionalPrecacheEntries: [{ url: '/offline/', revision }],
 })
 
 // 'unsafe-eval' 只有 dev 工具鏈需要(webpack/turbopack 的 eval sourcemap、React Fast Refresh),
@@ -150,14 +135,7 @@ const nextConfig = {
       { source: '/tags/:tag/page/1', destination: '/tags/:tag/', permanent: true },
     ]
   },
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ['@svgr/webpack'],
-    })
-
-    return config
-  },
 }
 
-export default withSerwist(withBundleAnalyzer(withContentlayer(nextConfig)))
+// @next/bundle-analyzer 只支援 webpack;`yarn analyze` 會明確改走 webpack build。
+export default withSerwist(withBundleAnalyzer(nextConfig))

@@ -21,7 +21,7 @@ conventions.
 
 ## Tech Stack
 
-- [Next.js 15](https://nextjs.org/) (App Router) + TypeScript
+- [Next.js 16](https://nextjs.org/) (App Router, Turbopack by default) + TypeScript
 - [Contentlayer2](https://github.com/timlrx/contentlayer2) for MDX content
 - [Tailwind CSS v4](https://tailwindcss.com/) with the [Hux Blog](https://github.com/Huxpro/huxpro.github.io) visual language ported on top
 - [Pliny](https://github.com/timlrx/pliny) — KBar search, giscus comments, GA4 analytics
@@ -56,13 +56,14 @@ yarn dev          # http://localhost:3000
 
 | Command            | Purpose                            |
 | ------------------ | ---------------------------------- |
-| `yarn dev`         | Dev server                         |
-| `yarn build`       | Production build + RSS/tag feeds   |
+| `yarn dev`         | Contentlayer watcher + dev server  |
+| `yarn start`       | Same flow as `yarn dev`            |
+| `yarn build`       | Contentlayer + production build + RSS/tag feeds |
 | `yarn serve`       | Serve the production build         |
 | `yarn lint`        | ESLint + Prettier (`--fix`)        |
 | `yarn test:unit`   | Vitest unit tests                  |
 | `yarn test:parity` | Playwright end-to-end parity suite |
-| `yarn analyze`     | Build with bundle analyzer         |
+| `yarn analyze`     | Webpack build with bundle analyzer |
 
 寫新文章:在 `data/blog/` 放 `YYYY-MM-DD-slug.md`,front matter 至少要有 `title` 與
 `date` — 其餘欄位見說明書 §1。

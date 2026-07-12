@@ -6,12 +6,18 @@ This manual describes how to operate, configure, and maintain Allen's Blog (the 
 migration of the old Jekyll/Hux site at `blog.allenspace.de`). It is written for site
 maintenance and content authoring, not for application-code changes.
 
-Stack overview: Next.js 15 (App Router) + Contentlayer2 + Tailwind CSS v4 + Pliny, with the
+Stack overview: Next.js 16 (App Router, Turbopack by default) + Contentlayer2 + Tailwind CSS v4 + Pliny, with the
 Hux Blog visual language ported on top and PWA support via Serwist.
 
 ## 1. Writing Posts
 
 Posts live under `data/blog/**/*.md` or `*.markdown` and are processed as MDX.
+
+Contentlayer output lives in the gitignored `.contentlayer/` directory. Next 16's Turbopack
+does not run Contentlayer's webpack hook, so `yarn dev`/`yarn start` first run
+`contentlayer2 build`, then run its watcher alongside Next dev; `yarn build` runs the same CLI
+build before the Next build. On a clean checkout, run `yarn contentlayer2 build` before a
+standalone typecheck.
 
 ### Filename and URL rules
 
@@ -218,11 +224,13 @@ authored social image anywhere in the repo.
 
 ## 7. PWA (Serwist)
 
-- Service worker source: `app/sw.ts`, built by `@serwist/next` to `public/sw.js`
-  (gitignored). Runtime registration happens via `SerwistProvider` in `app/layout.tsx`.
+- Service worker source: `app/sw.ts`, served as `/serwist/sw.js` by the
+  `@serwist/turbopack` Route Handler at `app/serwist/[path]/route.ts`; it no longer uses a
+  webpack child compilation to write `public/sw.js`. Runtime registration happens via
+  `SerwistProvider` in `app/layout.tsx`.
 - Behavior: Next.js-aware runtime caching (`defaultCache`); previously visited pages work
-  offline; unvisited navigations fall back to `/offline/` (precached, revision = git commit
-  hash).
+  offline; unvisited navigations fall back to `/offline/` (precached, revision = git commit hash, or
+  `VERCEL_GIT_COMMIT_SHA` on Vercel, or a random uuid as last resort).
 - Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.
@@ -230,9 +238,9 @@ authored social image anywhere in the repo.
   because browsers request `/favicon.ico` unconditionally). Known accepted exception:
   `safari-pinned-tab.svg` still carries the old starter mark (deprecated Safari feature;
   deliberately not regenerated).
-- SW/TS note: `app/sw.ts` and `public/sw.js` are excluded from `tsconfig.json` and ESLint
-  (webworker lib conflicts with the app's `dom` lib; the Serwist webpack plugin bundles the
-  SW independently).
+- SW/TS note: `app/sw.ts` is excluded from `tsconfig.json` and ESLint because the webworker
+  lib conflicts with the app's `dom` lib. `app/serwist/[path]/route.ts` is ordinary app code
+  and must pass normal linting and typechecking.
 
 ## 8. Security
 
@@ -274,8 +282,9 @@ authored social image anywhere in the repo.
 
 | Command            | Purpose                                                               |
 | ------------------ | --------------------------------------------------------------------- |
-| `yarn dev`            | Dev server at `http://localhost:3000`                                 |
-| `yarn build`          | `check:og-font` + production build + postbuild (RSS/tag feeds)        |
+| `yarn dev`            | Build Contentlayer, then run its watcher and the dev server at `http://localhost:3000` |
+| `yarn start`          | The same Contentlayer + dev-server flow as `yarn dev`                |
+| `yarn build`          | `check:og-font` + Contentlayer build + production build + postbuild (RSS/tag feeds) |
 | `yarn serve`          | Serve the production build (`next start`)                             |
 | `yarn lint`           | ESLint (+prettier) with `--fix`                                       |
 | `yarn test:unit`      | Vitest unit tests (`tests/unit/`)                                     |
@@ -283,12 +292,13 @@ authored social image anywhere in the repo.
 | `yarn check:og-font`  | Verify the OG/social-card font subset covers all current card text (§6); runs automatically before `yarn build` |
 | `yarn update:og-font` | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6) |
 | `yarn mermaid:render` | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
-| `yarn analyze`        | Build with bundle analyzer                                            |
+| `yarn analyze`        | Webpack build with bundle analyzer (normal builds stay on Turbopack) |
 
 Operational caveats:
 
-- Do **not** run `yarn build` and `yarn dev`/`yarn test:parity` concurrently — they race on
-  `.next`.
+- Next.js 16 writes dev output to `.next/dev`, so it can run alongside a build. Its lockfile
+  blocks multiple dev or multiple build processes for the same project; do not force past that
+  lock. Continue to verify interactive behavior against a production build.
 - Dev-only quirk: the first click on a cold (not-yet-compiled) route can appear dead for
   ~1.5s and double-clicking into that window stalls the dev router. This is `next dev`
   on-demand compilation, not a bug; production navigates in ~15ms. Never judge interaction
@@ -317,12 +327,15 @@ Operational caveats:
 ### Deployment modes
 
 - **Node server / Vercel (default)**: everything works — security headers from
-  `next.config.mjs`, the `/about/?lang=` redirect middleware, image optimization.
+  `next.config.mjs`, the `/about/?lang=` redirect proxy (called middleware before Next 16), image optimization.
 - **Static export (`EXPORT=1 UNOPTIMIZED=1`)**: `headers()`, `redirects()` and
-  `middleware.ts` do **not** apply. CSP/security headers must be re-declared on the web
+  `proxy.ts` do **not** apply. CSP/security headers must be re-declared on the web
   server (nginx/CDN); the legacy `?lang=` redirects and the `/blog/*` → `/pageN/`
-  pagination redirects need server-level rules. The PWA still works (the SW is a static
-  file).
+  pagination redirects need server-level rules. **The PWA breaks**: `/serwist/sw.js` is
+  exported as a static file, but registering the SW with scope `/` relies on the
+  `Service-Worker-Allowed: /` header from the route handler; static export drops that
+  header, so `register()` throws a SecurityError. To use the PWA in export mode, the web
+  server must add that header.
 - **GitHub Pages workflow** (`.github/workflows/pages.yml`): present but manual-only
   (`workflow_dispatch`) — pushing to `main` no longer triggers a Pages build. Vercel is the
   live deployment target.

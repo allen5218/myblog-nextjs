@@ -2,7 +2,11 @@
   "compilerOptions": {
     "incremental": true,
     "target": "ES6",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -14,17 +18,33 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/components/*": ["components/*"],
-      "@/data/*": ["data/*"],
-      "@/dictionaries/*": ["dictionaries/*"],
-      "@/lib/*": ["lib/*"],
-      "@/layouts/*": ["layouts/*"],
-      "@/css/*": ["css/*"],
-      "contentlayer/generated": ["./.contentlayer/generated"],
-      "pliny/*": ["node_modules/pliny/*"]
+      "@/components/*": [
+        "components/*"
+      ],
+      "@/data/*": [
+        "data/*"
+      ],
+      "@/dictionaries/*": [
+        "dictionaries/*"
+      ],
+      "@/lib/*": [
+        "lib/*"
+      ],
+      "@/layouts/*": [
+        "layouts/*"
+      ],
+      "@/css/*": [
+        "css/*"
+      ],
+      "contentlayer/generated": [
+        "./.contentlayer/generated"
+      ],
+      "pliny/*": [
+        "node_modules/pliny/*"
+      ]
     },
     "plugins": [
       {
@@ -47,12 +67,11 @@
   ],
   "exclude": [
     "node_modules",
-    // Serwist 產生的 service worker 檔案(app/sw.ts 編譯後的輸出)以及原始碼本身
-    // 都排除在主專案的型別檢查之外——app/sw.ts 需要 webworker 的全域型別(self:
-    // ServiceWorkerGlobalScope 等),但整個專案的 lib 是給一般頁面用的 dom,兩者混在
-    // 同一次 tsc 檢查會互相打架。它實際被打包進 bundle 是靠 @serwist/webpack-plugin
-    // 在 build 時處理,不經過這裡的 tsc,所以排除掉不影響建置。
-    "public/sw.js",
+    // Serwist service worker 原始碼本身排除在主專案的型別檢查之外——app/sw.ts 需要
+    // webworker 的全域型別(self: ServiceWorkerGlobalScope 等),但整個專案的 lib 是給
+    // 一般頁面用的 dom,兩者混在
+    // 同一次 tsc 檢查會互相打架。它實際由 app/serwist/[path]/route.ts 的
+    // @serwist/turbopack route handler 打包,不經過這裡的 tsc,所以排除掉不影響建置。
     "app/sw.ts"
   ]
 }
