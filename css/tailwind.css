@@ -1478,3 +1478,27 @@ body {
 .dark .content-header-link:focus {
   color: #66c7e0;
 }
+
+/* Mermaid 圖表:build 時渲成淺/深雙 SVG,依 html.dark 切換顯示哪一份。
+   不壓縮(max-width:none),過寬時由 .overflow-x-auto 容器水平捲動。
+   選擇器 scope 在 .post-container .prose 之下,才能勝過 typography 的
+   `.post-container .prose img { max-width:100% }`(specificity 0,2,1)。 */
+.mermaid-figure {
+  margin: 1.5rem 0;
+}
+.post-container .prose .mermaid-figure img {
+  max-width: none;
+  height: auto;
+}
+.post-container .prose .mermaid-figure .mermaid-dark {
+  display: none;
+}
+.post-container .prose .mermaid-figure .mermaid-light {
+  display: block;
+}
+html.dark .post-container .prose .mermaid-figure .mermaid-light {
+  display: none;
+}
+html.dark .post-container .prose .mermaid-figure .mermaid-dark {
+  display: block;
+}

@@ -20,6 +20,7 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeKatex from 'rehype-katex'
 import rehypeKatexNoTranslate from 'rehype-katex-notranslate'
 import rehypeCitation from 'rehype-citation'
+import rehypeMermaid from './lib/rehype-mermaid.mjs'
 import rehypePrismPlus from 'rehype-prism-plus'
 import rehypePresetMinify from 'rehype-preset-minify'
 import { visit } from 'unist-util-visit'
@@ -335,6 +336,11 @@ export default makeSource({
       responsiveIframeTransform,
     ],
     rehypePlugins: [
+      rehypeMermaid, // 放在最前面:remark→rehype 轉換完馬上處理,確保拿到的是原始
+      // <pre><code class="language-mermaid">,不會被後面任何 rehype 插件(尤其是
+      // rehypePrismPlus,它會把 <pre><code> 重寫成 <span class="code-line"> 結構)
+      // 動過手腳而認不出 mermaid fence、靜默 fallback 成一般 code block(不會
+      // 報錯);也順便避免任何更早的插件動到 <code> 內文而悄悄破壞 hash 一致性。
       rehypeSlug,
       [
         rehypeAutolinkHeadings,

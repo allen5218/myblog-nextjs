@@ -40,6 +40,8 @@ conventions.
   font) — no manually authored social images.
 - **PWA** — visited pages readable offline; unvisited navigations fall back to a styled
   `/offline/` page.
+- **Mermaid diagrams** — build-time rendering to committed light/dark SVGs, instant
+  client-side theme switching, and horizontal scroll on mobile instead of compression.
 - **Hardened by default** — strict CSP (no `unsafe-eval` in production), iframe host
   allowlist, scoped dependency resolutions, security headers.
 - **Verified** — Vitest unit tests plus a Playwright parity suite that pins the legacy-URL,

@@ -45,7 +45,7 @@ Posts live under `data/blog/**/*.md` or `*.markdown` and are processed as MDX.
 | `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px) on the post page.                   |
 | `hidden`       | boolean     |          | See "Hidden posts" below.                                                                        |
 | `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.     |
-| `mermaid`      | boolean     |          | Legacy migration flag only — no client Mermaid runtime exists.                                   |
+| `mermaid`      | boolean     |          | Legacy migration flag, kept for compatibility — rendering is triggered by the presence of a ` ```mermaid ` fence, not by this flag. See §2 for how diagrams render. |
 
 Computed automatically (do not set manually): reading time, table of contents, excerpt
 preview (~200 chars from body), and JSON-LD structured data.
@@ -73,6 +73,21 @@ preview (~200 chars from body), and JSON-LD structured data.
   responsive 16:9 containers (host-checked in `lib/iframe.ts`). Other iframe sources are
   left alone — and will be blocked by CSP `frame-src` unless allowlisted (see §8).
 - **Tables**: wrapped in horizontally scrollable containers for mobile.
+- **Diagrams**: ` ```mermaid ` fences render to a pair of committed light/dark SVGs at build
+  time — there is **no client-side Mermaid runtime**. A rehype plugin
+  (`lib/rehype-mermaid.mjs`, wired into `contentlayer.config.ts` before `rehypePrismPlus`)
+  replaces the fence with `<figure class="mermaid-figure overflow-x-auto">` containing both
+  images; CSS (scoped under `.post-container .prose`, see §9) shows whichever matches the
+  site's `html.dark` class, so a theme switch swaps the diagram instantly with zero runtime
+  JS, and wide diagrams scroll horizontally on mobile instead of being compressed. The SVGs
+  are produced by `yarn mermaid:render` (Playwright Chromium) and committed to
+  `public/mermaid/<hash>.{light,dark}.svg` — this does **not** run on Vercel (same headless
+  browser constraint as HarfBuzz, see §6/§10); a cache miss (diagram not yet rendered)
+  degrades gracefully to a plain code block instead of failing the build. The warn-only
+  GitHub Action `mermaid-check` (`.github/workflows/mermaid-check.yml`, job `mermaid`, not a
+  required check) runs `yarn mermaid:render --check` on push/PR — a purely structural
+  comparison (does every fence's content hash have matching committed SVGs; any orphans),
+  NOT a re-render, to remind the author when a diagram changed but wasn't re-rendered + committed.
 - **Headings**: get slug anchors — a plain `#` appended after the heading text, visible on hover
   (AnchorJS-style, ported from the Jekyll site; not a prepended icon).
 - MDX is code-capable. Treat everything under `data/` as trusted author content; never
@@ -267,6 +282,7 @@ authored social image anywhere in the repo.
 | `yarn test:parity`    | Playwright parity suite (`tests/playwright/`, binds `127.0.0.1:3012`) |
 | `yarn check:og-font`  | Verify the OG/social-card font subset covers all current card text (§6); runs automatically before `yarn build` |
 | `yarn update:og-font` | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6) |
+| `yarn mermaid:render` | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
 | `yarn analyze`        | Build with bundle analyzer                                            |
 
 Operational caveats:
@@ -281,6 +297,12 @@ Operational caveats:
   `hb-subset`; e.g. `brew install harfbuzz`) installed locally. Vercel builds skip the glyph
   check instead of failing (see §6) — HarfBuzz is not installed there; the GitHub Action
   `og-font-check` re-runs the check on pushes/PRs (see §6).
+- `yarn mermaid:render` needs Playwright Chromium (`yarn playwright install --with-deps
+  chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
+  committed `public/mermaid/` cache is what Vercel actually reads. The warn-only GitHub
+  Action `mermaid-check` runs `--check` on pushes/PRs (a structural hash↔file comparison,
+  no re-render, no Chromium; see §2) but is not a required status check, so a cache
+  mismatch never blocks a merge or a deploy.
 
 ### Environment variables
 
