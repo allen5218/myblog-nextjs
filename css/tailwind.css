@@ -230,10 +230,9 @@ body {
 
 .navbar-toggle {
   float: right;
-  width: 52px;
-  height: 52px;
-  margin: 2px 0;
-  padding: 19px 16px;
+  width: 44px;
+  height: 44px;
+  padding: 15px 12px;
   border-radius: 50%;
 }
 
@@ -296,7 +295,10 @@ body {
 
 .theme-switch-button {
   display: inline-flex;
+  width: 44px;
+  height: 44px;
   align-items: center;
+  justify-content: center;
 }
 
 .theme-switch-text {
@@ -795,6 +797,7 @@ body {
    同分,再由來源順序判給後者,導致桌機版失效。 */
 .post-container .prose blockquote p {
   margin: 0;
+  overflow-wrap: break-word;
 }
 
 /* 行內 code 與 pre 的顏色/字體交還給 @tailwindcss/typography 的預設值(連帶吃到
@@ -1253,6 +1256,11 @@ body {
 
   .theme-switch-icon {
     display: none;
+  }
+
+  .theme-switch-button {
+    width: auto;
+    height: auto;
   }
 
   .theme-switch-text {
