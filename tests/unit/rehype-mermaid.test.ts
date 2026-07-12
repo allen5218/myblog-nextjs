@@ -6,6 +6,7 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
+import type { Root } from 'hast'
 import rehypeMermaid from '../../lib/rehype-mermaid.mjs'
 import { hashDiagram, svgFileName } from '../../scripts/mermaid-shared.mjs'
 
@@ -47,7 +48,7 @@ describe('rehypeMermaid', () => {
     await fs.writeFile(path.join(cacheDir, lightFile), '<svg/>')
     await fs.writeFile(path.join(cacheDir, darkFile), '<svg/>')
 
-    const tree = {
+    const tree: Root = {
       type: 'root',
       children: [
         {
@@ -80,9 +81,8 @@ describe('rehypeMermaid', () => {
     }
 
     const processor = unified().use(rehypeMermaid, { cacheDir, urlBase: '/mermaid' }).use(rehypeStringify)
-    // @ts-expect-error 手動建構的 HAST 樹,型別上簡化過
     const transformedTree = processor.runSync(tree)
-    const html = processor.stringify(transformedTree)
+    const html = processor.stringify(transformedTree as Root)
 
     expect(html).toContain('mermaid-figure')
     expect(html).toContain(`/mermaid/${lightFile}`)
