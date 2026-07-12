@@ -65,6 +65,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 
 ## Git 工作流程(2026-07-12 起)
 
+- **改檔前與提交前都要確認本地基底沒有落後遠端** — 先跑 `git fetch origin main`,
+  再用 `git rev-list --left-right --count main...origin/main` 確認右側(behind)為 `0`。
+  若本地 `main` 落後,先同步到最新 `origin/main` 再開功能分支或繼續提交;不要從
+  過期的本地 `main` 建分支,也不要等到 PR 被標成 `BEHIND` 才處理。工作樹已有修改時,
+  先保全並釐清現有變更,不可為了同步而 reset、覆蓋或丟棄使用者內容。
 - **main 分支保護,不直接 push main** — 一律開分支 → PR → 合併。不需要別人核准
   (單人專案,required_approving_review_count=0),但 PR 必須等必過檢查(CI、
   OG font check,見下)綠燈才能合併,且對 admin 也生效(`enforce_admins`)。
