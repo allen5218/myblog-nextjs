@@ -59,7 +59,9 @@ async function renderVariant(page, config, def, id) {
       let seed = 0x2f6e2b1
       Math.random = () => {
         seed = (seed * 1103515245 + 12345) & 0x7fffffff
-        return seed / 0x7fffffff
+        // 除以 0x80000000(2^31)而非 0x7fffffff,確保結果嚴格 < 1,
+        // 符合 Math.random() 的 [0, 1) 契約(seed 可能取到 0x7fffffff 本身)。
+        return seed / 0x80000000
       }
       window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', ...config })
       const { svg } = await window.mermaid.render(id, def)
@@ -100,6 +102,19 @@ async function runCheck(rendered) {
     const committed = await readCommitted(fileName)
     if (committed === null) problems.push(`缺少快取: ${fileName}`)
     else if (committed !== svg) problems.push(`快取過期: ${fileName}`)
+  }
+  // 找出已提交但不再屬於目前渲染集合的孤兒 SVG(圖表被刪除或改到雜湊變化後,
+  // write 模式會自動清掉,但 --check 模式先前完全沒檢查這件事)。
+  let existing = []
+  try {
+    existing = await fs.readdir(PUBLIC_MERMAID_DIR)
+  } catch {
+    existing = []
+  }
+  for (const name of existing) {
+    if (name.endsWith('.svg') && !rendered.has(name)) {
+      problems.push(`孤兒快取(已不被任何文章引用): ${name}`)
+    }
   }
   if (problems.length) {
     console.error('mermaid 快取不新鮮,請執行 `yarn mermaid:render` 後 commit:')

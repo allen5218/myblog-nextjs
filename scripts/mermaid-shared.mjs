@@ -68,13 +68,18 @@ export function svgFileName(hash, variant) {
 
 export function normalizeSvg(svg) {
   let out = svg
-  const viewBox = out.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)
+  // viewBox 的 origin(前兩個數字)在 timeline、gitGraph、sequence 等圖表型別
+  // 常是非零甚至負值(例如 "100 -61 1190 592.2"),不能假設是 "0 0" 開頭 ——
+  // 用來當寬高的是第 3、4 個數字(寬、高),與 origin 無關。
+  const viewBox = out.match(
+    /viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"/
+  )
   // 移除 mermaid 內嵌的 max-width inline style 與 width="100%",改用固定像素
   // 尺寸,讓 <img> 有明確的固有寬高、過寬時由外層容器產生水平捲動。
   out = out.replace(/style="max-width:[^"]*"/i, '')
   out = out.replace(/(<svg[^>]*?)\swidth="100%"/i, '$1')
   if (viewBox) {
-    const [, w, h] = viewBox
+    const [, , , w, h] = viewBox
     if (/<svg[^>]*\swidth="/i.test(out)) {
       out = out.replace(/(<svg[^>]*?)\swidth="[^"]*"/i, `$1 width="${w}"`)
     } else {

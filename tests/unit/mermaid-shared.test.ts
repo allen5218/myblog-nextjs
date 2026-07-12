@@ -40,6 +40,24 @@ describe('normalizeSvg', () => {
     expect(out).toContain('height="180"')
     expect(out).not.toContain('max-width')
   })
+
+  it('viewBox origin 非零/負值(timeline、gitGraph、sequence 常見)時仍取寬高', () => {
+    const input =
+      '<svg id="m" viewBox="100 -61 1190 592.2" xmlns="http://www.w3.org/2000/svg"></svg>'
+    const out = normalizeSvg(input)
+    expect(out).toContain('width="1190"')
+    expect(out).toContain('height="592.2"')
+  })
+
+  it('已有過期的 width/height(如 mindmap 殘留的 10x10)時用 viewBox 覆蓋', () => {
+    const input =
+      '<svg id="m" width="10" height="10" viewBox="0 0 722 461" xmlns="http://www.w3.org/2000/svg"></svg>'
+    const out = normalizeSvg(input)
+    expect(out).toContain('width="722"')
+    expect(out).toContain('height="461"')
+    expect(out).not.toContain('width="10"')
+    expect(out).not.toContain('height="10"')
+  })
 })
 
 describe('extractMermaidDefinitions', () => {
