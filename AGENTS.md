@@ -26,6 +26,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   乾淨 checkout(CI runner、新 clone)沒有這個目錄。在 CI 裡單獨跑 `tsc --noEmit`
   或任何不經過 `next build`/`next dev` 的型別檢查前,先跑 `yarn contentlayer2 build`
   產生型別,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
+- **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
+  鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
+  `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,
+  Claude Code 也正常。遇到這個訊息不要先 `gh auth logout/login`、撤銷 OAuth 或重建
+  PAT;先申請沙箱外權限重跑 `gh auth status && gh api user --jq .login`。確認成功後,
+  後續 `gh` 命令使用沙箱外執行;若仍無法使用,PR、Issue、CI、review 等 GitHub API
+  操作可改走已安裝的 GitHub MCP,本機修改、commit、push 仍使用 Git/沙箱外 `gh`。
 
 ## Git 工作流程(2026-07-12 起)
 
