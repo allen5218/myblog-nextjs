@@ -20,6 +20,7 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeKatex from 'rehype-katex'
 import rehypeKatexNoTranslate from 'rehype-katex-notranslate'
 import rehypeCitation from 'rehype-citation'
+import rehypeMermaid from './lib/rehype-mermaid.mjs'
 import rehypePrismPlus from 'rehype-prism-plus'
 import rehypePresetMinify from 'rehype-preset-minify'
 import { visit } from 'unist-util-visit'
@@ -349,6 +350,9 @@ export default makeSource({
       rehypeKatex,
       rehypeKatexNoTranslate,
       [rehypeCitation, { path: path.join(root, 'data') }],
+      rehypeMermaid, // 務必在 rehypePrismPlus 之前:Prism 會把 <pre><code> 重寫成
+      // <span class="code-line"> 結構,mermaid fence 一旦被 Prism 處理過就再也
+      // 認不出來,只會靜默 fallback 成一般 code block(不會報錯)。
       [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }],
       responsiveIframeTransform,
       rehypePresetMinify,

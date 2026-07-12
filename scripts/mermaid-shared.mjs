@@ -1,13 +1,23 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { fileURLToPath } from 'node:url'
 import { remark } from 'remark'
 import { visit } from 'unist-util-visit'
 import matter from 'gray-matter'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.resolve(__dirname, '..')
+// 刻意不用 `import.meta.url` 推導專案根目錄:contentlayer2 用 esbuild 把
+// contentlayer.config.ts 連同它 import 的這個檔案一起打包進
+// `.contentlayer/.cache/v*/compiled-contentlayer-config-*.mjs`,執行時
+// import.meta.url 指向的是打包後暫存檔的位置,不是原始檔案位置,算出來的
+// ROOT 會變成 `.contentlayer/.cache`,導致 PUBLIC_MERMAID_DIR 指向不存在的
+// `.contentlayer/.cache/public/mermaid`——rehype-mermaid.mjs 的快取命中檢查
+// 因此永遠失敗,靜默 fallback 成一般 code block(2026-07-12 Task 4 驗證時
+// 實測到:contentlayer2 build 的 hash 與 public/mermaid 下的檔名完全一致,
+// 但 fs.existsSync 仍回傳 false,才追出是路徑問題而非 hash 問題)。
+// 改用 process.cwd():`yarn mermaid:render`、`next build`(進而觸發
+// contentlayer2)一律從 repo 根目錄執行,與 contentlayer.config.ts 自己的
+// `const root = process.cwd()` 用同一個假設,不受打包/複製影響。
+const ROOT = process.cwd()
 
 // 任何會影響輸出 SVG 的東西改變(mermaid 版本、主題、渲染邏輯)時 bump,
 // 強制快取失效。實際位元差異另由 `mermaid:render --check` 兜底。
@@ -71,9 +81,7 @@ export function normalizeSvg(svg) {
   // viewBox 的 origin(前兩個數字)在 timeline、gitGraph、sequence 等圖表型別
   // 常是非零甚至負值(例如 "100 -61 1190 592.2"),不能假設是 "0 0" 開頭 ——
   // 用來當寬高的是第 3、4 個數字(寬、高),與 origin 無關。
-  const viewBox = out.match(
-    /viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"/
-  )
+  const viewBox = out.match(/viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"/)
   // 移除 mermaid 內嵌的 max-width inline style 與 width="100%",改用固定像素
   // 尺寸,讓 <img> 有明確的固有寬高、過寬時由外層容器產生水平捲動。
   out = out.replace(/style="max-width:[^"]*"/i, '')
