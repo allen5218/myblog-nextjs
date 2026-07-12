@@ -38,8 +38,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   渲染 offload 到 `yarn mermaid:render`(本機 / GitHub Action),產出的淺/深雙 SVG 快取
   commit 在 `public/mermaid/`;任何會跑渲染的新 workflow 記得
   `yarn playwright install --with-deps chromium`。
-- 改 mermaid 主題或升級 mermaid 版本時,bump `scripts/mermaid-shared.mjs` 的
-  `CACHE_VERSION` 並重跑 `yarn mermaid:render` 後 commit。
+- **任何影響渲染輸出的改動**(升級 mermaid、改 `LIGHT_THEME`/`DARK_THEME`、改
+  `normalizeSvg` 或 render 邏輯)都要 bump `scripts/mermaid-shared.mjs` 的 `CACHE_VERSION`,
+  再重跑 `yarn mermaid:render` 後 commit。**這是唯一防線**:`mermaid-check` 改成結構檢查後
+  (見下)不再比對 SVG 內容,只要 hash 沒變、檔案還在就綠燈 —— 忘了 bump,過時的 SVG 會
+  悄悄留著、CI 抓不到。升級 mermaid 後另外**目視**確認幾張圖(結構檢查不會替你發現輸出跑掉)。
 - `mermaid-check`(`.github/workflows/mermaid-check.yml`,job 名 `mermaid`)是**警告級
   非必過**檢查,不在 branch protection 的 required contexts;只警告不擋合併(快取沒對上
   時圖會暫時退化成程式碼區塊,不會壞站)。它跑的 `yarn mermaid:render --check` 是**純結構
@@ -47,9 +50,18 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   不重新渲染**:mermaid 在不同平台(macOS 作者 vs Linux runner)的文字量測不同,byte 比對
   會跨平台永遠失敗(狼來了);hash 只由內容決定、跨平台一致。因此這個 job **不需要
   Chromium**,也很快。
-- 跑完 `yarn mermaid:render` 圖還是沒出來,通常不是 hash 問題,而是 contentlayer2
-  的文件快取(`.contentlayer/.cache`,以來源檔內容為鍵)還握著 render 前的
-  fallback HTML — 刪掉 `.contentlayer` 或 touch 該篇 .md 重建即可。
+- **mermaid fence 靜默退化成程式碼區塊**的排查順序(以下全都不報錯,是刻意的優雅降級,
+  很容易誤當成渲染 bug):① 忘了 `yarn mermaid:render` + commit(`mermaid-check` 會警告,
+  但非必過);② 本機 `.contentlayer/.cache` 卡著 render 前的 fallback HTML —— 刪掉
+  `.contentlayer` 或 touch 該篇 `.md` 重建即可;③ fence 寫成 ` ```mermaid:標題 `(pliny
+  code-title 語法)—— 渲染腳本 `node.lang === 'mermaid'` 嚴格比對,不吃 `:title` 後綴;
+  ④ fence 不在 `data/blog/**`(例如作者頁 `data/authors/**`)—— 渲染腳本只掃 `data/blog`。
+  遇到「圖沒出來」先照這四點查,不要直接當渲染 bug 追。
+- 已知小瑕疵(可日後改進,非阻擋):兩個 `<img>` 沒帶 `width`/`height`,載入時有版面位移
+  (CLS);非當前主題的那張帶 `loading="lazy"`,慢網路下切主題那一刻可能短暫空白。render
+  時其實已算出 viewBox 尺寸,要修就存進 manifest 讓 rehype plugin 寫上 `width`/`height`、
+  並拿掉隱藏變體的 `lazy`。另:單一 mermaid 語法錯誤會中止整個 `yarn mermaid:render`
+  (fail-loud,但在全部渲染成功前不寫檔,不會寫壞既有快取)。
 
 ## Git 工作流程(2026-07-12 起)
 
