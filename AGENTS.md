@@ -41,8 +41,12 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - 改 mermaid 主題或升級 mermaid 版本時,bump `scripts/mermaid-shared.mjs` 的
   `CACHE_VERSION` 並重跑 `yarn mermaid:render` 後 commit。
 - `mermaid-check`(`.github/workflows/mermaid-check.yml`,job 名 `mermaid`)是**警告級
-  非必過**檢查,不在 branch protection 的 required contexts;快取過期只標紅提醒,忘了
-  重渲染時圖會暫時退化成程式碼區塊,不會壞站。
+  非必過**檢查,不在 branch protection 的 required contexts;只警告不擋合併(快取沒對上
+  時圖會暫時退化成程式碼區塊,不會壞站)。它跑的 `yarn mermaid:render --check` 是**純結構
+  比對**(每個 mermaid fence 的內容 hash 是否都有對應 committed SVG、有無孤兒檔),**刻意
+  不重新渲染**:mermaid 在不同平台(macOS 作者 vs Linux runner)的文字量測不同,byte 比對
+  會跨平台永遠失敗(狼來了);hash 只由內容決定、跨平台一致。因此這個 job **不需要
+  Chromium**,也很快。
 - 跑完 `yarn mermaid:render` 圖還是沒出來,通常不是 hash 問題,而是 contentlayer2
   的文件快取(`.contentlayer/.cache`,以來源檔內容為鍵)還握著 render 前的
   fallback HTML — 刪掉 `.contentlayer` 或 touch 該篇 .md 重建即可。

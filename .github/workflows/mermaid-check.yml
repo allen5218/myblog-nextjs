@@ -1,8 +1,9 @@
-# Mermaid 渲染需要 Chromium,和 HarfBuzz 一樣不能在 Vercel build 跑,所以渲染
-# offload 到本機/CI;這個 workflow 在裝得起 Chromium 的 runner 上重跑
-# `yarn mermaid:render --check`,快取過期就標紅提醒。它刻意不是必過檢查
-# (job 名 `mermaid`,不在 branch protection 的 required contexts `ci`/`check`
-# 之列),只警告不擋合併。
+# `yarn mermaid:render --check` 是純結構比對:確認每個 mermaid fence 的內容 hash
+# 都有對應的 committed SVG、且沒有孤兒檔。它刻意「不」重新渲染 —— mermaid 在不同
+# 平台(macOS 作者 vs Linux runner)的文字量測不同,byte 比對會跨平台永遠失敗;
+# hash 只由內容決定,跨平台一致。因此這個 job 不需要 Chromium,也很快。
+# 它刻意不是必過檢查(job 名 `mermaid`,不在 branch protection 的 required
+# contexts `ci`/`check` 之列),只警告不擋合併:提醒作者「改了圖忘了 render+commit」。
 name: mermaid-check
 
 on:
@@ -23,7 +24,5 @@ jobs:
           node-version: '24'
           cache: yarn
       - run: yarn
-      - name: Install Chromium for Playwright
-        run: yarn playwright install --with-deps chromium
-      - name: Check Mermaid SVG cache freshness
+      - name: Check Mermaid SVG cache matches content
         run: yarn mermaid:render --check

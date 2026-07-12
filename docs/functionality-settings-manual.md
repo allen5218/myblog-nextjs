@@ -85,7 +85,9 @@ preview (~200 chars from body), and JSON-LD structured data.
   browser constraint as HarfBuzz, see §6/§10); a cache miss (diagram not yet rendered)
   degrades gracefully to a plain code block instead of failing the build. The warn-only
   GitHub Action `mermaid-check` (`.github/workflows/mermaid-check.yml`, job `mermaid`, not a
-  required check) re-runs `yarn mermaid:render --check` on push/PR to flag a stale cache.
+  required check) runs `yarn mermaid:render --check` on push/PR — a purely structural
+  comparison (does every fence's content hash have matching committed SVGs; any orphans),
+  NOT a re-render, to remind the author when a diagram changed but wasn't re-rendered + committed.
 - **Headings**: get slug anchors — a plain `#` appended after the heading text, visible on hover
   (AnchorJS-style, ported from the Jekyll site; not a prepended icon).
 - MDX is code-capable. Treat everything under `data/` as trusted author content; never
@@ -298,8 +300,9 @@ Operational caveats:
 - `yarn mermaid:render` needs Playwright Chromium (`yarn playwright install --with-deps
   chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   committed `public/mermaid/` cache is what Vercel actually reads. The warn-only GitHub
-  Action `mermaid-check` re-runs `--check` on pushes/PRs (see §2) but is not a required
-  status check, so a stale cache never blocks a merge or a deploy.
+  Action `mermaid-check` runs `--check` on pushes/PRs (a structural hash↔file comparison,
+  no re-render, no Chromium; see §2) but is not a required status check, so a cache
+  mismatch never blocks a merge or a deploy.
 
 ### Environment variables
 

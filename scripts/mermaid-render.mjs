@@ -86,40 +86,37 @@ async function renderAll(byHash) {
   })
 }
 
-async function readCommitted(fileName) {
-  try {
-    return await fs.readFile(path.join(PUBLIC_MERMAID_DIR, fileName), 'utf8')
-  } catch {
-    return null
+// --check 模式:純結構比對,不重新渲染、不啟動瀏覽器。
+// 目的只在抓「作者新增/改動了 mermaid 圖,卻忘了 `yarn mermaid:render` + commit」。
+// 用內容 hash ↔ 檔名對應即可判斷,刻意不比對 SVG bytes:mermaid 在瀏覽器裡要量測
+// 文字(字體、字寬),macOS(作者)與 Linux(CI runner)的結果本就不同,byte 比對
+// 會跨平台永遠失敗(狼來了)。hash 只由內容(定義 + 主題 + CACHE_VERSION)決定,
+// 跨平台一致;產品端 SVG 是靜態檔,誰渲染的都一樣顯示,平台差異不影響正確性。
+async function runCheck(byHash) {
+  const expected = new Set()
+  for (const hash of byHash.keys()) {
+    for (const [variant] of VARIANTS) expected.add(svgFileName(hash, variant))
   }
-}
-
-async function runCheck(rendered) {
+  let committed = []
+  try {
+    committed = (await fs.readdir(PUBLIC_MERMAID_DIR)).filter((n) => n.endsWith('.svg'))
+  } catch {
+    committed = []
+  }
+  const committedSet = new Set(committed)
   const problems = []
-  for (const [fileName, svg] of rendered) {
-    const committed = await readCommitted(fileName)
-    if (committed === null) problems.push(`缺少快取: ${fileName}`)
-    else if (committed !== svg) problems.push(`快取過期: ${fileName}`)
+  for (const name of expected) {
+    if (!committedSet.has(name)) problems.push(`缺少快取(新增/改動的圖尚未渲染?): ${name}`)
   }
-  // 找出已提交但不再屬於目前渲染集合的孤兒 SVG(圖表被刪除或改到雜湊變化後,
-  // write 模式會自動清掉,但 --check 模式先前完全沒檢查這件事)。
-  let existing = []
-  try {
-    existing = await fs.readdir(PUBLIC_MERMAID_DIR)
-  } catch {
-    existing = []
-  }
-  for (const name of existing) {
-    if (name.endsWith('.svg') && !rendered.has(name)) {
-      problems.push(`孤兒快取(已不被任何文章引用): ${name}`)
-    }
+  for (const name of committed) {
+    if (!expected.has(name)) problems.push(`孤兒快取(圖已刪除或改動): ${name}`)
   }
   if (problems.length) {
-    console.error('mermaid 快取不新鮮,請執行 `yarn mermaid:render` 後 commit:')
+    console.error('mermaid 快取與文章內容不符,請執行 `yarn mermaid:render` 後 commit:')
     for (const p of problems) console.error('  - ' + p)
     process.exitCode = 1
   } else {
-    console.log(`mermaid 快取新鮮(${rendered.size} 個檔案)`)
+    console.log(`mermaid 快取結構一致(${byHash.size} 張圖 → ${expected.size} 個 SVG)`)
   }
 }
 
@@ -146,10 +143,11 @@ async function writeAll(rendered, validNames) {
 async function main() {
   const check = process.argv.includes('--check')
   const byHash = await collectDefinitions()
-  const rendered = await renderAll(byHash)
   if (check) {
-    await runCheck(rendered)
+    // 結構檢查不需渲染,不啟動瀏覽器(故 CI 也不必裝 Chromium)。
+    await runCheck(byHash)
   } else {
+    const rendered = await renderAll(byHash)
     await writeAll(rendered, new Set(rendered.keys()))
   }
 }
