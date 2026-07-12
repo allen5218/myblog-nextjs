@@ -10,8 +10,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - `yarn dev` / `yarn build` / `yarn serve` / `yarn lint`(帶 `--fix`)/
   `yarn test:unit` / `yarn test:parity`(Playwright,自動 build + serve 於 3012)/
   `yarn mermaid:render`(`--check` 為驗證模式,不寫檔)
-- **不要**同時跑 `yarn build` 和 `yarn dev`/`yarn test:parity` — 會在 `.next` 上競爭,
-  產生無樣式頁面等假 bug。
+- Next.js 16 將 `next dev` 輸出改到 `.next/dev`,因此可與 `next build` 並行;同時它用
+  lockfile 阻止同一專案重複執行多個 dev 或多個 build。不要因為 lockfile 而強行啟動第二個
+  同類程序;互動驗證仍要由 production build 驗證。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
 - build 需要 HarfBuzz CLI(`hb-shape`/`hb-subset`,`brew install harfbuzz`)。
@@ -23,10 +24,18 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
   任何會跑 `yarn build` 的新 workflow 都要記得裝。
 - `app/`、`layouts/` 多處 `import` 自 `contentlayer/generated`(`.contentlayer/`,
-  gitignore),這是 `contentlayer2` 在 `next dev`/`next build` 時才產生的模組,
-  乾淨 checkout(CI runner、新 clone)沒有這個目錄。在 CI 裡單獨跑 `tsc --noEmit`
-  或任何不經過 `next build`/`next dev` 的型別檢查前,先跑 `yarn contentlayer2 build`
-  產生型別,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
+  gitignore)。Next 16 的 Turbopack 不會執行 `next-contentlayer2` webpack hook,所以此 repo
+  改由 scripts 明確執行 `contentlayer2`:`yarn dev`/`yarn start` 先 blocking build 再併行
+  watcher + Next dev,`yarn build` 在 Next build 前先 build。乾淨 checkout(CI runner、新
+  clone)單獨跑 `tsc --noEmit` 或其他型別檢查前,仍要先跑 `yarn contentlayer2 build`,否則會
+  炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
+- Next 16 已移除 `next lint`;本機 `yarn lint` 與 CI 都直接使用 ESLint CLI。Next 的
+  core-web-vitals 規則必須從 `eslint-config-next/core-web-vitals` 的 flat config 匯入,不要
+  改回 FlatCompat 的 legacy `next` extends。
+- Serwist 在 Turbopack 路線由 `@serwist/turbopack` 的
+  `app/serwist/[path]/route.ts` 產生 service worker;註冊網址是 `/serwist/sw.js`,不再以
+  webpack child compilation 寫入 `public/sw.js`。`app/sw.ts` 繼續因 webworker 型別排除於
+  主 tsconfig/ESLint,但 route handler 是一般 app 程式碼,不得排除。
 - **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
   鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
   `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,

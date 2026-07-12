@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const legacyAboutLanguages = new Set(['en', 'zh', 'zh-TW'])
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { nextUrl } = request
   const lang = nextUrl.searchParams.get('lang')
 

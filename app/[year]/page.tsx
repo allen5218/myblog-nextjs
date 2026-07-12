@@ -11,7 +11,7 @@ import { POSTS_PER_PAGE, blogPageHref, parseBlogPageSegment, totalPagesFor } fro
 // 為什麼這個檔案在 [year] 底下而不是 [page]?App Router 不允許同一層出現兩個名字不同的
 // dynamic segment,而根層已經被文章網址 /[year]/[month]/[day]/[slug] 佔用了 [year]。
 // 新增 app/[page] 會讓 build 直接失敗。用 rewrites 把 /page2/ 改寫到別處也可以,但
-// rewrites 在 EXPORT=1 靜態匯出模式下會整個消失(和 headers()、middleware 一樣)。
+// rewrites 在 EXPORT=1 靜態匯出模式下會整個消失(和 headers()、proxy 一樣)。
 //
 // 因此這裡共用 [year] 這個 slot:只接受 pageN,其餘(含真正的年份 /2025/)一律 404,
 // 與加入本檔案之前的行為一致。

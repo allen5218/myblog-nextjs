@@ -3,7 +3,7 @@ import 'pliny/search/algolia.css'
 import 'remark-github-blockquote-alert/alert.css'
 
 import { Chiron_Sung_HK } from 'next/font/google'
-import { SerwistProvider } from '@serwist/next/react'
+import { SerwistProvider } from '@serwist/turbopack/react'
 import { Analytics, AnalyticsConfig } from 'pliny/analytics'
 import { SearchProvider, SearchConfig } from 'pliny/search'
 import Header from '@/components/Header'
@@ -110,7 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* 不要加回 pl-[calc(100vw-100%)](上游模板防捲軸跳動的 hack)。它只補左側,
           傳統捲軸下 body 的內容盒就不再置中,.hux-full-bleed 會整組偏移半個捲軸寬。 */}
       <body className="flex min-h-screen flex-col antialiased">
-        <SerwistProvider swUrl={`${basePath}/sw.js`}>
+        <SerwistProvider swUrl={`${basePath}/serwist/sw.js`}>
           <HtmlLangSync />
           <FocusVisibleFix />
           <ThemeProviders>
