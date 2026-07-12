@@ -4,6 +4,22 @@
 - 分支:`feat/mermaid-build-time-rendering`
 - 取代前置研究:`docs/research/mermaid-build-time-note.md`(該筆記留下的「建置期 SVG」路線,本設計予以落實)
 
+## 實作後修訂(2026-07-12)
+
+本文以下內容是原始設計,實作時有三處刻意偏離,以此節為準:
+
+- **共用模組移到 `scripts/mermaid-shared.mjs`**(不是本文寫的 `lib/mermaid-shared.mjs`)—
+  `scripts/mermaid-render.mjs` 與 `lib/rehype-mermaid.mjs` 都從這裡 import。
+- **SVG 不 inline,改為 committed 檔案 + `<img>`**:產物是 `public/mermaid/<hash>.{light,dark}.svg`
+  (不是本文寫的 `data/mermaid-cache/`),rehype plugin 產出 `<figure class="mermaid-figure
+  overflow-x-auto">` 包兩個 `<img src="/mermaid/...">`,不是 inline `<div>` 包 SVG 標籤。
+  動機:徹底避開 SVG 屬性在 MDX/JSX 的 camelCase 對應問題,且 HTML 更小。主題切換仍是純
+  CSS(依 `html.dark` 切換兩個 `<img>` 的 `display`),不受此變更影響。
+- **決定性(determinism)需要額外處理**:mermaid 部分圖表型別(實測 gitGraph、
+  classDiagram)排版時內部呼叫 `Math.random`,同一定義重渲染兩次會產生 bytes 不同的 SVG,
+  導致 `--check` 對沒改過的圖表也一直誤報過期。渲染腳本在瀏覽器 page context 內用固定種子
+  的 LCG 蓋掉 `window.Math.random`,確保「相同定義 + 相同主題」永遠逐位元組相同的輸出。
+
 ## 目標
 
 讓部落格文章的 ` ```mermaid ` 程式碼區塊渲染成真正的圖表,並滿足三項需求:

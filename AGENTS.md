@@ -8,7 +8,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 ## 指令與環境陷阱
 
 - `yarn dev` / `yarn build` / `yarn serve` / `yarn lint`(帶 `--fix`)/
-  `yarn test:unit` / `yarn test:parity`(Playwright,自動 build + serve 於 3012)
+  `yarn test:unit` / `yarn test:parity`(Playwright,自動 build + serve 於 3012)/
+  `yarn mermaid:render`(`--check` 為驗證模式,不寫檔)
 - **不要**同時跑 `yarn build` 和 `yarn dev`/`yarn test:parity` — 會在 `.next` 上競爭,
   產生無樣式頁面等假 bug。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
@@ -26,6 +27,15 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   乾淨 checkout(CI runner、新 clone)沒有這個目錄。在 CI 裡單獨跑 `tsc --noEmit`
   或任何不經過 `next build`/`next dev` 的型別檢查前,先跑 `yarn contentlayer2 build`
   產生型別,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
+- Mermaid 圖表渲染需 headless Chromium,和 HarfBuzz 同理**不能在 Vercel build 跑**;
+  渲染 offload 到 `yarn mermaid:render`(本機 / GitHub Action),產出的淺/深雙 SVG 快取
+  commit 在 `public/mermaid/`;任何會跑渲染的新 workflow 記得
+  `yarn playwright install --with-deps chromium`。
+- 改 mermaid 主題或升級 mermaid 版本時,bump `scripts/mermaid-shared.mjs` 的
+  `CACHE_VERSION` 並重跑 `yarn mermaid:render` 後 commit。
+- `mermaid-check`(`.github/workflows/mermaid-check.yml`,job 名 `mermaid`)是**警告級
+  非必過**檢查,不在 branch protection 的 required contexts;快取過期只標紅提醒,忘了
+  重渲染時圖會暫時退化成程式碼區塊,不會壞站。
 
 ## Git 工作流程(2026-07-12 起)
 
