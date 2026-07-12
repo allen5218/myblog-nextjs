@@ -73,8 +73,12 @@
     "mermaid": "^11.16.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "rehype-stringify": "^10.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "serwist": "^9.5.11",
     "typescript": "^5.9.3",
+    "unified": "^11.0.5",
     "vitest": "^4.1.10"
   },
   "resolutions": {

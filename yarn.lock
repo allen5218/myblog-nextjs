@@ -10890,13 +10890,17 @@ __metadata:
     rehype-preset-minify: 7.0.1
     rehype-prism-plus: ^2.0.2
     rehype-slug: ^6.0.0
+    rehype-stringify: ^10.0.1
     remark: ^15.0.1
     remark-gfm: ^4.0.1
     remark-github-blockquote-alert: ^2.0.1
     remark-math: ^6.0.0
+    remark-parse: ^11.0.0
+    remark-rehype: ^11.1.2
     serwist: ^9.5.11
     tailwindcss: ^4.1.18
     typescript: ^5.9.3
+    unified: ^11.0.5
     unist-util-visit: ^5.1.0
     vitest: ^4.1.10
   languageName: unknown
@@ -12416,7 +12420,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rehype-stringify@npm:^10.0.0":
+"rehype-stringify@npm:^10.0.0, rehype-stringify@npm:^10.0.1":
   version: 10.0.1
   resolution: "rehype-stringify@npm:10.0.1"
   dependencies:
@@ -12510,7 +12514,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"remark-rehype@npm:^11.0.0, remark-rehype@npm:^11.1.0":
+"remark-rehype@npm:^11.0.0, remark-rehype@npm:^11.1.0, remark-rehype@npm:^11.1.2":
   version: 11.1.2
   resolution: "remark-rehype@npm:11.1.2"
   dependencies:
