@@ -51,7 +51,7 @@ describe('normalizeSvg', () => {
 
   it('已有過期的 width/height(如 mindmap 殘留的 10x10)時用 viewBox 覆蓋', () => {
     const input =
-      '<svg id="m" width="10" height="10" viewBox="0 0 722 461" xmlns="http://www.w3.org/2000/svg"></svg>'
+      '<svg id="m" width="10" height="10" viewBox="5 5 722 461" xmlns="http://www.w3.org/2000/svg"></svg>'
     const out = normalizeSvg(input)
     expect(out).toContain('width="722"')
     expect(out).toContain('height="461"')
