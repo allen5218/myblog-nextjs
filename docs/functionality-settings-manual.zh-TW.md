@@ -104,7 +104,7 @@ Hux Blog 的視覺語言,並以 Serwist 提供 PWA 支援。
 
 ### 導覽、側欄、作者
 
-- **導覽連結**:`data/headerNavLinks.ts`(Home / Archive / Tags / About)。
+- **手機漢堡選單連結**:`data/headerNavLinks.ts`(Home / Archive / About;不顯示 Tags)。
 - **友站清單**(側欄 FRIENDS 區):寫死在 `components/hux/HuxSidebar.tsx` 頂部的
   `friends` 陣列。
 - **側欄 Featured Tags**:由標籤計數自動產生。

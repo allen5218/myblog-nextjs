@@ -115,7 +115,7 @@ search. Highlights:
 
 ### Navigation, sidebar, authors
 
-- **Nav links**: `data/headerNavLinks.ts` (Home / Archive / Tags / About).
+- **Mobile hamburger links**: `data/headerNavLinks.ts` (Home / Archive / About; Tags is omitted).
 - **Friends list** (sidebar "FRIENDS" section): hardcoded `friends` array at the top of
   `components/hux/HuxSidebar.tsx`.
 - **Sidebar Featured Tags**: derived automatically from tag counts.
