@@ -121,5 +121,7 @@ export async function markdownFiles(directory) {
       return /\.(md|mdx|markdown)$/.test(entry.name) ? [entryPath] : []
     })
   )
-  return nested.flat()
+  // fs.readdir 不保證跨平台順序一致(macOS 與 CI 的 ubuntu runner 可能不同),
+  // 排序讓 render/processing 順序在各平台間穩定,避免順序相關的假差異。
+  return nested.flat().sort()
 }

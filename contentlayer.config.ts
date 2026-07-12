@@ -336,6 +336,11 @@ export default makeSource({
       responsiveIframeTransform,
     ],
     rehypePlugins: [
+      rehypeMermaid, // 放在最前面:remark→rehype 轉換完馬上處理,確保拿到的是原始
+      // <pre><code class="language-mermaid">,不會被後面任何 rehype 插件(尤其是
+      // rehypePrismPlus,它會把 <pre><code> 重寫成 <span class="code-line"> 結構)
+      // 動過手腳而認不出 mermaid fence、靜默 fallback 成一般 code block(不會
+      // 報錯);也順便避免任何更早的插件動到 <code> 內文而悄悄破壞 hash 一致性。
       rehypeSlug,
       [
         rehypeAutolinkHeadings,
@@ -350,9 +355,6 @@ export default makeSource({
       rehypeKatex,
       rehypeKatexNoTranslate,
       [rehypeCitation, { path: path.join(root, 'data') }],
-      rehypeMermaid, // 務必在 rehypePrismPlus 之前:Prism 會把 <pre><code> 重寫成
-      // <span class="code-line"> 結構,mermaid fence 一旦被 Prism 處理過就再也
-      // 認不出來,只會靜默 fallback 成一般 code block(不會報錯)。
       [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }],
       responsiveIframeTransform,
       rehypePresetMinify,

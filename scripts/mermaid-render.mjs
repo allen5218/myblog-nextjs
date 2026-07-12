@@ -76,13 +76,11 @@ async function renderVariant(page, config, def, id) {
 async function renderAll(byHash) {
   return withBrowser(async (page) => {
     const out = new Map()
-    let i = 0
     for (const [hash, def] of byHash) {
       for (const [variant, config] of VARIANTS) {
-        const svg = await renderVariant(page, config, def, `mmd-${i}-${variant}`)
+        const svg = await renderVariant(page, config, def, `mmd-${hash}-${variant}`)
         out.set(svgFileName(hash, variant), svg)
       }
-      i += 1
     }
     return out
   })

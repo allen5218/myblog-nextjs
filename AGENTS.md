@@ -36,6 +36,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - `mermaid-check`(`.github/workflows/mermaid-check.yml`,job 名 `mermaid`)是**警告級
   非必過**檢查,不在 branch protection 的 required contexts;快取過期只標紅提醒,忘了
   重渲染時圖會暫時退化成程式碼區塊,不會壞站。
+- 跑完 `yarn mermaid:render` 圖還是沒出來,通常不是 hash 問題,而是 contentlayer2
+  的文件快取(`.contentlayer/.cache`,以來源檔內容為鍵)還握著 render 前的
+  fallback HTML — 刪掉 `.contentlayer` 或 touch 該篇 .md 重建即可。
 
 ## Git 工作流程(2026-07-12 起)
 
