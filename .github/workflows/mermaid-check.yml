@@ -1,0 +1,29 @@
+# Mermaid 渲染需要 Chromium,和 HarfBuzz 一樣不能在 Vercel build 跑,所以渲染
+# offload 到本機/CI;這個 workflow 在裝得起 Chromium 的 runner 上重跑
+# `yarn mermaid:render --check`,快取過期就標紅提醒。它刻意不是必過檢查
+# (job 名 `mermaid`,不在 branch protection 的 required contexts `ci`/`check`
+# 之列),只警告不擋合併。
+name: mermaid-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mermaid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: yarn
+      - run: yarn
+      - name: Install Chromium for Playwright
+        run: yarn playwright install --with-deps chromium
+      - name: Check Mermaid SVG cache freshness
+        run: yarn mermaid:render --check
