@@ -34,6 +34,61 @@ function render(markdown: string, cacheDir: string) {
 }
 
 describe('rehypeMermaid', () => {
+  it('code 子節點被語法高亮套件包成巢狀 <span> 時仍能正確擷取文字算出 hash', async () => {
+    // 模擬 rehype-prism-plus 之類的插件已經跑過,把 <code> 的文字子節點
+    // 拆成多個巢狀 <span class="code-line"> 包住的 text node,而不是單一
+    // 直接文字子節點。若 codeText() 只掃 code 的「直接」文字子節點,這裡
+    // 會回傳空字串,算出的 hash 對不上快取檔名,mermaid-figure 就永遠不會
+    // 被换上,診斷需求文件裡描述的「靜默不出圖」就是這樣發生的。
+    const nestedDef = 'graph TD\n  M-->N'
+    const hash = hashDiagram(nestedDef)
+    const lightFile = svgFileName(hash, 'light')
+    const darkFile = svgFileName(hash, 'dark')
+    await fs.writeFile(path.join(cacheDir, lightFile), '<svg/>')
+    await fs.writeFile(path.join(cacheDir, darkFile), '<svg/>')
+
+    const tree = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'pre',
+          properties: {},
+          children: [
+            {
+              type: 'element',
+              tagName: 'code',
+              properties: { className: ['language-mermaid'] },
+              children: [
+                {
+                  type: 'element',
+                  tagName: 'span',
+                  properties: { className: ['code-line'] },
+                  children: [{ type: 'text', value: 'graph TD\n' }],
+                },
+                {
+                  type: 'element',
+                  tagName: 'span',
+                  properties: { className: ['code-line'] },
+                  children: [{ type: 'text', value: '  M-->N' }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const processor = unified().use(rehypeMermaid, { cacheDir, urlBase: '/mermaid' }).use(rehypeStringify)
+    // @ts-expect-error 手動建構的 HAST 樹,型別上簡化過
+    const transformedTree = processor.runSync(tree)
+    const html = processor.stringify(transformedTree)
+
+    expect(html).toContain('mermaid-figure')
+    expect(html).toContain(`/mermaid/${lightFile}`)
+    expect(html).toContain(`/mermaid/${darkFile}`)
+  })
+
   it('快取命中時把 mermaid fence 換成 figure + 兩個 img', () => {
     const hash = hashDiagram(DEF)
     const html = render('```mermaid\n' + DEF + '\n```\n', cacheDir)
