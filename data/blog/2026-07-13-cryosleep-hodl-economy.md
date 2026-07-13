@@ -58,9 +58,9 @@ tags:
 
 一個人冬眠，是搭別人的便車，沒問題。10% 的人口冬眠，車開始變慢。30% 的人口冬眠，車直接熄火，何況會去冬眠的，多半正是有資產可帶、正值壯年的那批人。冬眠者集體押注「經濟會繼續成長讓資產翻倍」，但他們的離場本身就在拆掉成長的引擎。
 
-![Vault Boy 雕像](https://img.allenspace.de/vault-boy-statue.9nrdu7e7t7.webp)
+![SDCC 2011 的 Vault Boy 布偶裝](https://img.allenspace.de/sdcc-vault-boy.ytk0p6mjdj.webp)
 
-*Vault Boy 對什麼都豎大拇指，包括對合成謬誤。（照片 CC BY 2.0，來源：Wikimedia Commons）*
+*Vault Boy 對什麼都豎大拇指，包括對合成謬誤。（SDCC 2011，照片 CC BY-SA 2.0，來源：Wikimedia Commons）*
 
 ## 三、總體經濟：一場自願的、極端版的日本化
 
