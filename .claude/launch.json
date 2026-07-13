@@ -6,6 +6,12 @@
       "runtimeExecutable": "yarn",
       "runtimeArgs": ["dev"],
       "port": 3000
+    },
+    {
+      "name": "myblog-nextjs-serve",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["serve"],
+      "port": 3000
     }
   ]
 }

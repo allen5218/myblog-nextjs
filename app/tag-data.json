@@ -12,13 +12,17 @@
   "co-learning": 1,
   "llm": 1,
   "openwebui": 1,
-  "docker": 1,
-  "cloudflare": 1,
+  "docker": 2,
+  "cloudflare": 2,
   "ai-attack": 1,
   "social-engineering": 1,
   "cybersecurity": 1,
   "privacy-protection": 1,
   "學會學": 1,
   "lhtl": 1,
-  "learning-how-to-learn": 1
+  "learning-how-to-learn": 1,
+  "vaultwarden": 1,
+  "bitwarden": 1,
+  "self-hosting": 1,
+  "security": 1
 }
