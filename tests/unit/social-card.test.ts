@@ -4,6 +4,7 @@ import {
   normalizeSocialCardBackgroundForImageResponse,
   pageSocialImagePath,
   postSocialImagePath,
+  selectSocialCardOverlayOpacity,
   selectSocialCardBackground,
   selectSocialCardSummary,
 } from '@/lib/social-card'
@@ -56,6 +57,19 @@ describe('selectSocialCardBackground', () => {
       kind: 'fallback',
       value: SOCIAL_CARD_FALLBACK,
     })
+  })
+})
+
+describe('selectSocialCardOverlayOpacity', () => {
+  it('有 headerImg 與 headerMask 時沿用文章遮罩強度', () => {
+    expect(selectSocialCardOverlayOpacity({ kind: 'image', value: '/img/post.jpg' }, 0.7)).toBe(0.7)
+  })
+
+  it('未設定 headerMask 時維持原本的照片與漸層遮罩', () => {
+    expect(selectSocialCardOverlayOpacity({ kind: 'image', value: '/img/post.jpg' })).toBe(0.58)
+    expect(
+      selectSocialCardOverlayOpacity({ kind: 'gradient', value: 'linear-gradient(red, blue)' }, 0.7)
+    ).toBe(0.16)
   })
 })
 
@@ -133,8 +147,6 @@ describe('pageSocialImagePath', () => {
     expect(pageSocialImagePath('Page 2', 'Allen & friends')).toBe(
       '/social-card?title=Page+2&summary=Allen+%26+friends'
     )
-    expect(pageSocialImagePath('Page 1234567890', 'Pagination')).toContain(
-      'title=Page+1234567890'
-    )
+    expect(pageSocialImagePath('Page 1234567890', 'Pagination')).toContain('title=Page+1234567890')
   })
 })

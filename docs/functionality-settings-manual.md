@@ -197,6 +197,9 @@ authored social image anywhere in the repo.
   `subtitle` (falling back to the excerpt preview). The background is chosen by
   `selectSocialCardBackground()` in `lib/social-card.ts`: post `headerImg` (fetched and cropped to
   1200×630) → `headerBgCss` if it is a `linear-gradient(...)` → the brand gradient fallback.
+  When set, front matter `headerMask` also controls the dark overlay opacity for a `headerImg`
+  background; when omitted, the existing `0.58` overlay remains. It does not affect gradient or
+  brand fallback backgrounds.
   Front matter **`images` is not used here** — it only feeds JSON-LD `image` and the `PostBanner`
   layout background (see §1).
 - Rendered with `next/og`'s `ImageResponse` on the Node runtime (`runtime = 'nodejs'`, not edge —

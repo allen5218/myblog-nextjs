@@ -34,6 +34,17 @@ export function selectSocialCardSummary(subtitle?: string, preview?: string) {
   return subtitle?.trim() || preview?.trim() || ''
 }
 
+export function selectSocialCardOverlayOpacity(
+  background: SocialCardBackground,
+  headerMask?: unknown
+) {
+  if (background.kind !== 'image') return 0.16
+  if (headerMask == null || headerMask === '') return 0.58
+
+  const opacity = Number(headerMask)
+  return Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : 0.58
+}
+
 export async function normalizeSocialCardBackgroundForImageResponse(
   background: SocialCardBackground,
   fetcher: (url: string) => Promise<Response> = fetch

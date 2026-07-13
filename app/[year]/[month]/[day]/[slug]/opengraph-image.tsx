@@ -6,6 +6,7 @@ import siteMetadata from '@/data/siteMetadata'
 import {
   normalizeSocialCardBackgroundForImageResponse,
   selectSocialCardBackground,
+  selectSocialCardOverlayOpacity,
   selectSocialCardSummary,
 } from '@/lib/social-card'
 import { loadSocialCardFonts } from '@/lib/social-card-font'
@@ -41,12 +42,12 @@ export default async function Image({ params }: { params: Promise<LegacyParams> 
     notFound()
   }
 
-  const background = await normalizeSocialCardBackgroundForImageResponse(
-    selectSocialCardBackground(
-      { headerImg: post.headerImg, headerBgCss: post.headerBgCss },
-      siteMetadata.siteUrl
-    )
+  const selectedBackground = selectSocialCardBackground(
+    { headerImg: post.headerImg, headerBgCss: post.headerBgCss },
+    siteMetadata.siteUrl
   )
+  const background = await normalizeSocialCardBackgroundForImageResponse(selectedBackground)
+  const overlayOpacity = selectSocialCardOverlayOpacity(selectedBackground, post.headerMask)
   const summary = selectSocialCardSummary(post.subtitle, post.preview)
   const fonts = await loadSocialCardFonts()
 
@@ -56,6 +57,7 @@ export default async function Image({ params }: { params: Promise<LegacyParams> 
       title={post.title}
       summary={summary}
       background={background}
+      overlayOpacity={overlayOpacity}
     />,
     { ...size, fonts }
   )
