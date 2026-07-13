@@ -5,9 +5,16 @@ type SocialCardProps = {
   title: string
   summary: string
   background: SocialCardBackground
+  overlayOpacity?: number
 }
 
-export default function SocialCard({ siteName, title, summary, background }: SocialCardProps) {
+export default function SocialCard({
+  siteName,
+  title,
+  summary,
+  background,
+  overlayOpacity,
+}: SocialCardProps) {
   const isPhoto = background.kind === 'image'
   const usesBackgroundImage = isPhoto || background.kind === 'gradient-image'
   const brandName = siteName.endsWith(' Blog') ? siteName.slice(0, -5) : siteName
@@ -31,7 +38,7 @@ export default function SocialCard({ siteName, title, summary, background }: Soc
     >
       <div
         style={{
-          backgroundColor: isPhoto ? 'rgba(2, 6, 23, 0.58)' : 'rgba(2, 6, 23, 0.16)',
+          backgroundColor: `rgba(2, 6, 23, ${overlayOpacity ?? (isPhoto ? 0.58 : 0.16)})`,
           display: 'flex',
           inset: 0,
           position: 'absolute',
