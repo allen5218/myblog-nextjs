@@ -86,9 +86,9 @@ tags:
 
 冬眠者選比特幣冷錢包當資產載體，其實非常合理：不需要託管機構替你管二十年（銀行可能倒，但私鑰不會）、沒有配息要處理、抗通膨敘事完美契合「穿越時間」的需求。但大冬眠對比特幣的影響，是兩股方向相反的力量。
 
-![實體比特幣](https://img.allenspace.de/bitcoin-golden-coin.jascbku54h.webp)
+![實體比特幣與行情圖](https://img.allenspace.de/bitcoins-charts.wy2qljjn7z.webp)
 
-*（照片 CC BY-SA 2.0，Satheesh Sankaran，Wikimedia Commons）*
+*（照片 CC BY 2.0，Jorge Franganillo，Wikimedia Commons）*
 
 ### 利多面：供給被鎖死
 
