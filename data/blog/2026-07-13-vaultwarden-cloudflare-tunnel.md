@@ -203,7 +203,7 @@ DOMAIN 這裡填上剛剛複製的網址。
 
 ![Vaultwarden 兩步驟登入設定](https://img.allenspace.de/Fasa-file-CA70F310-7A6D-4257-B89C-538B92924B4C.22mpffc7g75s.webp)
 
-### 好用的 pattern：同一個 QR code 掃兩次
+### 我的做法：同一個 QR code 掃兩次
 
 1. 用獨立 Authenticator app 掃一次（這是**主要登入用**的，必須有）
 2. **同一個 QR 也用 Bitwarden 手機 app 掃一次存進 vault**
