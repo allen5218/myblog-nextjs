@@ -10,18 +10,19 @@
     "title": "About",
     "description": "「 Stay Hungry, Stay Foolish 」",
     "ogLocale": "en_US",
-    "headerImg": "/img/bg-me-2022.jpg",
+    "headerImg": "/img/bg-nyc-rooftop.webp",
     "headerMask": 0.3,
     "profile": {
       "name": "Allen",
-      "role": "Digital artisan / Student and builder",
+      "role": "Student / Builder",
       "location": "Taiwan"
     },
     "body": [
-      "Hey, I'm Allen, a digital artisan with a passion for photography, technology and artificial intelligence. I'm obsessed with capturing light and shadow through my lens, and I'm passionate about building solid digital worlds with code and architecture.",
-      "I believe that networking and containerization are the cornerstones of modern technology, and I'm committed to exploring their limitless possibilities in AI applications and Homelab practices. You can think of me as an explorer between art and logic, a photographer and a believer in cloud natives.",
-      "Currently, I'm focusing on learning pgvector and langchain, hoping to build my own RAG knowledge base and connect it to various places through Model Context Protocol. I use Open WebUI and AnythingLLM on a daily basis, and I am interested in OPNsense, containerized deployment, CI/CD, and DevOps.",
-      "My physical activities are mainly in Taiwan, but I also like to travel around."
+      "Hi, I'm Allen — a student who likes turning ideas into things that actually run. This blog collects my experiments and notes on self-hosting, AI tools, and whatever I've been thinking about lately.",
+      "Most posts fall into three buckets: homelab and self-hosted services, like [Vaultwarden](/2026/07/13/vaultwarden-cloudflare-tunnel/) and [Open WebUI](/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/) behind Cloudflare Tunnel; hands-on notes on AI tooling, lately mostly around Claude Code; and the occasional detour — learning techniques, anime, thought experiments.",
+      "The site itself is one of the projects: the first version was a Jekyll blog I hacked together with Claude Code over a summer ([here's the write-up](/2025/09/23/claude-code-jekyll-blog-journey/)), and it has since been rebuilt on Next.js, where the tinkering continues.",
+      "Away from the terminal, I like wandering around with a camera, chasing light.",
+      "If you'd like to chat, drop me a line at [contact@allenspace.de](mailto:contact@allenspace.de) or find me on [GitHub](https://github.com/allen5218)."
     ]
   }
 }

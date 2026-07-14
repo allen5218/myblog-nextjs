@@ -1431,6 +1431,13 @@ body {
     padding-right: 58.5px;
   }
 
+  /* 舊 Hux 在 ≥1200px 給 .sidebar-container 加 padding-right: 5%(= 1170px row 的
+     58.5px);grid 版型下百分比的參照基準變成欄位本身,所以比照 .post-container 寫死。
+     少了這條,側欄 Featured Tags 的可用寬度會多 ~44px,換行位置和舊站不同。 */
+  .sidebar-container {
+    padding-right: 58.5px;
+  }
+
   .side-catalog {
     grid-column: 3;
     display: block;

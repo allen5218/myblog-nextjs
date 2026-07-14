@@ -118,7 +118,9 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
   email、github、linkedin 等)。`default.mdx` 是站主;其他作者由文章的 `authors` 清單引用。
 - **About 頁內容**:不在作者檔 — 來自 i18n 字典(`dictionaries/zh-TW.json`、
   `dictionaries/en.json`)。**兩個檔案都要改**,讓 `/about/`(zh-TW)與 `/en/about/`
-  保持一致。舊制 `?lang=` 網址會 308 轉址到正確路由。
+  保持一致。舊制 `?lang=` 網址會 308 轉址到正確路由。`about.body` 的段落支援最小限度的
+  markdown 連結語法 `[文字](網址)`(由 `components/about/AboutPage.tsx` 解析,站內/站外
+  連結自動分流),其餘 markdown 語法不支援。
 
 ## 4. 路由
 

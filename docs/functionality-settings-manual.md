@@ -131,6 +131,9 @@ search. Highlights:
 - **About page content**: NOT in authors files — it comes from the i18n dictionaries
   (`dictionaries/zh-TW.json`, `dictionaries/en.json`). Edit **both** files to keep `/about/`
   (zh-TW) and `/en/about/` aligned. Legacy `?lang=` URLs 308-redirect to the right route.
+  Paragraphs in `about.body` support minimal markdown link syntax `[text](url)` (parsed by
+  `components/about/AboutPage.tsx`; internal/external links are routed automatically); no
+  other markdown syntax is supported.
 
 ## 4. Routes
 

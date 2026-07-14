@@ -13,6 +13,12 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - Next.js 16 將 `next dev` 輸出改到 `.next/dev`,因此可與 `next build` 並行;同時它用
   lockfile 阻止同一專案重複執行多個 dev 或多個 build。不要因為 lockfile 而強行啟動第二個
   同類程序;互動驗證仍要由 production build 驗證。
+- **`next-env.d.ts` 會在 dev/build 交替後反覆翻動**:typed routes 的產出位置分家了
+  (`next dev` 寫 `import "./.next/dev/types/routes.d.ts"`,`next build` 寫
+  `import "./.next/types/routes.d.ts"`),誰最後跑誰贏,`git status` 就永遠有這一行 diff。
+  這不是任何人的改動,不用調查、不要 checkout 還原(下次又翻回來)、**commit 時一律排除**
+  (用明確的 `git add <檔案清單>`)。也不能 gitignore:CI 在乾淨 checkout 直接跑
+  `tsc --noEmit`,沒這個檔案,全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
 - build 需要 HarfBuzz CLI(`hb-shape`/`hb-subset`,`brew install harfbuzz`)。
