@@ -27,7 +27,7 @@ tags:
 
 ![Fallout 4 中 Vault 111 的低溫冷凍艙](https://img.allenspace.de/fo4-vault111-cryo-pod.7lc1v1eq3i.webp)
 
-*Vault 111 的低溫冷凍艙。（遊戲截圖 © Bethesda Softworks，引用自 Fallout Wiki，評論用途）*
+*Vault 111 的低溫冷凍艙。Photo Credit：Fallout Wiki*
 
 主角在艙裡睡了 210 年，醒來時世界已經面目全非。遊戲沒有著墨的是一個很有趣的細節：**主角睡著的這段時間，戰前的房貸、存款、退休金全部灰飛煙滅**。冷凍睡眠保住了他的命，卻沒保住他的資產，因為資產所依附的那個經濟體已經消失了。
 
@@ -60,7 +60,7 @@ tags:
 
 ![SDCC 2011 的 Vault Boy 布偶裝](https://img.allenspace.de/sdcc-vault-boy.ytk0p6mjdj.webp)
 
-*Vault Boy 對什麼都豎大拇指，包括對合成謬誤。（SDCC 2011，照片 CC BY-SA 2.0，來源：Wikimedia Commons）*
+*Vault Boy 對什麼都豎大拇指，包括對合成謬誤。Photo Credit：Wikimedia Commons*
 
 ## 三、總體經濟：一場自願的、極端版的日本化
 
@@ -80,7 +80,7 @@ tags:
 
 ![現實中的冷凍設施](https://img.allenspace.de/cryonics-institute-facility.p1buuccc2b.webp)
 
-*現實世界的人體冷凍設施（Cryonics Institute，密西根州）。目前的技術只能在法律死亡後冷凍保存，「活體冬眠再醒來」還是科幻。（照片 CC BY-SA 3.0，Ben Best，Wikimedia Commons）*
+*現實世界的人體冷凍設施（Cryonics Institute，密西根州）。目前的技術只能在法律死亡後冷凍保存，「活體冬眠再醒來」還是科幻。Photo Credit：Ben Best，Wikimedia Commons*
 
 ## 四、比特幣：供給鎖死 vs. 買盤消失
 
@@ -88,7 +88,7 @@ tags:
 
 ![實體比特幣與行情圖](https://img.allenspace.de/bitcoins-charts.wy2qljjn7z.webp)
 
-*（照片 CC BY 2.0，Jorge Franganillo，Wikimedia Commons）*
+*Photo Credit：Jorge Franganillo，Wikimedia Commons*
 
 ### 利多面：供給被鎖死
 
@@ -116,7 +116,7 @@ tags:
 
 ![紐約證交所交易大廳](https://img.allenspace.de/nyse-trading-floor.j97houmjyk.webp)
 
-*（照片 CC BY-SA 4.0，Scott Beale，Wikimedia Commons）*
+*Photo Credit：Scott Beale，Wikimedia Commons*
 
 ### 盈餘的回饋迴路
 
@@ -158,7 +158,7 @@ tags:
 
 ![The Outer Worlds 的希望號冬眠艙](https://img.allenspace.de/outer-worlds-hope-pods.5a1a9fzsgo.webp)
 
-*希望號（The Hope）上的冬眠艙。（遊戲截圖 © Obsidian Entertainment / Private Division，引用自 The Outer Worlds Wiki，評論用途）*
+*希望號（The Hope）上的冬眠艙。Photo Credit：The Outer Worlds Wiki*
 
 殖民船「希望號」載著數萬名科學家、工程師、醫生等精英殖民者前往 Halcyon 殖民地，結果因為跳躍事故遲到了幾十年，全員被無限期冷凍在軌道上。而 Halcyon 的董事會（由十家公司組成的殖民政府）做了什麼？**因為喚醒成本太高，乾脆把整艘船的人力資本晾在那裡**，任由殖民地在平庸管理和缺乏人才中慢性崩壞：食物短缺、科研停滯、經濟徹底板結。
 
@@ -200,4 +200,4 @@ tags:
 - [HBS — The Passive-Ownership Share Is Double What You Think It Is](https://www.hbs.edu/ris/Publication%20Files/double-what-you-think-it-is%20may%2023_3c1ae213-5aec-407d-b656-13e3822f0b8b.pdf)
 - [Apollo — Assessing the Impact of Passive Investing](https://www.apolloacademy.com/wp-content/uploads/2024/11/Passive-Investing-Paper-vF-112224_STAMPED.pdf)
 
-*本文為思想實驗與資訊整理，不構成任何投資建議。圖片授權：Wikimedia Commons 圖片依各自 CC 授權標示；遊戲截圖版權屬原公司，本文以評論與研究目的引用。*
+*本文為思想實驗與資訊整理，不構成任何投資建議。圖片來源：Wikimedia Commons 照片依各自授權引用（Vault Boy／SDCC 2011：CC BY-SA 2.0；Cryonics Institute：Ben Best，CC BY-SA 3.0；比特幣：Jorge Franganillo，CC BY 2.0；伺服器機房：Scott Beale，CC BY-SA 4.0）；遊戲截圖 © Bethesda Softworks 與 © Obsidian Entertainment / Private Division，分別引用自 Fallout Wiki 與 The Outer Worlds Wiki，評論用途。*
