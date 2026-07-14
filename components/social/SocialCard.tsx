@@ -39,9 +39,12 @@ export default function SocialCard({
       <div
         style={{
           backgroundColor: `rgba(2, 6, 23, ${overlayOpacity ?? (isPhoto ? 0.58 : 0.16)})`,
+          bottom: 0,
           display: 'flex',
-          inset: 0,
+          left: 0,
           position: 'absolute',
+          right: 0,
+          top: 0,
         }}
       />
       <div
