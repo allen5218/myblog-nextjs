@@ -14,14 +14,15 @@
     "headerMask": 0.3,
     "profile": {
       "name": "Allen",
-      "role": "數位工匠 / Student and builder",
+      "role": "Student / Builder",
       "location": "Taiwan"
     },
     "body": [
-      "Hey，我是與倫，一個對攝影、技術與人工智慧充滿熱情的數位工匠。我著迷於用鏡頭捕捉光影，也熱衷於用程式碼與架構打造穩固的數位世界。",
-      "我相信網路與容器化是現代技術的基石，並致力於探索其在 AI 應用與 Homelab 實踐中的無限可能。你可以把我想像成一個遊走在藝術與邏輯之間的探索者，既是攝影師，也是雲端原生的信徒。",
-      "目前專注於學習 pgvector 與 langchain，希望打造專屬的 RAG 知識庫，並透過 Model Context Protocol 將知識庫連接到各個地方。日常使用 Open WebUI 和 AnythingLLM，並對 OPNsense、容器化部署、CI/CD 及 DevOps 有濃厚興趣。",
-      "目前的物理活動範圍主要在台灣，也喜歡到處旅行。"
+      "嗨，我是與倫（Allen），目前是學生，喜歡把想法動手做出來。這個部落格記錄我在自架服務、AI 工具與日常思考上的實驗和筆記。",
+      "這裡主要寫三類東西：homelab 與自架服務，像是 [Vaultwarden](/2026/07/13/vaultwarden-cloudflare-tunnel/) 和 [Open WebUI](/2025/11/08/deploying-openwebui-for-free-with-cloudflare-tunnel/) 配 Cloudflare Tunnel 的部署；AI 工具的實戰心得，最近多半和 Claude Code 有關；以及偶爾的雜想——學習方法、動畫、思想實驗都可能出現。",
+      "這個網站本身也是作品之一：第一版是我用一個暑假和 Claude Code 拼出來的 Jekyll 部落格（[當時的實戰記錄](/2025/09/23/claude-code-jekyll-blog-journey/)），後來整個搬到了 Next.js，還在持續加東西。",
+      "不在終端機前的時候，我喜歡帶著相機出門，到處捕捉光影。",
+      "想聊聊的話，歡迎寫信到 [contact@allenspace.de](mailto:contact@allenspace.de)，或到 [GitHub](https://github.com/allen5218) 找我。"
     ]
   }
 }

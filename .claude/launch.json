@@ -12,6 +12,12 @@
       "runtimeExecutable": "yarn",
       "runtimeArgs": ["serve"],
       "port": 3000
+    },
+    {
+      "name": "myblog-nextjs-serve-3013",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["serve", "-p", "3013"],
+      "port": 3013
     }
   ]
 }
