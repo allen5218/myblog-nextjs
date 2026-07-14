@@ -21,6 +21,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `tsc --noEmit`,沒這個檔案,全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
+- `next/og` 的 `ImageResponse` 只支援 CSS 子集;全版 absolute overlay **不要用
+  `inset: 0` shorthand** — Satori 的 inline-style layout 不會把它展開,元素會沒有面積而
+  靜默消失。要明寫 `top`/`right`/`bottom`/`left: 0`,並用實際渲染 PNG 的像素測試驗證;
+  只測傳入 opacity 數值抓不到這類 renderer 相容性問題。
 - build 需要 HarfBuzz CLI(`hb-shape`/`hb-subset`,`brew install harfbuzz`)。
   對 HarfBuzz(或任何 CLI)傳非 ASCII 文字**一律用 `--text-file`/stdin,不要走 argv**
   — argv 會經過呼叫端 locale 的編碼轉換,在沒設 UTF-8 locale 的 shell(CI、
