@@ -69,6 +69,19 @@
     border-color: var(--color-gray-200, currentColor);
   }
 
+  /* Restore the Hux theme's text selection treatment in both color modes. */
+  ::-moz-selection {
+    color: white;
+    text-shadow: none;
+    background: #0085a1;
+  }
+
+  ::selection {
+    color: white;
+    text-shadow: none;
+    background: #0085a1;
+  }
+
   /* 瀏覽器原生 :focus-visible 對 <button> 點擊後也會顯示焦點框(規格上刻意如此,
      因為按鈕也能用 Enter/Space 鍵觸發,瀏覽器無法確定是滑鼠點擊還是鍵盤操作)。
      這裡預設不顯示,只有偵測到鍵盤 Tab 操作時(見 components/FocusVisibleFix.tsx,
