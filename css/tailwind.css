@@ -1167,7 +1167,7 @@ body {
 /* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。
    Hover 色沿用 .pager a:hover 的既有配色慣例(#0085a1 / #66c7e0),
    而非按鈕自己原本的深色 hover(#4db8d1)——為了與站內其他控制項一致,經確認採用。 */
-.back-top {
+.hux-elevator-control {
   position: fixed;
   right: 20px;
   bottom: 110px;
@@ -1191,31 +1191,31 @@ body {
     color 0.3s ease;
 }
 
-.back-top:hover,
-.back-top:focus-visible {
+.hux-elevator-control:hover,
+.hux-elevator-control:focus-visible {
   background-color: #0085a1;
   border-color: #0085a1;
   color: #fff;
 }
 
-.dark .back-top {
+.dark .hux-elevator-control {
   background: rgba(45, 45, 45, 0.9);
 }
 
-.dark .back-top:hover,
-.dark .back-top:focus-visible {
+.dark .hux-elevator-control:hover,
+.dark .hux-elevator-control:focus-visible {
   background-color: #66c7e0;
   border-color: #66c7e0;
   color: #fff;
 }
 
-.back-top-visible {
+.hux-elevator-control-visible {
   opacity: 1;
   pointer-events: auto;
 }
 
 @media (min-width: 768px) {
-  .back-top {
+  .hux-elevator-control {
     right: 4%;
   }
 
