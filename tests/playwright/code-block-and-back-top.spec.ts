@@ -35,7 +35,9 @@ test('返回頂部按鈕是方角,桌面/手機位置比照舊站', async ({ pag
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(postPath)
 
-  const backTop = page.locator('.back-top')
+  const backTop = page.getByRole('button', { name: 'Back to top' })
+  await expect(backTop).toHaveClass(/\bhux-elevator-control\b/)
+  await expect(backTop).not.toHaveClass(/\bback-top(?:-visible)?\b/)
   const radius = await backTop.evaluate((el) => getComputedStyle(el).borderRadius)
   expect(radius).toBe('0px')
 
@@ -55,10 +57,10 @@ test('返回頂部按鈕 hover 配色:淺色 #0085a1', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(postPath)
 
-  const backTop = page.locator('.back-top')
+  const backTop = page.getByRole('button', { name: 'Back to top' })
   // 按鈕預設 opacity:0 + pointer-events:none,要先捲過 250px 觸發顯示才能真正 hover 到它
   await page.mouse.wheel(0, 400)
-  await expect(backTop).toHaveClass(/back-top-visible/)
+  await expect(backTop).toHaveClass(/hux-elevator-control-visible/)
   await backTop.hover()
   await expect
     .poll(async () => backTop.evaluate((el) => getComputedStyle(el).backgroundColor))
@@ -70,9 +72,9 @@ test('返回頂部按鈕 hover 配色:深色 #66c7e0', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(postPath)
 
-  const backTop = page.locator('.back-top')
+  const backTop = page.getByRole('button', { name: 'Back to top' })
   await page.mouse.wheel(0, 400)
-  await expect(backTop).toHaveClass(/back-top-visible/)
+  await expect(backTop).toHaveClass(/hux-elevator-control-visible/)
   await backTop.hover()
   await expect
     .poll(async () => backTop.evaluate((el) => getComputedStyle(el).backgroundColor))
