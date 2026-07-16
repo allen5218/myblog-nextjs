@@ -92,6 +92,28 @@ describe('buildFontPlan', () => {
     expect(rebuilt.core.has(oldCoreCharacter)).toBe(true)
   })
 
+  test('retains historical core extras while buckets contain only the current corpus', () => {
+    const historicalCoreCharacter = 0x2603
+    const currentCoreCharacter = 0x41
+    const currentSupplementalCharacter = 0x4e00
+    const currentCorpus = new Set([currentCoreCharacter, currentSupplementalCharacter])
+
+    const plan = buildFontPlan({
+      corpus: corpusWith({
+        fixedSeed: new Set([currentCoreCharacter]),
+        documents: new Map([['current-post', new Set([currentSupplementalCharacter])]]),
+      }),
+      committedCore: new Set([historicalCoreCharacter, currentCoreCharacter]),
+      rebuildCore: true,
+    })
+
+    expect(plan.core.has(historicalCoreCharacter)).toBe(true)
+    const bucketCodePoints = new Set([...plan.buckets.values()].flatMap((bucket) => [...bucket]))
+    expect([...bucketCodePoints].every((codePoint) => currentCorpus.has(codePoint))).toBe(true)
+    const coveredCodePoints = new Set([...plan.core, ...bucketCodePoints])
+    expect([...currentCorpus].every((codePoint) => coveredCodePoints.has(codePoint))).toBe(true)
+  })
+
   test('partitions supported corpus into disjoint core and eight stable buckets', () => {
     const coreCharacter = 0x41
     const supplemental = [0x42, 0x43, 0x4e00, 0x4e07]
@@ -117,9 +139,11 @@ describe('buildFontPlan', () => {
         expect([...partitions[left]].filter((value) => partitions[right].has(value))).toEqual([])
       }
     }
-    expect(new Set(partitions.flatMap((partition) => [...partition]))).toEqual(
-      new Set([coreCharacter, ...supplemental])
-    )
+    const currentCorpus = new Set([coreCharacter, ...supplemental])
+    const coveredCodePoints = new Set(partitions.flatMap((partition) => [...partition]))
+    expect([...currentCorpus].every((codePoint) => coveredCodePoints.has(codePoint))).toBe(true)
+    const bucketCodePoints = new Set([...plan.buckets.values()].flatMap((bucket) => [...bucket]))
+    expect([...bucketCodePoints].every((codePoint) => currentCorpus.has(codePoint))).toBe(true)
   })
 })
 

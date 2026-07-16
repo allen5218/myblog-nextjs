@@ -168,7 +168,7 @@ expect(plan.buckets.get(codePoint % 8)?.has(codePoint)).toBe(true)
 expect(compressUnicodeRanges(new Set([0x41, 0x42, 0x44]))).toBe('U+0041-0042,U+0044')
 ```
 
-Also assert core/bucket pairwise disjointness, union equals supported corpus, deterministic sorting, empty buckets retained in the model, and ordinary update never changes committed core.
+Also assert core/bucket pairwise disjointness, every current supported-corpus code point is covered by the core/bucket union, buckets contain only current corpus code points, historical core extras are allowed, deterministic sorting, empty buckets retained in the model, and ordinary update never changes committed core.
 
 - [ ] **Step 2: Verify red**
 

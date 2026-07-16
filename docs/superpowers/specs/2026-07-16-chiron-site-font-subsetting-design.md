@@ -178,7 +178,7 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 - 文件頻率以 distinct document 計算；第五份文件觸發候選，單篇重複不會觸發。
 - 普通 update 不改 core；`--rebuild-core` 只新增、不刪除。
 - 相同 code point 永遠得到 `codePoint % 8` 的相同 bucket。
-- core 與 buckets 互斥，聯集等於 supported corpus；八個 buckets 彼此互斥。
+- core 與 buckets 互斥，八個 buckets 彼此互斥；目前 supported corpus 必須是 core 與 buckets 聯集的子集，buckets 必須是目前 corpus 的子集。單調核心可以保留已不在目前 corpus 的歷史字元，因此不要求聯集恰好等於目前 corpus。
 - Unicode range 會排序、去重、合併連續 code point。
 - Vercel 只可跳過動態 HarfBuzz 檢查，靜態 hash/manifest 錯誤仍失敗。
 
