@@ -32,36 +32,38 @@
 
 ## 架構
 
-以一個穩定核心和八個可重用 supplemental bucket 取代 `next/font/google`：
+以一個穩定核心和五個可重用 supplemental bucket 取代 `next/font/google`：
 
 - `core.woff2` 包含固定 UI 字集、ASCII，以及經明確操作納入的全站高頻字。
-- 低頻字依 Unicode code point 的固定函式分配至八個 bucket；瀏覽器透過 `unicode-range` 只下載頁面命中的檔案。
+- 核心外字元由 committed、schema v2 的 authoritative `codePoint -> bucket` assignment map 分配至 bucket `0`–`4`；瀏覽器透過 `unicode-range` 只下載頁面命中的檔案。
 - 所有檔案都是從同一份 Chiron Sung HK variable source 產生，保留完整 `wght` 200–900 axis、OpenType layout features 和必要 name table。
 - 生成的 WOFF2、CSS 與 manifest 全部 commit。Runtime 和 Vercel build 只讀靜態產物。
 - 自行生成 `@font-face`，不用 `next/font/local`。`next/font/local` 無法適當表達這組精細的多檔 `unicode-range` 規則；現有 `--font-chiron-sung-hk` CSS variable 則繼續作為使用端介面。
 
 ### 核心穩定政策
 
-核心字集由以下兩部分組成：
+核心字集由以下三部分組成：
 
 1. **固定 seed：** ASCII、網站 metadata、`dictionaries/zh-TW.json`、`dictionaries/en.json`，以及 Header、Footer、搜尋、分頁、離線頁等共用 UI 的靜態文字。
 2. **高頻集合：** 在 `data/blog/**` 中出現在至少五份不同 Markdown/MDX 文件的字符。頻率以「文件數」計算，同一篇文章重複出現只算一次，避免單篇長文主宰核心。
+3. **首頁單調 promotion：** 目前首頁五張 listed card 實際渲染的 `title`、`subtitle`、203 字 preview、author 與 tags 所需字元。更新時只做 `既有核心 ∪ 目前首頁字元`；卡片離開首頁不得使字元退出核心。
 
 一般 `yarn update:site-font` **不得重算核心**；它使用 committed `core-codepoints.txt`，只更新目前 corpus 所需的 supplemental buckets。只有人類明確執行 `yarn update:site-font --rebuild-core` 才能重算高頻候選。
 
-`--rebuild-core` 採單調擴充：新核心 = 既有核心 ∪ 固定 seed ∪ 目前高頻集合。字符不會因文章刪除或頻率下降而自動移出核心。若未來需要縮減核心，必須另開效能變更，明確編輯核心、量測首頁與代表文章、並接受核心檔 cache bust；本工具不提供自動 prune。
+`--rebuild-core` 採單調擴充：新核心 = 既有核心 ∪ 固定 seed ∪ 目前高頻集合 ∪ 目前首頁字元。字符不會因文章刪除、頻率下降或卡片離開首頁而自動移出核心。若未來需要縮減核心，必須另開效能變更，明確編輯核心、量測首頁與全部 15 個目前文章模型、並接受核心檔 cache bust；本工具不提供自動 prune。歷史核心字元即使已不在目前 corpus，仍是合法且必須保留的 committed state。
 
 這項政策讓新增文章通常只改一至數個 supplemental 檔；核心只在刻意進行的效能維護中改變。
 
 ### Supplemental bucket 穩定政策
 
-- 核心之外、且 Chiron source 支援的每個 code point 固定分配為 `codePoint % 8`，bucket 編號為 `0` 至 `7`。
-- bucket 數量和映射函式寫入 manifest schema，正常更新不得改動。
-- 新增字符只會加入其固定 bucket，不會讓既有字符移至其他檔案。
+- `font-data/chiron/supplemental-assignments.json` 是唯一 authoritative committed assignment，格式固定為 `{ "schemaVersion": 2, "bucketCount": 5, "assignments": { "4E00": 0, ... } }`。key 必須是排序、無前綴、大寫、至少四位 hex；value 只能是整數 `0`–`4`。
+- 初次 schema v1 → v2 migration 使用已核准 optimizer 結果：先把目前首頁字元單調 promotion 到 core，再把其餘字元依 15-page incidence signature 分組，以報告中的 deterministic initial-migration scan 建立五桶；生成實際 WOFF2 後必須達到首頁 294,108 bytes、最差文章不超過 543,560 bytes 的已量測候選，否則 migration 失敗。初始 assignment 一旦 commit，heuristic 不再於普通 update 重跑。
+- 正常更新逐一處理 ascending code point 的 genuinely new non-homepage 字元。對每桶計算該字元所在文件中 already-assigned characters 的 co-occurrence 總和及已命中頁數，依序選 `max co-occurrence`、`max touched pages`、`min committed artifact bytes`、`lowest bucket ID`。立即 commit 該 assignment；不得移動任何既有 assignment。
+- bucket count、placement policy 與 assignment schema 寫入 manifest schema v2。任何改動都是明確 schema/cache-bust migration，不是普通 update。
 - 每個 bucket 只包含目前完整 corpus 實際使用的字符，不把整段 Unicode block 塞入產物。
 - CSS 的 `unicode-range` 由該產物實際 code point 生成；連續 code point 合併成 range，其餘用單點 `U+XXXX`。
 - 空 bucket 不輸出 `@font-face` 或 WOFF2；manifest 仍記錄它是空集合。
-- 若日後實測八個 bucket 的請求開銷不理想，調整 bucket 數或函式屬架構版本變更，需新 manifest schema、production 網路量測和明確 cache-bust rollout，不可由更新腳本自動調整。
+- 若日後實測五個 bucket 的請求或 bytes 不理想，調整 bucket 數或 placement policy 屬架構版本變更，需新 manifest schema、production 網路量測和明確 cache-bust rollout，不可由更新腳本自動重平衡。
 
 ## 檔案邊界
 
@@ -72,7 +74,7 @@
 - `scripts/site-font-text.mjs`
   - 蒐集固定 seed、文章全文及其他站內可見文字；正規化字符並排除 emoji/control characters。
 - `scripts/site-font-plan.mjs`
-  - 高頻統計、核心單調擴充、`codePoint % 8` 分配、range 壓縮及 manifest model。
+  - 高頻與首頁單調 promotion、assignment map 解析／序列化／驗證、新字元 deterministic placement、range 壓縮及 manifest model。
 - `scripts/update-site-font.mjs`
   - 明確更新命令；呼叫 `hb-subset` 產生暫存 variable TTF，再以 `woff2_compress` 產生 WOFF2、內容 hash 檔名、CSS 和 manifest。
 - `scripts/check-site-font.mjs`
@@ -81,10 +83,12 @@
   - 集中定義 Vercel 缺 HarfBuzz 時可跳過哪些動態檢查；不可跳過 manifest/hash 靜態檢查。
 - `font-data/chiron/core-codepoints.txt`
   - 排序後、每行一個大寫十六進位 code point；為核心的 authoritative committed input。
+- `font-data/chiron/supplemental-assignments.json`
+  - schema v2、五桶的 authoritative sorted code-point assignment map；普通 update 只可 append 新 assignment 或刪除已 promotion 入 core 的 assignment，絕不可改變既有 supplemental 字元的 bucket。
 - `font-data/chiron/source.json`
   - source URL、upstream revision、SHA-256、family、axis 範圍與授權資訊。
 - `public/static/fonts/chiron/manifest.json`
-  - schema version、source hash、core policy、bucket policy、每個產物的字符、bytes 與 SHA-256。
+  - schema version 2、source hash、monotonic core/homepage policy、assignment policy/hash、五桶與每個產物的字符、bytes 與 SHA-256。
 - `public/static/fonts/chiron/*.woff2`
   - 內容 hash 檔名的 committed variable WOFF2。
 - `css/chiron-font.generated.css`
@@ -128,11 +132,11 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 1. `site-font-text.mjs` 掃描 UI seed、字典、metadata 和 `data/blog/**/*.{md,mdx,markdown}` 全文。
 2. 所有文字以 Unicode NFC 正規化；保留字母、數字、標點、數學符號與空格，排除 control、variation selector 和 emoji。emoji 明確交由現有 color-emoji fallback stack 顯示；排除字符仍由測試列出，避免過濾規則靜默擴張。
-3. `site-font-plan.mjs` 讀取 committed core；只有 `--rebuild-core` 才將符合五文件門檻的字符單調加入並寫回 `core-codepoints.txt`。
+3. `site-font-plan.mjs` 讀取 committed core 與 assignment map；只有 `--rebuild-core` 才將符合五文件門檻與目前首頁模型的字符單調加入並寫回 `core-codepoints.txt`，同時從 assignment map 移除這些已進 core 的字符。
 4. 對 source cmap 驗證 corpus。若站內字符不在 Chiron source，命令列出 code point、字符及來源檔案後失敗；必須由人類決定是否允許 fallback，不能默默忽略。
-5. 非核心字符以 `codePoint % 8` 分配。
+5. 現有非核心字符必須沿用 assignment map。新字符依 `max co-occurrence → max touched pages → min committed artifact bytes → lowest bucket ID` 放置；以 ascending code point 逐一更新 working assignment，使同一輸入必得同一輸出。只有明確 `--migrate-assignments-v2` 可從 optimizer 的 incidence-group algorithm 建立第一次五桶 map，且若 map 已存在就拒絕執行。
 6. 每個非空集合使用 `hb-subset` 產生暫存 variable TTF，輸入文字必須走 UTF-8 `--text-file`，並指定 `--layout-features=*` 保留 layout tables/features，同時指定 `--no-layout-closure` 與 `--no-bidi-closure`，避免 GSUB closure 或 bidi mirrored-pair closure 把未規劃的相鄰／核心 Unicode cmap 映射（例如 U+300A/U+300B）帶入 supplemental artifact；另保留必要 name table、glyph names 和完整 `wght` axis（不得傳入會 instantiate axis 的 `--variations`）。再以 `woff2_compress` 將暫存 TTF 轉成 WOFF2，先檢查 `wOF2` magic，並以 `woff2_decompress` 驗證結構可解壓；不得將 CJK 文字放入 argv。Task 4 只負責容器結構，完整 cmap、glyph coverage、shaping 與 axis semantic checks 屬 Task 5，且 full checker 必須證明此 closure 政策未造成缺字或 shaping 失敗。
-7. TTF、WOFF2、manifest、CSS 與重建後 core 全部先寫入 temp staging directory。全部生成與結構驗證成功後，才把 fonts directory、generated CSS 與（僅 `--rebuild-core`）core data 視為單一 transaction 同步；任一步驟失敗都反向還原三者。備份使用不可預測的唯一 sibling 路徑，不預先刪除；一致狀態 commit 後的備份清理為 best-effort，清理失敗不得觸發局部 rollback。
+7. TTF、WOFF2、manifest、CSS、assignment map 與重建後 core 全部先寫入 temp staging directory。全部生成與結構驗證成功後，才把 fonts directory、generated CSS、assignment map 與（僅 `--rebuild-core`）core data 視為單一 transaction 同步；任一步驟失敗都反向還原全部 outputs。備份使用不可預測的唯一 sibling 路徑，不預先刪除；一致狀態 commit 後的備份清理為 best-effort，清理失敗不得觸發局部 rollback。
 8. WOFF2 檔名為內容 SHA-256 前 16 個 hex，例如 `core.a1b2c3d4e5f60718.woff2`、`supplement-3.….woff2`。
 9. 生成 manifest，再由 manifest 生成 CSS；CSS 中所有 face 使用相同 family、`font-style: normal`、`font-weight: 200 900`、`font-display: swap` 和精確 `unicode-range`。同一份 generated CSS 在 `:root` 定義 `--font-chiron-sung-hk: 'Chiron Sung HK'`，取代原本由 `next/font` class 注入的 variable；`app/layout.tsx` 不再需要字型 class。
 10. 清除不再被新 manifest 引用的舊 hashed WOFF2，但只限 `public/static/fonts/chiron/`，不得清理其他字型。
@@ -149,14 +153,14 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 ### Vercel
 
 - Vercel 沒有 HarfBuzz／`woff2_compress`／`woff2_decompress`，因此不生成字型。
-- `yarn build` 的 `check:site-font` 永遠執行 manifest schema、檔案存在、檔案 SHA-256、CSS 引用和 core/bucket 集合一致性檢查。
+- `yarn build` 的 `check:site-font` 永遠執行 manifest schema v2、assignment schema/hash、檔案存在、檔案 SHA-256、CSS 引用和 core/bucket 集合一致性檢查。
 - `VERCEL=1` 且找不到 `hb-shape`／`hb-subset` 時，可以明確警告後跳過 glyph shaping、axis inspection 和 regenerate freshness 的動態部分；不能跳過上述靜態檢查。
 
 ### GitHub Actions
 
 - 沿用 `.github/workflows/og-font-check.yml` 的 required `check` job；Task 7 必須安裝 `libharfbuzz-bin` 與提供 `woff2_compress` 的 Ubuntu `woff2` 套件。
 - 在 `yarn check:og-font` 後執行 `yarn check:site-font --full`。
-- Full check 必須驗證全部 corpus 無 `.notdef`、每個產物 cmap 與 manifest 相符、`wght` axis 覆蓋 200–900，以及使用 committed core/bucket plan 重產的字符集合沒有過期。
+- Full check 必須驗證全部 corpus 無 `.notdef`、每個產物 cmap 與 manifest／assignment 相符、`wght` axis 覆蓋 200–900、普通 update 不會改派任何既有字符，以及首頁／全部 15 個目前文章模型符合 exact-byte budgets。
 - 不要求 Linux 重產檔案和 macOS committed WOFF2 byte-for-byte 相等；跨平台 HarfBuzz 版本可能造成二進位差異。CI 驗字符集合、實際 glyph、axis 和 committed hash 自洽，而非重新生成 bytes 比對。
 - required workflow 不加 `paths:` filter，避免沒有回報 context 導致 PR 永久 pending。
 
@@ -177,8 +181,9 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 - 固定 seed 包含 ASCII、雙語字典、metadata 與共用 UI。
 - 文件頻率以 distinct document 計算；第五份文件觸發候選，單篇重複不會觸發。
 - 普通 update 不改 core；`--rebuild-core` 只新增、不刪除。
-- 相同 code point 永遠得到 `codePoint % 8` 的相同 bucket。
-- core 與 buckets 互斥，八個 buckets 彼此互斥；目前 supported corpus 必須是 core 與 buckets 聯集的子集，buckets 必須是目前 corpus 的子集。單調核心可以保留已不在目前 corpus 的歷史字元，因此不要求聯集恰好等於目前 corpus。
+- 首頁 promotion 只新增、不刪除；離開首頁的字符仍留在 core。
+- committed assignment 的既有 supplemental code point 在新增文章／字符後仍保持原 bucket；新字元依明確 score 與 tie-break 得到 deterministic bucket。
+- core 與五個 buckets 互斥，五個 buckets 彼此互斥；目前 supported corpus 必須是 core 與 buckets 聯集的子集，bucket 產物只包含目前 corpus，但 assignment map 可以保留已離開 corpus 的歷史 supplemental 字元，避免其日後回歸時改派。單調核心也可以保留歷史字元，因此不要求 committed core/assignment 恰好等於目前 corpus。
 - Unicode range 會排序、去重、合併連續 code point。
 - Vercel 只可跳過動態 HarfBuzz 檢查，靜態 hash/manifest 錯誤仍失敗。
 
@@ -201,13 +206,13 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 ### 視覺與效能驗收
 
 - 比對首頁、文章、搜尋、深色模式、繁中／英文、粗體與標點截圖；不可出現 tofu、明顯 font swap layout shift 或字重退化。
-- 在 production 網路記錄首頁字型 transfer。第一版接受標準：不超過 350,000 bytes，且不超過兩個字型請求。
-- 代表文章首次直入的總字型 transfer 接受標準：不超過 550 KB。
+- 在 production 網路記錄首頁字型 transfer。第一版 hard gate：不超過 **350,000 bytes**，且不超過兩個字型請求。
+- 全部 15 個目前文章模型的首次直入總字型 transfer hard gate：每頁不超過 **550,000 bytes**；候選優先序為最小化 worst bytes，再最小化 mean bytes，再最小化 requests。
 - 部署後重跑 PageSpeed Insights；記錄 FCP、LCP、總傳輸量與字型請求，作為結果而非以單次 Lighthouse 分數作 merge gate。
 
 ## Rollout
 
-1. 先只加入 collector、planner、生成器與 tests，生成 committed WOFF2/CSS/manifest；網站仍使用 `next/font/google`，比較產物字符與 bytes。
+1. 先以明確 `--migrate-assignments-v2` 建立並 review `supplemental-assignments.json`，再由 collector、planner、生成器與 tests 生成 schema v2 committed WOFF2/CSS/manifest；網站仍使用 `next/font/google`，比較產物字符與 exact bytes。migration 必須重現核准的五桶 budget 結果。
 2. Full CI 通過後，在同一功能分支切換 `app/layout.tsx` 至 generated CSS，保留 CSS variable 和 fallback stack。
 3. 跑 production Playwright、完整 unit/CI、字型網路量測與代表頁視覺檢查。
 4. 更新中英文功能手冊；若 README 的 self-host 描述不再正確則同步更新。
@@ -218,6 +223,7 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 - 回滾單一功能提交即可恢復 `next/font/google` 的 `Chiron_Sung_HK` 初始化與原 `app/layout.tsx` class；不需要改內容或 OG 字型。
 - 回滾時移除 generated CSS import，但 hashed WOFF2 即使暫留也不會被請求；可在後續非緊急 cleanup 提交移除。
+- schema v2 上線前保留 schema v1 commit 可回滾；不得把 v2 assignment map 用 v1 `%` 規則解讀。若 migration 驗收失敗，整批回滾 core、assignment、manifest、CSS 與 WOFF2，不做部分回派。
 - 不用清除使用者 browser cache：舊 hashed files 與 `next/font` 新 URL 不衝突。
 - 若只是一個 supplemental bucket 缺字，先回滾整個切換，不在 production 手改 generated CSS 或 manifest。
 
@@ -251,7 +257,9 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 ## 實作前不可變決策
 
 - 核心 = 固定 UI seed + 至少五份文件使用的高頻字，且只透過 `--rebuild-core` 單調擴充。
-- Supplemental 使用八個固定 `codePoint % 8` buckets。
+- Supplemental 使用五個固定 bucket 與 schema v2 committed authoritative assignment map；普通更新永不重平衡既有 code point。
+- 首頁字元只可單調 promotion 入 core；新字元 placement 與 tie-break 固定為 `max co-occurrence → max touched pages → min committed artifact bytes → lowest bucket ID`。
+- hard budgets 為首頁 350,000 bytes／最多兩個 requests，以及目前全部 15 篇文章各 550,000 bytes。
 - 網頁產物為 committed variable WOFF2；OG 固定字重 TTF 維持獨立。
 - Vercel 不生成字型；GitHub required `check` 補完整 HarfBuzz 驗證。
 - 字型同源、自訂 `@font-face`、`unicode-range` 與 hashed immutable URLs；不依賴圖片 CDN。
