@@ -3,7 +3,11 @@ import { describe, expect, test } from 'vitest'
 import {
   buildFontPlan,
   compressUnicodeRanges,
+  migrateAssignmentsV2,
+  parseAssignments,
   parseCodepoints,
+  placeNewAssignments,
+  serializeAssignments,
   serializeCodepoints,
 } from '../../scripts/site-font-plan.mjs'
 
@@ -25,134 +29,256 @@ const corpusWith = ({
   return { fixedSeed, documents, occurrences, excluded: new Map() }
 }
 
-describe('code point files', () => {
-  test('parses whitespace-separated hexadecimal code points as numbers', () => {
+const bytes = [500, 400, 300, 200, 100]
+
+describe('committed data formats', () => {
+  test('parses and deterministically serializes code points', () => {
     expect(parseCodepoints('0042\n0041 1F600\n')).toEqual(new Set([0x42, 0x41, 0x1f600]))
+    expect(serializeCodepoints(new Set([0x1f600, 0x42, 0x41]))).toBe('0041\n0042\n1F600\n')
   })
 
-  test('serializes sorted uppercase code points deterministically', () => {
-    expect(serializeCodepoints(new Set([0x1f600, 0x42, 0x41]))).toBe('0041\n0042\n1F600\n')
+  test('validates assignment schema, keys, values, and duplicates', () => {
+    expect(() => parseAssignments('{"schemaVersion":1,"bucketCount":5,"assignments":{}}')).toThrow(
+      /schemaVersion/
+    )
+    expect(() => parseAssignments('{"schemaVersion":2,"bucketCount":4,"assignments":{}}')).toThrow(
+      /bucketCount/
+    )
+    expect(() =>
+      parseAssignments('{"schemaVersion":2,"bucketCount":5,"assignments":{"xyz":0}}')
+    ).toThrow(/code point/i)
+    expect(() =>
+      parseAssignments('{"schemaVersion":2,"bucketCount":5,"assignments":{"0041":5}}')
+    ).toThrow(/bucket/i)
+    expect(() =>
+      parseAssignments('{"schemaVersion":2,"bucketCount":5,"assignments":{"0041":0,"41":1}}')
+    ).toThrow(/duplicate/i)
+  })
+
+  test('serializes assignments sorted and byte-identically', () => {
+    const assignments = new Map([
+      [0x4e00, 4],
+      [0x42, 2],
+      [0x41, 1],
+    ])
+    const expected = `{
+  "schemaVersion": 2,
+  "bucketCount": 5,
+  "assignments": {
+    "0041": 1,
+    "0042": 2,
+    "4E00": 4
+  }
+}\n`
+    expect(serializeAssignments(assignments)).toBe(expected)
+    expect(serializeAssignments(parseAssignments(expected))).toBe(expected)
+  })
+})
+
+describe('stable placement', () => {
+  test('uses maximum co-occurrence first', () => {
+    const next = 0x50
+    const result = placeNewAssignments({
+      corpus: corpusWith({ documents: new Map([['p', new Set([0x41, 0x42, next])]]) }),
+      core: new Set(),
+      committedAssignments: new Map([
+        [0x41, 1],
+        [0x42, 1],
+      ]),
+      artifactBytes: bytes,
+    })
+    expect(result.get(next)).toBe(1)
+  })
+
+  test('then uses maximum touched pages', () => {
+    const next = 0x50
+    const result = placeNewAssignments({
+      corpus: corpusWith({
+        documents: new Map([
+          ['p1', new Set([0x41, 0x42, 0x43, next])],
+          ['p2', new Set([0x44, next])],
+        ]),
+      }),
+      core: new Set(),
+      committedAssignments: new Map([
+        [0x41, 0],
+        [0x42, 0],
+        [0x43, 1],
+        [0x44, 1],
+      ]),
+      artifactBytes: bytes,
+    })
+    expect(result.get(next)).toBe(1)
+  })
+
+  test('then uses minimum committed artifact bytes and lowest bucket ID', () => {
+    const corpus = corpusWith({ documents: new Map([['p', new Set([0x50])]]) })
+    expect(
+      placeNewAssignments({
+        corpus,
+        core: new Set(),
+        committedAssignments: new Map(),
+        artifactBytes: [500, 100, 100, 200, 300],
+      }).get(0x50)
+    ).toBe(1)
+  })
+
+  test('processes new characters ascending and never moves historical assignments', () => {
+    const committed = new Map([
+      [0x41, 3],
+      [0x2603, 4],
+    ])
+    const corpus = corpusWith({ documents: new Map([['p', new Set([0x41, 0x51, 0x50])]]) })
+    const first = placeNewAssignments({
+      corpus,
+      core: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+    })
+    const second = placeNewAssignments({
+      corpus,
+      core: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+    })
+    expect([...first.keys()].slice(-2)).toEqual([0x50, 0x51])
+    expect(first.get(0x41)).toBe(3)
+    expect(first.get(0x2603)).toBe(4)
+    expect(serializeAssignments(first)).toBe(serializeAssignments(second))
   })
 })
 
 describe('buildFontPlan', () => {
-  test('ordinary updates preserve the committed core without promotions', () => {
-    const committedCore = new Set([0x41])
-    const corpus = corpusWith({
-      fixedSeed: new Set([0x42]),
-      documents: new Map(
-        Array.from({ length: 5 }, (_, index) => [`post-${index}`, new Set([0x43])])
-      ),
-    })
-
-    const plan = buildFontPlan({ corpus, committedCore, rebuildCore: false })
-
-    expect(plan.core).toEqual(committedCore)
-    expect(plan.promoted.size).toBe(0)
-  })
-
-  test('the fifth distinct document promotes a character only during rebuild', () => {
-    const shared = 0x4e00
-    const fiveDocuments = new Map(
-      Array.from({ length: 5 }, (_, index) => [`post-${index}`, new Set([shared])])
-    )
-    const fourDocuments = new Map([...fiveDocuments].slice(0, 4))
-
-    const planWithFiveDocuments = buildFontPlan({
-      corpus: corpusWith({ documents: fiveDocuments }),
-      committedCore: new Set(),
-      rebuildCore: true,
-    })
-    const planWithFourDocuments = buildFontPlan({
-      corpus: corpusWith({ documents: fourDocuments }),
-      committedCore: new Set(),
-      rebuildCore: true,
-    })
-
-    expect(planWithFiveDocuments.core.has(shared)).toBe(true)
-    expect(planWithFiveDocuments.promoted.has(shared)).toBe(true)
-    expect(planWithFourDocuments.core.has(shared)).toBe(false)
-  })
-
-  test('rebuild is a monotonic union of old core, fixed seed, and high-frequency characters', () => {
-    const oldCoreCharacter = 0x2603
-    const fixedSeedCharacter = 0x41
-    const frequentCharacter = 0x4e00
-    const documents = new Map(
-      Array.from({ length: 5 }, (_, index) => [`post-${index}`, new Set([frequentCharacter])])
-    )
-
-    const rebuilt = buildFontPlan({
-      corpus: corpusWith({ fixedSeed: new Set([fixedSeedCharacter]), documents }),
-      committedCore: new Set([oldCoreCharacter]),
-      rebuildCore: true,
-    })
-
-    expect(rebuilt.core).toEqual(new Set([oldCoreCharacter, fixedSeedCharacter, frequentCharacter]))
-    expect(rebuilt.core.has(oldCoreCharacter)).toBe(true)
-  })
-
-  test('retains historical core extras while buckets contain only the current corpus', () => {
-    const historicalCoreCharacter = 0x2603
-    const currentCoreCharacter = 0x41
-    const currentSupplementalCharacter = 0x4e00
-    const currentCorpus = new Set([currentCoreCharacter, currentSupplementalCharacter])
-
+  test('ordinary updates preserve committed core and existing buckets', () => {
     const plan = buildFontPlan({
-      corpus: corpusWith({
-        fixedSeed: new Set([currentCoreCharacter]),
-        documents: new Map([['current-post', new Set([currentSupplementalCharacter])]]),
-      }),
-      committedCore: new Set([historicalCoreCharacter, currentCoreCharacter]),
-      rebuildCore: true,
-    })
-
-    expect(plan.core.has(historicalCoreCharacter)).toBe(true)
-    const bucketCodePoints = new Set([...plan.buckets.values()].flatMap((bucket) => [...bucket]))
-    expect([...bucketCodePoints].every((codePoint) => currentCorpus.has(codePoint))).toBe(true)
-    const coveredCodePoints = new Set([...plan.core, ...bucketCodePoints])
-    expect([...currentCorpus].every((codePoint) => coveredCodePoints.has(codePoint))).toBe(true)
-  })
-
-  test('partitions supported corpus into disjoint core and eight stable buckets', () => {
-    const coreCharacter = 0x41
-    const supplemental = [0x42, 0x43, 0x4e00, 0x4e07]
-    const corpus = corpusWith({
-      fixedSeed: new Set([coreCharacter]),
-      documents: new Map([['post', new Set(supplemental)]]),
-    })
-
-    const plan = buildFontPlan({
-      corpus,
-      committedCore: new Set([coreCharacter]),
+      corpus: corpusWith({ documents: new Map([['p', new Set([0x41, 0x42])]]) }),
+      homepage: new Set([0x42]),
+      committedCore: new Set([0x41]),
+      committedAssignments: new Map([[0x42, 2]]),
+      artifactBytes: bytes,
       rebuildCore: false,
     })
+    expect(plan.core).toEqual(new Set([0x41]))
+    expect(plan.promoted.size).toBe(0)
+    expect(plan.assignments.get(0x42)).toBe(2)
+  })
 
-    expect([...plan.buckets.keys()]).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
-    for (const codePoint of supplemental) {
-      expect(plan.buckets.get(codePoint % 8)?.has(codePoint)).toBe(true)
-    }
+  test('rebuild monotonically adds fixed, homepage, and five-document characters', () => {
+    const shared = 0x4e00
+    const previousHomepageCharacter = 0x2603
+    const documents = new Map(
+      Array.from({ length: 5 }, (_, index) => [`post-${index}`, new Set([shared])])
+    )
+    const rebuilt = buildFontPlan({
+      corpus: corpusWith({ fixedSeed: new Set([0x42]), documents }),
+      homepage: new Set([0x43]),
+      committedCore: new Set([0x41, previousHomepageCharacter]),
+      committedAssignments: new Map([[0x43, 2]]),
+      artifactBytes: bytes,
+      rebuildCore: true,
+    })
+    expect(rebuilt.core).toEqual(new Set([0x41, previousHomepageCharacter, 0x42, 0x43, shared]))
+    expect(rebuilt.core.has(previousHomepageCharacter)).toBe(true)
+    expect(rebuilt.assignments.has(0x43)).toBe(false)
+    expect(rebuilt.promoted).toEqual(new Set([0x42, 0x43, shared]))
 
+    const fourDocuments = new Map([...documents].slice(0, 4))
+    const withoutFifth = buildFontPlan({
+      corpus: corpusWith({ documents: fourDocuments }),
+      homepage: new Set(),
+      committedCore: new Set(),
+      committedAssignments: new Map(),
+      artifactBytes: bytes,
+      rebuildCore: true,
+    })
+    expect(withoutFifth.core.has(shared)).toBe(false)
+  })
+
+  test('keeps historical assignment extras and creates all five disjoint buckets', () => {
+    const historical = 0x2603
+    const plan = buildFontPlan({
+      corpus: corpusWith({ documents: new Map([['p', new Set([0x41, 0x42])]]) }),
+      homepage: new Set(),
+      committedCore: new Set([0x41, 0x2708]),
+      committedAssignments: new Map([
+        [0x42, 2],
+        [historical, 4],
+      ]),
+      artifactBytes: bytes,
+      rebuildCore: false,
+    })
+    expect([...plan.buckets.keys()]).toEqual([0, 1, 2, 3, 4])
+    expect(plan.buckets.get(0)?.size).toBe(0)
+    expect(plan.assignments.get(historical)).toBe(4)
+    expect(plan.buckets.get(4)?.has(historical)).toBe(true)
     const partitions = [plan.core, ...plan.buckets.values()]
     for (let left = 0; left < partitions.length; left += 1) {
       for (let right = left + 1; right < partitions.length; right += 1) {
-        expect([...partitions[left]].filter((value) => partitions[right].has(value))).toEqual([])
+        expect([...partitions[left]].some((value) => partitions[right].has(value))).toBe(false)
       }
     }
-    const currentCorpus = new Set([coreCharacter, ...supplemental])
-    const coveredCodePoints = new Set(partitions.flatMap((partition) => [...partition]))
-    expect([...currentCorpus].every((codePoint) => coveredCodePoints.has(codePoint))).toBe(true)
-    const bucketCodePoints = new Set([...plan.buckets.values()].flatMap((bucket) => [...bucket]))
-    expect([...bucketCodePoints].every((codePoint) => currentCorpus.has(codePoint))).toBe(true)
+    expect(new Set(partitions.flatMap((partition) => [...partition]))).toEqual(
+      new Set([0x41, 0x42, historical, 0x2708])
+    )
+  })
+
+  test('adding documents and new characters cannot rebalance existing assignments', () => {
+    const committed = new Map([[0x41, 3]])
+    const before = buildFontPlan({
+      corpus: corpusWith({ documents: new Map([['p1', new Set([0x41])]]) }),
+      homepage: new Set(),
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+      rebuildCore: false,
+    })
+    const after = buildFontPlan({
+      corpus: corpusWith({
+        documents: new Map([
+          ['p1', new Set([0x41])],
+          ['p2', new Set([0x41, 0x42])],
+        ]),
+      }),
+      homepage: new Set(),
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+      rebuildCore: false,
+    })
+    expect(before.assignments.get(0x41)).toBe(3)
+    expect(after.assignments.get(0x41)).toBe(3)
+    expect(after.newlyAssigned).toEqual(new Set([0x42]))
+  })
+})
+
+describe('initial v2 migration', () => {
+  test('groups identical incidence signatures and is deterministic', () => {
+    const corpus = corpusWith({
+      documents: new Map([
+        ['a', new Set([0x41, 0x42])],
+        ['b', new Set([0x41, 0x42, 0x43])],
+      ]),
+    })
+    const first = migrateAssignmentsV2({
+      corpus,
+      homepage: new Set([0x43]),
+      committedCore: new Set(),
+    })
+    const second = migrateAssignmentsV2({
+      corpus,
+      homepage: new Set([0x43]),
+      committedCore: new Set(),
+    })
+    expect(first.schemaVersion).toBe(2)
+    expect(first.bucketCount).toBe(5)
+    expect(first.assignments.get(0x41)).toBe(first.assignments.get(0x42))
+    expect(serializeAssignments(first.assignments)).toBe(serializeAssignments(second.assignments))
   })
 })
 
 describe('compressUnicodeRanges', () => {
-  test('sorts, deduplicates, and compresses adjacent code points', () => {
-    expect(compressUnicodeRanges(new Set([0x44, 0x42, 0x41, 0x42]))).toBe('U+0041-0042,U+0044')
-  })
-
-  test('returns an empty string for an empty set', () => {
+  test('sorts and compresses adjacent code points', () => {
+    expect(compressUnicodeRanges(new Set([0x41, 0x42, 0x44]))).toBe('U+0041-0042,U+0044')
     expect(compressUnicodeRanges(new Set())).toBe('')
   })
 })
