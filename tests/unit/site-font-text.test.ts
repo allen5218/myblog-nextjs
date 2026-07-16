@@ -13,7 +13,7 @@ afterEach(async () => {
   )
 })
 
-async function fixtureRoot({ includeFlag = false } = {}) {
+async function fixtureRoot({ includeFlag = false, includeKeycap = false } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'site-font-text-'))
   fixtureRoots.push(root)
   await Promise.all([
@@ -29,7 +29,7 @@ async function fixtureRoot({ includeFlag = false } = {}) {
   await writeFile(path.join(root, 'dictionaries/en.json'), '{"nav":{"home":"Home"}}')
   await writeFile(
     path.join(root, 'data/blog/one.md'),
-    `# 臺共共\ne\u0301 😀\ufe0f${includeFlag ? ' 🇹🇼' : ''}\u0001`
+    `# 臺共共\ne\u0301 😀\ufe0f${includeFlag ? ' 🇹🇼' : ''}${includeKeycap ? ' 1️⃣' : ''}\u0001`
   )
   await writeFile(path.join(root, 'data/blog/nested/two.mdx'), '# 共\né')
   await writeFile(path.join(root, 'data/blog/nested/three.markdown'), '# Third')
@@ -45,6 +45,7 @@ describe('collectSiteFontCorpus', () => {
     const corpus = await collectSiteFontCorpus(await fixtureRoot())
 
     expect(corpus.fixedSeed).toContain('A'.codePointAt(0))
+    expectSeedToCover(corpus.fixedSeed, '1#*')
     expectSeedToCover(
       corpus.fixedSeed,
       'Previous Next Search articles Theme switcher Light Dark System Toggle navigation'
@@ -77,6 +78,13 @@ describe('collectSiteFontCorpus', () => {
     expect(corpus.excluded.get('emoji')).toContain('🇼'.codePointAt(0))
     expect(corpus.excluded.get('variation-selector')).toContain(0xfe0f)
     expect(corpus.excluded.get('control')).toContain(1)
+  })
+
+  it('records the enclosing keycap component as emoji without excluding its ASCII base', async () => {
+    const corpus = await collectSiteFontCorpus(await fixtureRoot({ includeKeycap: true }))
+
+    expect(corpus.documents.get('data/blog/one.md')).toContain('1'.codePointAt(0))
+    expect(corpus.excluded.get('emoji')).toContain(0x20e3)
   })
 
   it('rejects categories that are neither supported nor explicitly excluded', async () => {

@@ -61,7 +61,8 @@ function exclusionCategory(character) {
   if (/\p{Cc}|\p{Cf}/u.test(character)) return 'control'
   if (
     /\p{Extended_Pictographic}|\p{Emoji_Modifier}/u.test(character) ||
-    (codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff)
+    (codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff) ||
+    codePoint === 0x20e3
   ) {
     return 'emoji'
   }
