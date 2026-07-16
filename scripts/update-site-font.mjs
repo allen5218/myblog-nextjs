@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 
 import {
   buildFontPlan,
-  compressUnicodeRanges,
   corpusFromGeneratedBlogs,
   homepageFromGeneratedBlogs,
   parseAssignments,
@@ -15,6 +14,7 @@ import {
   serializeAssignments,
   serializeCodepoints,
 } from './site-font-plan.mjs'
+import { renderSiteFontCss } from './site-font-css.mjs'
 import { ensureSourceFont, loadSourceMetadata } from './site-font-source.mjs'
 import { classifySiteFontCodePoint, collectSiteFontCorpus } from './site-font-text.mjs'
 
@@ -40,22 +40,6 @@ const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
 async function defaultRunner(command, args) {
   await execFileAsync(command, args)
-}
-
-function cssFor(artifacts) {
-  const faces = artifacts
-    .map(
-      (artifact) => `@font-face {
-  font-family: 'Chiron Sung HK';
-  src: url('/static/fonts/chiron/${artifact.file}') format('woff2');
-  font-style: normal;
-  font-weight: 200 900;
-  font-display: swap;
-  unicode-range: ${compressUnicodeRanges(artifact.codePoints.map((value) => Number.parseInt(value, 16)))};
-}`
-    )
-    .join('\n\n')
-  return `:root { --font-chiron-sung-hk: 'Chiron Sung HK'; }\n\n${faces}\n`
 }
 
 /** @param {SiteFontGenerationOptions} options */
@@ -170,7 +154,7 @@ export async function generateSiteFontArtifacts({
       path.join(stagedFonts, 'manifest.json'),
       `${JSON.stringify(manifest, null, 2)}\n`
     )
-    await fs.writeFile(stagedCss, cssFor(artifacts))
+    await fs.writeFile(stagedCss, renderSiteFontCss(artifacts))
     const stagedCore = coreOutput ? path.join(stagingRoot, 'core-codepoints.txt') : undefined
     if (stagedCore) await fs.writeFile(stagedCore, serializeCodepoints(core))
     const stagedAssignments = assignmentOutput

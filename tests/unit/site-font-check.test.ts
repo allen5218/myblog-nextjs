@@ -7,10 +7,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   checkSiteFont,
+  validateCanonicalSiteFontCss,
   validateAssignmentHistory,
   validateFixedSeedCore,
   validatePageBudgets,
 } from '../../scripts/check-site-font.mjs'
+import { renderSiteFontCss } from '../../scripts/site-font-css.mjs'
 import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
 
 const roots: string[] = []
@@ -121,14 +123,7 @@ async function fixture() {
       path.join(root, 'public/static/fonts/chiron/manifest.json'),
       `${JSON.stringify(manifest)}\n`
     ),
-    fs.writeFile(
-      path.join(root, 'css/chiron-font.generated.css'),
-      artifacts
-        .map(
-          ({ file }) => `@font-face { src: url('/static/fonts/chiron/${file}') format('woff2'); }`
-        )
-        .join('\n')
-    ),
+    fs.writeFile(path.join(root, 'css/chiron-font.generated.css'), renderSiteFontCss(artifacts)),
   ])
   return { root, manifest }
 }
@@ -263,7 +258,7 @@ describe('site font checks', () => {
     await writeManifest(root, manifest)
     await fs.writeFile(
       path.join(root, 'css/chiron-font.generated.css'),
-      `@font-face { src: url('/static/fonts/chiron/${file}') format('woff2'); }`
+      renderSiteFontCss(manifest.artifacts)
     )
     await expect(checkSiteFont({ root })).rejects.toThrow(/homepage.*350000/i)
   })
@@ -271,7 +266,43 @@ describe('site font checks', () => {
   it('fails when generated CSS does not reference every artifact exactly once', async () => {
     const { root, manifest } = await fixture()
     await fs.writeFile(path.join(root, 'css/chiron-font.generated.css'), '')
-    await expect(checkSiteFont({ root })).rejects.toThrow(/CSS reference/)
+    await expect(checkSiteFont({ root })).rejects.toThrow(/canonical CSS/i)
+  })
+
+  for (const [name, mutate] of [
+    ['unicode range', (css: string) => css.replace('unicode-range:', 'unicode-range: U+FFFF,')],
+    ['weight', (css: string) => css.replace('font-weight: 200 900;', 'font-weight: 400;')],
+    ['family', (css: string) => css.replaceAll('Chiron Sung HK', 'Wrong Family')],
+    ['display', (css: string) => css.replace('font-display: swap;', 'font-display: block;')],
+    ['URL', (css: string) => css.replace('/static/fonts/chiron/', '/wrong/')],
+    [
+      'face order',
+      (css: string) => {
+        const faces = css.match(/@font-face \{[\s\S]*?\n\}/g) ?? []
+        return faces.length > 1
+          ? css.replace(faces.join('\n\n'), [...faces].reverse().join('\n\n'))
+          : `${css}\n@font-face { font-family: 'Chiron Sung HK'; }\n`
+      },
+    ],
+  ] as const) {
+    it(`rejects generated CSS with mutated ${name}`, async () => {
+      const { root } = await fixture()
+      const cssPath = path.join(root, 'css/chiron-font.generated.css')
+      await fs.writeFile(cssPath, mutate(await fs.readFile(cssPath, 'utf8')))
+      await expect(checkSiteFont({ root })).rejects.toThrow(/canonical CSS/i)
+    })
+  }
+
+  it('rejects reordered canonical font faces', () => {
+    const artifacts = [
+      { file: 'core.0123456789abcdef.woff2', codePoints: ['0041'] },
+      { file: 'supplement-0.0123456789abcdef.woff2', codePoints: ['4E00'] },
+    ]
+    const canonical = renderSiteFontCss(artifacts)
+    const faces = canonical.match(/@font-face \{[\s\S]*?\n\}/g)!
+    const reordered = canonical.replace(faces.join('\n\n'), [...faces].reverse().join('\n\n'))
+
+    expect(() => validateCanonicalSiteFontCss(reordered, artifacts)).toThrow(/canonical CSS/i)
   })
 
   it('rejects a self-consistent artifact whose filename stem does not match its role', async () => {
@@ -285,7 +316,7 @@ describe('site font checks', () => {
     await writeManifest(root, manifest)
     await fs.writeFile(
       path.join(root, 'css/chiron-font.generated.css'),
-      `@font-face { src: url('/static/fonts/chiron/${fakeFile}') format('woff2'); }`
+      renderSiteFontCss(manifest.artifacts)
     )
     await expect(checkSiteFont({ root })).rejects.toThrow(/filename.*core/i)
   })

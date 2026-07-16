@@ -295,7 +295,8 @@ authored social image anywhere in the repo.
   `public/static/fonts/chiron/`, while `css/chiron-font.generated.css` supplies the precise
   `unicode-range` faces and `--font-chiron-sung-hk` variable. These generated files must be committed
   together and must not be edited by hand.
-- `yarn update:site-font` refreshes the current buckets without shrinking the core; the explicit
+- `yarn update:site-font` first freshly builds the Contentlayer model, then refreshes the current
+  buckets without reading stale `.contentlayer` output or shrinking the core; the explicit
   `--rebuild-core` mode only grows the core with the current fixed UI, high-frequency, and homepage
   characters. Updates and full checks require HarfBuzz plus `woff2_compress`/`woff2_decompress`
   (`brew install harfbuzz woff2`). GitHub's required `check` job runs the full glyph, cmap, variable
@@ -322,7 +323,7 @@ authored social image anywhere in the repo.
 | `yarn check:og-font`    | Verify the OG/social-card font subset covers all current card text (§6); runs automatically before `yarn build`                                                                                                  |
 | `yarn update:og-font`   | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6)                                                                                                         |
 | `yarn check:site-font`  | Verify committed site-font schema, hashes, corpus and page budgets; add `--full` for glyph/cmap/axis checks (§9)                                                                                                 |
-| `yarn update:site-font` | Regenerate committed Chiron site-font buckets; add `--rebuild-core` only for an intentional monotonic core expansion (§9)                                                                                        |
+| `yarn update:site-font` | Freshly build the Contentlayer model, then regenerate committed Chiron site-font buckets; add `--rebuild-core` only for an intentional monotonic core expansion (§9)                                           |
 | `yarn mermaid:render`   | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
 | `yarn analyze`          | Webpack build with bundle analyzer (normal builds stay on Turbopack)                                                                                                                                             |
 

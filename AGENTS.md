@@ -34,7 +34,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   input；五個 supplemental buckets 依頁面共現分配，既有 code point 不得由普通更新
   重排。產物是 `public/static/fonts/chiron/*.woff2`、manifest 與
   `css/chiron-font.generated.css`，全部必須一起 commit；不要手改 generated CSS/manifest。
-  新內容使產物過期時執行 `yarn update:site-font`；只有刻意擴張 core 才用
+  新內容使產物過期時執行 `yarn update:site-font`（命令會先 fresh build Contentlayer，
+  不會讀取過期的 `.contentlayer`）；只有刻意擴張 core 才用
   `yarn update:site-font --rebuild-core`。本機更新/完整檢查還需要 Homebrew `woff2`
   (`woff2_compress`/`woff2_decompress`)；文字一樣只能透過 `--text-file` 傳 HarfBuzz。
 - Vercel 上沒有 HarfBuzz/woff2；`check:og-font` 與 `check:site-font` 的動態部分在

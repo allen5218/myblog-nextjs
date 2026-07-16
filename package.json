@@ -12,7 +12,7 @@
     "check:og-font": "node ./scripts/check-og-font.mjs",
     "check:site-font": "node ./scripts/check-site-font.mjs",
     "update:og-font": "node ./scripts/update-og-font.mjs",
-    "update:site-font": "node ./scripts/update-site-font.mjs",
+    "update:site-font": "node ./scripts/update-site-font-command.mjs",
     "mermaid:render": "node ./scripts/mermaid-render.mjs",
     "analyze": "cross-env ANALYZE=true next build --webpack",
     "lint": "eslint --fix app components lib layouts scripts",

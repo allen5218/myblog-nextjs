@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 import { canSkipDynamicSiteFontChecks } from './site-font-check-policy.mjs'
+import { renderSiteFontCss } from './site-font-css.mjs'
 import {
   buildFontPlan,
   corpusFromGeneratedBlogs,
@@ -58,6 +59,13 @@ async function defaultRunner(command, args) {
 
 function requireCondition(condition, message) {
   if (!condition) throw new Error(`Chiron site font ${message}`)
+}
+
+export function validateCanonicalSiteFontCss(css, artifacts) {
+  requireCondition(
+    css === renderSiteFontCss(artifacts),
+    'generated CSS disagrees with canonical CSS derived from the manifest'
+  )
 }
 
 function parseList(values, label) {
@@ -341,6 +349,7 @@ export async function checkSiteFont({
     'artifact count disagrees with nonempty sets'
   )
   const css = await fs.readFile(path.join(root, 'css/chiron-font.generated.css'), 'utf8')
+  validateCanonicalSiteFontCss(css, manifest.artifacts)
   let artifactBytes = 0
   for (const [index, artifact] of manifest.artifacts.entries()) {
     const expected = expectedSets[index]
@@ -384,20 +393,8 @@ export async function checkSiteFont({
       digest(bytes) === artifact.sha256,
       `artifact SHA-256 mismatch: ${artifact.file}`
     )
-    const reference = `/static/fonts/chiron/${artifact.file}`
-    requireCondition(
-      css.split(reference).length - 1 === 1,
-      `CSS reference mismatch: ${artifact.file}`
-    )
     artifactBytes += artifact.bytes
   }
-  const cssReferences = [...css.matchAll(/\/static\/fonts\/chiron\/([^')]+\.woff2)/g)].map(
-    (match) => match[1]
-  )
-  requireCondition(
-    cssReferences.length === manifest.artifacts.length,
-    'CSS reference count mismatch'
-  )
 
   const coreArtifact = manifest.artifacts.find(({ role }) => role === 'core')
   const warnings = []
