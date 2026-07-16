@@ -14,6 +14,7 @@ import { collectSiteFontCorpus } from './site-font-text.mjs'
 const execFileAsync = promisify(execFile)
 const FONT_DIRECTORY = 'public/static/fonts/chiron'
 const DYNAMIC_COMMANDS = ['hb-shape', 'hb-subset', 'hb-info', 'woff2_compress', 'woff2_decompress']
+const USAGE_PROBE_COMMANDS = new Set(['woff2_compress', 'woff2_decompress'])
 const WARNING_BYTES = 341_550
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
@@ -75,10 +76,21 @@ function validateManifestSchema(manifest) {
 async function discover(runner) {
   const missing = []
   for (const command of DYNAMIC_COMMANDS) {
+    const args = USAGE_PROBE_COMMANDS.has(command) ? [] : ['--version']
     try {
-      await runner(command, ['--version'])
+      await runner(command, args)
     } catch (error) {
-      if (error?.code === 'ENOENT') missing.push(command)
+      if (error?.code === 'ENOENT') {
+        missing.push(command)
+        continue
+      }
+      const usageProbeSucceeded =
+        USAGE_PROBE_COMMANDS.has(command) &&
+        error?.code === 1 &&
+        /One argument, the input filename, must be provided\./.test(String(error.stderr))
+      if (!usageProbeSucceeded) {
+        throw new Error(`Chiron site font ${command} probe failed: ${error.message}`)
+      }
     }
   }
   return missing
@@ -181,6 +193,12 @@ export async function checkSiteFont({
     requireCondition(
       typeof artifact.sha256 === 'string' && /^[0-9a-f]{64}$/.test(artifact.sha256),
       'artifact SHA-256 schema is invalid'
+    )
+    const stem = artifact.role === 'core' ? 'core' : `supplement-${artifact.bucket}`
+    const expectedFile = `${stem}.${artifact.sha256.slice(0, 16)}.woff2`
+    requireCondition(
+      artifact.file === expectedFile,
+      `artifact filename must match ${stem} and its SHA-256: expected ${expectedFile}`
     )
     requireCondition(
       Number.isInteger(artifact.bytes) && artifact.bytes > 0,

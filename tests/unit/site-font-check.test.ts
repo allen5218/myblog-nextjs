@@ -10,6 +10,7 @@ import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
 
 const roots: string[] = []
 const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
+const CORE_FILE = 'core.48bb941a797146cd.woff2'
 
 async function fixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'site-font-check-'))
@@ -56,7 +57,7 @@ async function fixture() {
     {
       role: 'core',
       bucket: null,
-      file: 'core.0123456789abcdef.woff2',
+      file: CORE_FILE,
       sha256: sha256(core),
       bytes: core.length,
       codePoints,
@@ -79,7 +80,7 @@ async function fixture() {
     artifacts,
   }
   await Promise.all([
-    fs.writeFile(path.join(root, 'public/static/fonts/chiron/core.0123456789abcdef.woff2'), core),
+    fs.writeFile(path.join(root, 'public/static/fonts/chiron', CORE_FILE), core),
     fs.writeFile(
       path.join(root, 'public/static/fonts/chiron/manifest.json'),
       `${JSON.stringify(manifest)}\n`
@@ -110,16 +111,13 @@ afterEach(async () => {
 describe('site font checks', () => {
   it('fails when an artifact is missing', async () => {
     const { root } = await fixture()
-    await fs.rm(path.join(root, 'public/static/fonts/chiron/core.0123456789abcdef.woff2'))
+    await fs.rm(path.join(root, 'public/static/fonts/chiron', CORE_FILE))
     await expect(checkSiteFont({ root })).rejects.toThrow(/missing/i)
   })
 
   it('fails when an artifact SHA-256 is wrong', async () => {
     const { root } = await fixture()
-    await fs.writeFile(
-      path.join(root, 'public/static/fonts/chiron/core.0123456789abcdef.woff2'),
-      'wOF2-bad!'
-    )
+    await fs.writeFile(path.join(root, 'public/static/fonts/chiron', CORE_FILE), 'wOF2-bad!')
     await expect(checkSiteFont({ root })).rejects.toThrow(/SHA-256/)
   })
 
@@ -127,6 +125,22 @@ describe('site font checks', () => {
     const { root, manifest } = await fixture()
     await fs.writeFile(path.join(root, 'css/chiron-font.generated.css'), '')
     await expect(checkSiteFont({ root })).rejects.toThrow(/CSS reference/)
+  })
+
+  it('rejects a self-consistent artifact whose filename stem does not match its role', async () => {
+    const { root, manifest } = await fixture()
+    const fakeFile = `wrongstem.${manifest.artifacts[0].sha256.slice(0, 16)}.woff2`
+    await fs.rename(
+      path.join(root, 'public/static/fonts/chiron', CORE_FILE),
+      path.join(root, 'public/static/fonts/chiron', fakeFile)
+    )
+    manifest.artifacts[0].file = fakeFile
+    await writeManifest(root, manifest)
+    await fs.writeFile(
+      path.join(root, 'css/chiron-font.generated.css'),
+      `@font-face { src: url('/static/fonts/chiron/${fakeFile}') format('woff2'); }`
+    )
+    await expect(checkSiteFont({ root })).rejects.toThrow(/filename.*core/i)
   })
 
   it('rejects core and bucket overlap', async () => {
@@ -147,7 +161,7 @@ describe('site font checks', () => {
     await writeManifest(root, manifest)
     await fs.writeFile(
       path.join(root, 'css/chiron-font.generated.css'),
-      "@font-face { src: url('/static/fonts/chiron/core.0123456789abcdef.woff2') format('woff2'); }"
+      `@font-face { src: url('/static/fonts/chiron/${CORE_FILE}') format('woff2'); }`
     )
     await expect(checkSiteFont({ root })).rejects.toThrow(/corpus.*stale/i)
   })
@@ -178,7 +192,7 @@ describe('site font checks', () => {
   it('rejects .notdef shaping output', async () => {
     const { root } = await fixture()
     const runner = async (command: string, args: string[]) => {
-      if (args.includes('--version')) return { stdout: 'ok' }
+      if (args.includes('--version') || args.length === 0) return { stdout: 'ok' }
       if (command === 'woff2_decompress') {
         await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
         return { stdout: '' }
@@ -189,10 +203,57 @@ describe('site font checks', () => {
     await expect(checkSiteFont({ root, full: true, runner })).rejects.toThrow(/\.notdef/)
   })
 
+  it('rejects a full-mode cmap mismatch after successful shaping', async () => {
+    const { root } = await fixture()
+    const runner = async (command: string, args: string[]) => {
+      if (args.includes('--version') || args.length === 0) return { stdout: 'ok' }
+      if (command === 'woff2_decompress') {
+        await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
+        return { stdout: '' }
+      }
+      if (command === 'hb-shape') return { stdout: '[space=0+500]' }
+      if (args.includes('--list-unicodes')) return { stdout: 'U+0020' }
+      return { stdout: 'wght 200 200 900 Weight' }
+    }
+    await expect(checkSiteFont({ root, full: true, runner })).rejects.toThrow(/cmap mismatch/)
+  })
+
+  it('accepts a mocked full-mode artifact with exact cmap, glyphs and axis', async () => {
+    const { root, manifest } = await fixture()
+    const runner = async (command: string, args: string[]) => {
+      if (args.includes('--version') || args.length === 0) return { stdout: 'ok' }
+      if (command === 'woff2_decompress') {
+        await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
+        return { stdout: '' }
+      }
+      if (command === 'hb-shape') return { stdout: '[space=0+500]' }
+      if (args.includes('--list-unicodes')) {
+        return { stdout: manifest.core.map((value) => `U+${value}`).join('\n') }
+      }
+      return { stdout: 'wght 200 200 900 Weight' }
+    }
+    await expect(checkSiteFont({ root, full: true, runner })).resolves.toMatchObject({
+      skipped: [],
+      artifactBytes: 9,
+    })
+  })
+
+  it('reports non-ENOENT command probe failures instead of treating tools as available', async () => {
+    const { root } = await fixture()
+    const runner = async (command: string) => {
+      if (command === 'hb-info')
+        throw Object.assign(new Error('permission denied'), { code: 'EACCES' })
+      return { stdout: 'ok' }
+    }
+    await expect(checkSiteFont({ root, full: true, runner })).rejects.toThrow(
+      /hb-info.*probe.*permission denied/i
+    )
+  })
+
   it('rejects an incorrect variable weight axis', async () => {
     const { root, manifest } = await fixture()
     const runner = async (command: string, args: string[]) => {
-      if (args.includes('--version')) return { stdout: 'ok' }
+      if (args.includes('--version') || args.length === 0) return { stdout: 'ok' }
       if (command === 'woff2_decompress') {
         await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
         return { stdout: '' }
