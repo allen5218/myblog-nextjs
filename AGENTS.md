@@ -29,10 +29,21 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   對 HarfBuzz(或任何 CLI)傳非 ASCII 文字**一律用 `--text-file`/stdin,不要走 argv**
   — argv 會經過呼叫端 locale 的編碼轉換,在沒設 UTF-8 locale 的 shell(CI、
   非互動環境)會直接炸。
-- Vercel 上沒有 HarfBuzz,`check:og-font` 在那裡跳過(`VERCEL=1`);缺口由 GitHub
-  Action `og-font-check` 補(push/PR 動到內容/字體時跑同一道檢查,只警報不擋部署)。
-  GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
-  任何會跑 `yarn build` 的新 workflow 都要記得裝。
+- 網頁本體的 Chiron Sung HK 不再由 `next/font/google` 分片。`font-data/chiron/` 的
+  committed 單調 core 加 schema v2 `supplemental-assignments.json` 是 authoritative
+  input；五個 supplemental buckets 依頁面共現分配，既有 code point 不得由普通更新
+  重排。產物是 `public/static/fonts/chiron/*.woff2`、manifest 與
+  `css/chiron-font.generated.css`，全部必須一起 commit；不要手改 generated CSS/manifest。
+  新內容使產物過期時執行 `yarn update:site-font`；只有刻意擴張 core 才用
+  `yarn update:site-font --rebuild-core`。本機更新/完整檢查還需要 Homebrew `woff2`
+  (`woff2_compress`/`woff2_decompress`)；文字一樣只能透過 `--text-file` 傳 HarfBuzz。
+- Vercel 上沒有 HarfBuzz/woff2；`check:og-font` 與 `check:site-font` 的動態部分在
+  `VERCEL=1` 時依窄化 policy 跳過，但 manifest、assignment、hash、CSS、corpus 與頁面
+  budget 靜態檢查仍必須通過。required GitHub Action `og-font-check` 會安裝
+  `libharfbuzz-bin` + `woff2`，先生成 Contentlayer model，再跑
+  `check:site-font --full`；它會用 `origin/main` 的 assignment map 驗證既有字元沒有換桶。
+  任何新增會跑完整 site-font check 的 workflow 都要安裝兩個套件；只跑 `yarn build`
+  則 site-font 不重產，只因 `check:og-font` 需要 HarfBuzz。
 - `app/`、`layouts/` 多處 `import` 自 `contentlayer/generated`(`.contentlayer/`,
   gitignore)。Next 16 的 Turbopack 不會執行 `next-contentlayer2` webpack hook,所以此 repo
   改由 scripts 明確執行 `contentlayer2`:`yarn dev`/`yarn start` 先 blocking build 再併行
@@ -121,7 +132,7 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   釘死的 action 版本(如 `actions/checkout@v4`)有新版時會自動開 PR,**不動
   npm/yarn 依賴**。這是刻意的範圍限制,擴大範圍前要先跟人類確認。
   - **自動合併**(`renovate.json` 的 `packageRules`,`matchManagers:
-    ["github-actions"]`)已開啟,靠 repo 層 `allow_auto_merge` + GitHub 原生
+["github-actions"]`)已開啟,靠 repo 層 `allow_auto_merge` + GitHub 原生
     auto-merge:兩個必過檢查(`ci`、`check`)綠燈就自動合,不需要人看著。
     這條規則刻意限定在 `matchManagers: ["github-actions"]`,不是全域
     `automerge: true` —— 未來若擴大 Renovate scope 到 npm/yarn,新 manager
@@ -152,6 +163,7 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 **不要假設、不要隱藏困惑、要把取捨攤開來。**
 
 實作前:
+
 - 明確說出你的假設;不確定就問。
 - 存在多種解讀時,把它們列出來 — 不要默默選一個。
 - 有更簡單的做法就直說;該反駁時要反駁。
@@ -174,12 +186,14 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 **只動必須動的地方;只清理自己製造的髒東西。**
 
 改既有程式碼時:
+
 - 不「順手改善」旁邊的程式碼、註解、格式。
 - 沒壞的東西不重構。
 - 遵循既有風格,即使你自己會用別種寫法。
 - 發現無關的死程式碼,提出來就好 — 不要刪。
 
 自己的改動產生孤兒時:
+
 - 移除**因你的改動**而不再使用的 import/變數/函式。
 - 原本就存在的死程式碼,沒被要求不要刪。
 
@@ -190,6 +204,7 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 **先定義成功標準,再循環直到驗證通過。**
 
 把任務轉成可驗證的目標:
+
 - 「加驗證」→「先寫無效輸入的測試,再讓它們通過」
 - 「修 bug」→「先寫能重現 bug 的測試,再讓它通過」
 - 「重構 X」→「重構前後測試都要通過」
