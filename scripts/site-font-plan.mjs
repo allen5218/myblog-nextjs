@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { classifySiteFontCodePoint } from './site-font-text.mjs'
 
 const BUCKET_COUNT = 5
 const HIGH_FREQUENCY_DOCUMENTS = 5
@@ -252,19 +253,16 @@ export function compressUnicodeRanges(codePoints) {
 }
 
 function codePointsIn(text) {
-  return new Set(
-    [...text.normalize('NFC')]
-      .map((character) => character.codePointAt(0))
-      .filter((codePoint) => {
-        const character = String.fromCodePoint(codePoint)
-        return (
-          codePoint >= 0x20 &&
-          !/\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) &&
-          !(codePoint >= 0xfe00 && codePoint <= 0xfe0f) &&
-          !(codePoint >= 0xe0100 && codePoint <= 0xe01ef)
-        )
-      })
-  )
+  const result = new Set()
+  for (const character of text.normalize('NFC')) {
+    const codePoint = character.codePointAt(0)
+    const classification = classifySiteFontCodePoint(codePoint)
+    if (classification.kind === 'included') result.add(codePoint)
+    else if (classification.kind === 'unknown') {
+      throw new Error(`Unknown Unicode category for U+${formatCodePoint(codePoint)}`)
+    }
+  }
+  return result
 }
 
 export function corpusFromGeneratedBlogs(blogs) {
@@ -291,7 +289,13 @@ export function homepageFromGeneratedBlogs(blogs) {
   return codePointsIn(
     cards
       .map((blog) =>
-        [blog.title, blog.subtitle, blog.preview, blog.author, ...(blog.tags ?? [])]
+        [
+          blog.title,
+          blog.subtitle,
+          blog.preview || (blog.summary !== blog.subtitle ? blog.summary : undefined),
+          blog.author,
+          ...(blog.tags ?? []),
+        ]
           .filter(Boolean)
           .join('\n')
       )

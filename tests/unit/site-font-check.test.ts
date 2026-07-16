@@ -5,7 +5,11 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { checkSiteFont } from '../../scripts/check-site-font.mjs'
+import {
+  checkSiteFont,
+  validateAssignmentHistory,
+  validatePageBudgets,
+} from '../../scripts/check-site-font.mjs'
 import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
 
 const roots: string[] = []
@@ -22,12 +26,29 @@ async function fixture() {
     fs.mkdir(path.join(root, 'data/blog'), { recursive: true }),
     fs.mkdir(path.join(root, 'dictionaries'), { recursive: true }),
     fs.mkdir(path.join(root, 'data'), { recursive: true }),
+    fs.mkdir(path.join(root, '.contentlayer/generated/Blog'), { recursive: true }),
   ])
   await fs.writeFile(path.join(root, 'package.json'), '{}\n')
   await fs.writeFile(path.join(root, 'data/siteMetadata.js'), 'module.exports = {}\n')
   await fs.writeFile(path.join(root, 'dictionaries/zh-TW.json'), '{}\n')
   await fs.writeFile(path.join(root, 'dictionaries/en.json'), '{}\n')
   await fs.writeFile(path.join(root, 'data/blog/post.md'), 'A')
+  const blogs = Array.from({ length: 15 }, (_, index) => ({
+    path: `post-${index}`,
+    title: 'A',
+    subtitle: '',
+    summary: '',
+    preview: '',
+    author: '',
+    tags: [],
+    date: `2026-01-${String(index + 1).padStart(2, '0')}`,
+    listed: index < 5,
+    body: { raw: 'A' },
+  }))
+  await fs.writeFile(
+    path.join(root, '.contentlayer/generated/Blog/_index.json'),
+    JSON.stringify(blogs)
+  )
   const source = {
     schemaVersion: 1,
     family: 'Chiron Sung HK',
@@ -44,7 +65,7 @@ async function fixture() {
   for (const codePoints of corpus.documents.values()) {
     for (const codePoint of codePoints) supported.add(codePoint)
   }
-  supported.add(0x2606) // historical core extras are intentionally valid
+  supported.add(0x3400) // historical core extras are intentionally valid
   const codePoints = [...supported]
     .sort((a, b) => a - b)
     .map((value) => value.toString(16).toUpperCase().padStart(4, '0'))
@@ -123,6 +144,66 @@ afterEach(async () => {
 })
 
 describe('site font checks', () => {
+  it('compares an explicit historical assignment anchor without blocking additions or promotions', () => {
+    const baseAssignments = new Map([
+      [0x4e00, 1],
+      [0x4e01, 2],
+    ])
+    expect(() =>
+      validateAssignmentHistory({
+        baseAssignments,
+        assignments: new Map([
+          [0x4e00, 1],
+          [0x4e02, 3],
+        ]),
+        core: new Set([0x4e01]),
+      })
+    ).not.toThrow()
+  })
+
+  it('rejects historical assignment removal and rebucketing', () => {
+    const baseAssignments = new Map([[0x4e00, 1]])
+    expect(() =>
+      validateAssignmentHistory({ baseAssignments, assignments: new Map(), core: new Set() })
+    ).toThrow(/removed/)
+    expect(() =>
+      validateAssignmentHistory({
+        baseAssignments,
+        assignments: new Map([[0x4e00, 2]]),
+        core: new Set(),
+      })
+    ).toThrow(/changed bucket/)
+  })
+
+  it('enforces homepage requests and article bytes/requests independently', () => {
+    expect(() =>
+      validatePageBudgets({ homepage: { bytes: 1, requests: 3 }, articles: [] })
+    ).toThrow(/homepage.*2 requests/i)
+    expect(() =>
+      validatePageBudgets({
+        homepage: { bytes: 1, requests: 1 },
+        articles: [{ name: 'large', bytes: 550_001, requests: 1 }],
+      })
+    ).toThrow(/large.*550000 bytes/i)
+    expect(() =>
+      validatePageBudgets({
+        homepage: { bytes: 1, requests: 1 },
+        articles: [{ name: 'scattered', bytes: 1, requests: 4 }],
+      })
+    ).toThrow(/scattered.*3 requests/i)
+  })
+
+  it('fails clearly when the generated budget model is missing or malformed', async () => {
+    const { root } = await fixture()
+    const model = path.join(root, '.contentlayer/generated/Blog/_index.json')
+    await fs.rm(model)
+    await expect(checkSiteFont({ root })).rejects.toThrow(/budget model.*missing/i)
+    await fs.writeFile(model, '{bad')
+    await expect(checkSiteFont({ root })).rejects.toThrow(/budget model.*malformed/i)
+    await fs.writeFile(model, '[]')
+    await expect(checkSiteFont({ root })).rejects.toThrow(/exactly 15/i)
+  })
+
   it('fails when an artifact is missing', async () => {
     const { root } = await fixture()
     await fs.rm(path.join(root, 'public/static/fonts/chiron', CORE_FILE))

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   buildFontPlan,
   compressUnicodeRanges,
+  homepageFromGeneratedBlogs,
   migrateAssignmentsV2,
   parseAssignments,
   parseCodepoints,
@@ -32,6 +33,17 @@ const corpusWith = ({
 const bytes = [500, 400, 300, 200, 100]
 
 describe('committed data formats', () => {
+  test('homepage cards use HuxPostCard preview fallback exactly', () => {
+    const base = { author: '', tags: [], listed: true, date: '2026-01-01', body: { raw: '' } }
+    const homepage = homepageFromGeneratedBlogs([
+      { ...base, path: 'preview', title: '', subtitle: 'same', summary: 'other', preview: '預' },
+      { ...base, path: 'summary', title: '', subtitle: 'different', summary: '摘', preview: '' },
+      { ...base, path: 'duplicate', title: '', subtitle: '重', summary: '重', preview: '' },
+    ])
+    expect(homepage).toContain('預'.codePointAt(0))
+    expect(homepage).toContain('摘'.codePointAt(0))
+    expect(homepage).toContain('重'.codePointAt(0)) // subtitle only; duplicate summary adds nothing
+  })
   test('parses and deterministically serializes code points', () => {
     expect(parseCodepoints('0042\n0041 1F600\n')).toEqual(new Set([0x42, 0x41, 0x1f600]))
     expect(serializeCodepoints(new Set([0x1f600, 0x42, 0x41]))).toBe('0041\n0042\n1F600\n')

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
+import { classifySiteFontCodePoint, collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
 
 const fixtureRoots: string[] = []
 
@@ -37,6 +37,11 @@ async function fixtureRoot({ includeFlag = false, includeKeycap = false } = {}) 
 }
 
 describe('collectSiteFontCorpus', () => {
+  it('centralizes regional-indicator, keycap and unknown classification', () => {
+    expect(classifySiteFontCodePoint(0x1f1f9)).toEqual({ kind: 'excluded', category: 'emoji' })
+    expect(classifySiteFontCodePoint(0x20e3)).toEqual({ kind: 'excluded', category: 'emoji' })
+    expect(classifySiteFontCodePoint(0x20dd)).toEqual({ kind: 'unknown' })
+  })
   function expectSeedToCover(seed: Set<number>, text: string) {
     for (const character of text) expect(seed).toContain(character.codePointAt(0))
   }

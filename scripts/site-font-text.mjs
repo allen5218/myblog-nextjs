@@ -50,37 +50,40 @@ function stringsIn(value) {
   return []
 }
 
-function exclusionCategory(character) {
-  const codePoint = character.codePointAt(0)
+export function classifySiteFontCodePoint(codePoint) {
+  const character = String.fromCodePoint(codePoint)
   if (
     (codePoint >= 0xfe00 && codePoint <= 0xfe0f) ||
     (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
   ) {
-    return 'variation-selector'
+    return { kind: 'excluded', category: 'variation-selector' }
   }
-  if (/\p{Cc}|\p{Cf}/u.test(character)) return 'control'
+  if (/\p{Cc}|\p{Cf}/u.test(character)) return { kind: 'excluded', category: 'control' }
   if (
     /\p{Extended_Pictographic}|\p{Emoji_Modifier}/u.test(character) ||
     (codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff) ||
     codePoint === 0x20e3
   ) {
-    return 'emoji'
+    return { kind: 'excluded', category: 'emoji' }
   }
-  return undefined
+  if (
+    (codePoint >= 0x20 && codePoint <= 0x7e) ||
+    /^[\p{L}\p{N}\p{P}\p{Sm}\p{Zs}]$/u.test(character)
+  ) {
+    return { kind: 'included' }
+  }
+  return { kind: 'unknown' }
 }
 
 function collectCodePoints(text, excluded) {
   const codePoints = new Set()
   for (const character of text.normalize('NFC')) {
     const codePoint = character.codePointAt(0)
-    const category = exclusionCategory(character)
-    if (category) {
-      if (!excluded.has(category)) excluded.set(category, new Set())
-      excluded.get(category).add(codePoint)
-    } else if (
-      (codePoint >= 0x20 && codePoint <= 0x7e) ||
-      /^[\p{L}\p{N}\p{P}\p{Sm}\p{Zs}]$/u.test(character)
-    ) {
+    const classification = classifySiteFontCodePoint(codePoint)
+    if (classification.kind === 'excluded') {
+      if (!excluded.has(classification.category)) excluded.set(classification.category, new Set())
+      excluded.get(classification.category).add(codePoint)
+    } else if (classification.kind === 'included') {
       codePoints.add(codePoint)
     } else {
       throw new Error(

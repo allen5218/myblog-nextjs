@@ -16,19 +16,12 @@ import {
   serializeCodepoints,
 } from './site-font-plan.mjs'
 import { ensureSourceFont, loadSourceMetadata } from './site-font-source.mjs'
+import { classifySiteFontCodePoint } from './site-font-text.mjs'
 
 const execFileAsync = promisify(execFile)
 const sorted = (values) => [...values].sort((a, b) => a - b)
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
-const belongsToChiron = (codePoint) => {
-  const character = String.fromCodePoint(codePoint)
-  return !(
-    /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) ||
-    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) ||
-    (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
-  )
-}
 
 async function defaultRunner(command, args) {
   await execFileAsync(command, args)
@@ -64,7 +57,7 @@ export async function generateSiteFontArtifacts({
   commitHook = async () => {},
 }) {
   for (const codePoint of [...core, ...[...buckets.values()].flatMap((values) => [...values])]) {
-    if (!belongsToChiron(codePoint)) {
+    if (classifySiteFontCodePoint(codePoint).kind !== 'included') {
       throw new Error(`Excluded code point U+${hex(codePoint)} cannot enter Chiron artifacts`)
     }
   }

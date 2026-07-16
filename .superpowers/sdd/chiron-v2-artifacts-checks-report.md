@@ -48,3 +48,12 @@ git diff --check
 ```
 
 Unrelated Serwist, prefetch, pagination, documentation and `next-env.d.ts` worktree changes were preserved and excluded from the commit.
+
+## Review follow-up
+
+- Added explicit base-map history comparison. Removal or rebucketing fails; monotonic core promotion and new assignments pass. Task 7 must extract the base branch map and provide `--base-assignments`; the first v2 rollout is the sole no-map exception.
+- Removed implicit budget-model fallback. The CLI requires fresh Contentlayer output with exactly 15 articles, and `build` now runs Contentlayer before the site-font check.
+- Centralized included/excluded/unknown Unicode classification in the corpus module and reused it in planning, generation, and checking.
+- Extended the atomic transaction test through `during-assignment-write`, including byte-exact assignment restoration.
+- The homepage preview model now matches `HuxPostCard`: `preview || (summary !== subtitle ? summary : undefined)`.
+- The raw article-body budget remains a conservative CI model. Task 6 production DOM/network verification is final acceptance and may show that raw Markdown or monospaced text was overcounted; the current hard gate remains unchanged.

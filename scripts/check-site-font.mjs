@@ -15,7 +15,7 @@ import {
   parseCodepoints,
 } from './site-font-plan.mjs'
 import { loadSourceMetadata } from './site-font-source.mjs'
-import { collectSiteFontCorpus } from './site-font-text.mjs'
+import { classifySiteFontCodePoint, collectSiteFontCorpus } from './site-font-text.mjs'
 
 const execFileAsync = promisify(execFile)
 const FONT_DIRECTORY = 'public/static/fonts/chiron'
@@ -25,6 +25,7 @@ const WARNING_BYTES = 341_550
 const HOMEPAGE_BUDGET_BYTES = 350_000
 const HOMEPAGE_BUDGET_REQUESTS = 2
 const ARTICLE_BUDGET_BYTES = 550_000
+const ARTICLE_BUDGET_REQUESTS = 3
 const PLACEMENT_POLICY = [
   'max-cooccurrence',
   'max-touched-pages',
@@ -63,14 +64,54 @@ function sameSet(left, right) {
   return left.size === right.size && [...left].every((value) => right.has(value))
 }
 
-const belongsToChiron = (codePoint) => {
-  const character = String.fromCodePoint(codePoint)
-  return !(
-    /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) ||
-    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) ||
-    (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
-  )
+export function validateAssignmentHistory({ baseAssignments, assignments, core }) {
+  for (const [codePoint, bucket] of baseAssignments) {
+    if (core.has(codePoint)) continue
+    requireCondition(
+      assignments.has(codePoint),
+      `historical assignment U+${hex(codePoint)} was removed`
+    )
+    requireCondition(
+      assignments.get(codePoint) === bucket,
+      `historical assignment U+${hex(codePoint)} changed bucket`
+    )
+  }
 }
+
+export function validatePageBudgets({ homepage, articles }) {
+  requireCondition(
+    homepage.bytes <= HOMEPAGE_BUDGET_BYTES && homepage.requests <= HOMEPAGE_BUDGET_REQUESTS,
+    `homepage budget exceeds ${HOMEPAGE_BUDGET_BYTES} bytes or ${HOMEPAGE_BUDGET_REQUESTS} requests`
+  )
+  for (const article of articles) {
+    requireCondition(
+      article.bytes <= ARTICLE_BUDGET_BYTES,
+      `article ${article.name} budget exceeds ${ARTICLE_BUDGET_BYTES} bytes`
+    )
+    requireCondition(
+      article.requests <= ARTICLE_BUDGET_REQUESTS,
+      `article ${article.name} budget exceeds ${ARTICLE_BUDGET_REQUESTS} requests`
+    )
+  }
+}
+
+async function loadBudgetBlogs(root) {
+  const modelPath = path.join(root, '.contentlayer/generated/Blog/_index.json')
+  let blogs
+  try {
+    blogs = JSON.parse(await fs.readFile(modelPath, 'utf8'))
+  } catch (error) {
+    throw new Error(`Chiron site font budget model is missing or malformed: ${error.message}`)
+  }
+  requireCondition(Array.isArray(blogs), 'budget model must be an array')
+  requireCondition(
+    blogs.length === 15,
+    `budget model must contain exactly 15 articles, found ${blogs.length}`
+  )
+  return blogs
+}
+
+const belongsToChiron = (codePoint) => classifySiteFontCodePoint(codePoint).kind === 'included'
 
 function validateManifestSchema(manifest) {
   requireCondition(manifest?.schemaVersion === 2, 'manifest schemaVersion must be 2')
@@ -148,6 +189,8 @@ export async function checkSiteFont({
   full = false,
   env = process.env,
   runner = defaultRunner,
+  baseAssignmentsPath,
+  budgetBlogs,
 } = {}) {
   root ??= process.cwd()
   const manifestPath = path.join(root, FONT_DIRECTORY, 'manifest.json')
@@ -216,19 +259,19 @@ export async function checkSiteFont({
     )
     requireCondition(!core.has(codePoint), `core/assignment overlap at U+${hex(codePoint)}`)
   }
+  if (baseAssignmentsPath) {
+    const baseAssignments = parseAssignments(await fs.readFile(baseAssignmentsPath, 'utf8'))
+    validateAssignmentHistory({ baseAssignments, assignments, core })
+  }
 
   const collectedCorpus = await collectSiteFontCorpus(root)
-  let modelCorpus = collectedCorpus
-  let homepage = collectedCorpus.fixedSeed
-  try {
-    const blogs = JSON.parse(
-      await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
-    )
-    modelCorpus = corpusFromGeneratedBlogs(blogs)
-    homepage = homepageFromGeneratedBlogs(blogs)
-  } catch {
-    // Minimal fixtures fall back to the collector model; production has generated Blog data.
-  }
+  const blogs = budgetBlogs ?? (await loadBudgetBlogs(root))
+  requireCondition(
+    Array.isArray(blogs) && blogs.length === 15,
+    'budget model must contain exactly 15 articles'
+  )
+  const modelCorpus = corpusFromGeneratedBlogs(blogs)
+  const homepage = homepageFromGeneratedBlogs(blogs)
   const supplementalBytes = Array.from(
     { length: 5 },
     (_, bucket) =>
@@ -353,20 +396,12 @@ export async function checkSiteFont({
     }
   }
   const homepageCost = pageCost(homepage)
-  requireCondition(
-    homepageCost.bytes <= HOMEPAGE_BUDGET_BYTES &&
-      homepageCost.requests <= HOMEPAGE_BUDGET_REQUESTS,
-    `homepage budget exceeds ${HOMEPAGE_BUDGET_BYTES} bytes or ${HOMEPAGE_BUDGET_REQUESTS} requests`
-  )
   const pages = []
   for (const [name, values] of modelCorpus.documents) {
     const cost = pageCost(values)
-    requireCondition(
-      cost.bytes <= ARTICLE_BUDGET_BYTES,
-      `article ${name} budget exceeds ${ARTICLE_BUDGET_BYTES} bytes`
-    )
     pages.push({ name, ...cost })
   }
+  validatePageBudgets({ homepage: homepageCost, articles: pages })
   const result = {
     skipped: [],
     artifactBytes,
@@ -424,7 +459,12 @@ export async function checkSiteFont({
 }
 
 async function main() {
-  const result = await checkSiteFont({ root: process.cwd(), full: process.argv.includes('--full') })
+  const baseArgument = process.argv.find((argument) => argument.startsWith('--base-assignments='))
+  const result = await checkSiteFont({
+    root: process.cwd(),
+    full: process.argv.includes('--full'),
+    baseAssignmentsPath: baseArgument?.slice('--base-assignments='.length),
+  })
   for (const warning of result.warnings) console.warn(`WARNING: ${warning}`)
   if (result.skipped.length)
     console.warn(`Skipping dynamic Chiron checks: ${result.skipped.join(', ')}`)

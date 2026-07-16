@@ -171,16 +171,23 @@ describe('site font generation', () => {
     expect(await fs.readFile(manifest, 'utf8')).toBe('original')
   })
 
-  for (const phase of ['after-fonts-swap', 'after-css-swap', 'during-core-write']) {
+  for (const phase of [
+    'after-fonts-swap',
+    'after-css-swap',
+    'during-core-write',
+    'during-assignment-write',
+  ]) {
     it(`restores fonts, CSS and core when commit fails ${phase}`, async () => {
       const root = await fixture()
       const fonts = path.join(root, 'public/static/fonts/chiron')
       const css = path.join(root, 'css/chiron-font.generated.css')
       const core = path.join(root, 'font-data/chiron/core-codepoints.txt')
+      const assignments = path.join(root, 'font-data/chiron/supplemental-assignments.json')
       await fs.writeFile(path.join(fonts, 'manifest.json'), 'old manifest')
       await fs.writeFile(path.join(fonts, 'old.woff2'), 'old font')
       await fs.writeFile(css, 'old css')
       await fs.writeFile(core, '0041\n')
+      await fs.writeFile(assignments, 'old assignments\n')
       const runner = async (command: string, args: string[]) => {
         if (command === 'hb-subset')
           await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
@@ -193,6 +200,7 @@ describe('site font generation', () => {
           ...input(root),
           runner,
           coreOutput: core,
+          assignmentOutput: assignments,
           commitHook: async (current: string) => {
             if (current === phase) throw new Error(`fault ${phase}`)
           },
@@ -203,6 +211,7 @@ describe('site font generation', () => {
       expect(await fs.readdir(fonts)).toEqual(['manifest.json', 'old.woff2'])
       expect(await fs.readFile(css, 'utf8')).toBe('old css')
       expect(await fs.readFile(core, 'utf8')).toBe('0041\n')
+      expect(await fs.readFile(assignments, 'utf8')).toBe('old assignments\n')
     })
   }
 
