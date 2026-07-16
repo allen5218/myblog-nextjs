@@ -87,7 +87,7 @@ async function fixture() {
   const artifacts = [
     {
       role: 'core',
-      bucket: null,
+      bucket: null as number | null,
       file: CORE_FILE,
       sha256: sha256(core),
       bytes: core.length,
@@ -208,7 +208,54 @@ describe('site font checks', () => {
     await fs.writeFile(model, '{bad')
     await expect(checkSiteFont({ root })).rejects.toThrow(/budget model.*malformed/i)
     await fs.writeFile(model, '[]')
-    await expect(checkSiteFont({ root })).rejects.toThrow(/exactly 15/i)
+    await expect(checkSiteFont({ root })).rejects.toThrow(/at least one article/i)
+  })
+
+  it('accepts a budget model that grows beyond the current article count', async () => {
+    const { root } = await fixture()
+    const model = path.join(root, '.contentlayer/generated/Blog/_index.json')
+    const blogs = JSON.parse(await fs.readFile(model, 'utf8'))
+    blogs.push({ ...blogs[0], path: 'post-new', date: '2026-02-01' })
+    await fs.writeFile(model, JSON.stringify(blogs))
+    await expect(checkSiteFont({ root })).resolves.toMatchObject({ skipped: [] })
+  })
+
+  it('demands placement for characters that appear only in markdown frontmatter', async () => {
+    const { root } = await fixture()
+    // 「二」 lives only in the raw file's frontmatter, never in the generated blog model.
+    await fs.writeFile(path.join(root, 'data/blog/post.md'), '---\ntags:\n  - 二\n---\nA')
+    await expect(checkSiteFont({ root })).rejects.toThrow(/stale in bucket/i)
+  })
+
+  it('accepts artifacts that cover frontmatter-only characters via committed assignments', async () => {
+    const { root, manifest } = await fixture()
+    await fs.writeFile(path.join(root, 'data/blog/post.md'), '---\ntags:\n  - 二\n---\nA')
+    const assignmentBytes = Buffer.from(
+      `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: { '4E8C': 0 } }, null, 2)}\n`
+    )
+    await fs.writeFile(
+      path.join(root, 'font-data/chiron/supplemental-assignments.json'),
+      assignmentBytes
+    )
+    const supplement = Buffer.from('wOF2-supplement')
+    const supplementFile = `supplement-0.${sha256(supplement).slice(0, 16)}.woff2`
+    await fs.writeFile(path.join(root, 'public/static/fonts/chiron', supplementFile), supplement)
+    manifest.assignmentSha256 = sha256(assignmentBytes)
+    manifest.buckets[0].codePoints = ['4E8C']
+    manifest.artifacts.push({
+      role: 'supplemental',
+      bucket: 0,
+      file: supplementFile,
+      sha256: sha256(supplement),
+      bytes: supplement.length,
+      codePoints: ['4E8C'],
+    })
+    await writeManifest(root, manifest)
+    await fs.writeFile(
+      path.join(root, 'css/chiron-font.generated.css'),
+      renderSiteFontCss(manifest.artifacts)
+    )
+    await expect(checkSiteFont({ root })).resolves.toMatchObject({ skipped: [] })
   })
 
   it('fails when an artifact is missing', async () => {

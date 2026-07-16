@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 
 import {
   buildFontPlan,
-  corpusFromGeneratedBlogs,
   homepageFromGeneratedBlogs,
   parseAssignments,
   parseCodepoints,
@@ -236,8 +235,7 @@ async function main() {
   const blogs = JSON.parse(
     await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
   )
-  const corpus = corpusFromGeneratedBlogs(blogs)
-  corpus.fixedSeed = (await collectSiteFontCorpus(root)).fixedSeed
+  const corpus = await collectSiteFontCorpus(root)
   const homepage = homepageFromGeneratedBlogs(blogs)
   let artifactBytes = Array(5).fill(0)
   try {

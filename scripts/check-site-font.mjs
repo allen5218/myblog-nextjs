@@ -10,7 +10,6 @@ import { canSkipDynamicSiteFontChecks } from './site-font-check-policy.mjs'
 import { renderSiteFontCss } from './site-font-css.mjs'
 import {
   buildFontPlan,
-  corpusFromGeneratedBlogs,
   homepageFromGeneratedBlogs,
   parseAssignments,
   parseCodepoints,
@@ -135,10 +134,7 @@ async function loadBudgetBlogs(root) {
     throw new Error(`Chiron site font budget model is missing or malformed: ${error.message}`)
   }
   requireCondition(Array.isArray(blogs), 'budget model must be an array')
-  requireCondition(
-    blogs.length === 15,
-    `budget model must contain exactly 15 articles, found ${blogs.length}`
-  )
+  requireCondition(blogs.length > 0, 'budget model must contain at least one article')
   return blogs
 }
 
@@ -300,10 +296,9 @@ export async function checkSiteFont({
   validateFixedSeedCore({ fixedSeed: collectedCorpus.fixedSeed, core })
   const blogs = budgetBlogs ?? (await loadBudgetBlogs(root))
   requireCondition(
-    Array.isArray(blogs) && blogs.length === 15,
-    'budget model must contain exactly 15 articles'
+    Array.isArray(blogs) && blogs.length > 0,
+    'budget model must contain at least one article'
   )
-  const modelCorpus = corpusFromGeneratedBlogs(blogs)
   const homepage = homepageFromGeneratedBlogs(blogs)
   const supplementalBytes = Array.from(
     { length: 5 },
@@ -313,7 +308,7 @@ export async function checkSiteFont({
       )?.bytes ?? 0
   )
   const expectedPlan = buildFontPlan({
-    corpus: modelCorpus,
+    corpus: collectedCorpus,
     committedCore,
     committedAssignments: assignments,
     artifactBytes: supplementalBytes,
@@ -419,7 +414,7 @@ export async function checkSiteFont({
   }
   const homepageCost = pageCost(homepage)
   const pages = []
-  for (const [name, values] of modelCorpus.documents) {
+  for (const [name, values] of collectedCorpus.documents) {
     const cost = pageCost(values)
     pages.push({ name, ...cost })
   }
