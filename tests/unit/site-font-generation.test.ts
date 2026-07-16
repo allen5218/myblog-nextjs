@@ -7,11 +7,13 @@ import { describe, expect, it } from 'vitest'
 import { generateSiteFontArtifacts } from '../../scripts/update-site-font.mjs'
 
 const sha = (value: Buffer) => createHash('sha256').update(value).digest('hex')
+const validWoff = (suffix = '') => Buffer.concat([Buffer.from('wOF2'), Buffer.from(suffix)])
 
 async function fixture() {
   const root = await fs.mkdtemp(path.join(tmpdir(), 'site-font-generation-'))
   await fs.mkdir(path.join(root, 'public/static/fonts/chiron'), { recursive: true })
   await fs.mkdir(path.join(root, 'css'), { recursive: true })
+  await fs.mkdir(path.join(root, 'font-data/chiron'), { recursive: true })
   await fs.writeFile(path.join(root, 'source.ttf'), 'source')
   return root
 }
@@ -43,9 +45,11 @@ describe('site font generation', () => {
       if (command === 'hb-subset') {
         const output = args.find((arg) => arg.startsWith('--output-file='))!.slice(14)
         await fs.writeFile(output, `ttf-${calls.length}`)
-      } else {
+      } else if (command === 'woff2_compress') {
         const ttf = args[0]
-        await fs.writeFile(ttf.replace(/\.ttf$/, '.woff2'), `woff-${calls.length}`)
+        await fs.writeFile(ttf.replace(/\.ttf$/, '.woff2'), validWoff(`${calls.length}`))
+      } else {
+        await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'decompressed')
       }
     }
 
@@ -54,8 +58,10 @@ describe('site font generation', () => {
     expect(calls.map(({ command }) => command)).toEqual([
       'hb-subset',
       'woff2_compress',
+      'woff2_decompress',
       'hb-subset',
       'woff2_compress',
+      'woff2_decompress',
     ])
     for (const call of calls.filter(({ command }) => command === 'hb-subset')) {
       expect(call.args.some((arg) => arg.startsWith('--text-file='))).toBe(true)
@@ -76,11 +82,9 @@ describe('site font generation', () => {
     const runner = async (command: string, args: string[]) => {
       if (command === 'hb-subset')
         await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
-      else
-        await fs.writeFile(
-          args[0].replace(/\.ttf$/, '.woff2'),
-          Buffer.from(`woff-${path.basename(args[0])}`)
-        )
+      else if (command === 'woff2_compress')
+        await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), validWoff(path.basename(args[0])))
+      else await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'decompressed')
     }
     await generateSiteFontArtifacts({ ...input(root), runner })
     const manifest = JSON.parse(
@@ -108,7 +112,7 @@ describe('site font generation', () => {
     expect(css).toContain('unicode-range: U+4E01;')
   })
 
-  for (const failure of ['hb-subset', 'woff2_compress']) {
+  for (const failure of ['hb-subset', 'woff2_compress', 'woff2_decompress']) {
     it(`leaves old outputs intact when ${failure} fails`, async () => {
       const root = await fixture()
       const oldManifest = path.join(root, 'public/static/fonts/chiron/manifest.json')
@@ -119,8 +123,10 @@ describe('site font generation', () => {
         if (command === failure && ++matchingCalls === 2) throw new Error(`${command} failed`)
         if (command === 'hb-subset') {
           await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
+        } else if (command === 'woff2_compress') {
+          await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), validWoff())
         } else {
-          await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), 'woff')
+          await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'decompressed')
         }
       }
       await expect(generateSiteFontArtifacts({ ...input(root), runner })).rejects.toThrow(failure)
@@ -128,6 +134,57 @@ describe('site font generation', () => {
       expect(await fs.readFile(path.join(root, 'css/chiron-font.generated.css'), 'utf8')).toBe(
         'original css'
       )
+    })
+  }
+
+  it('rejects corrupt nonempty WOFF2 before writing repository outputs', async () => {
+    const root = await fixture()
+    const manifest = path.join(root, 'public/static/fonts/chiron/manifest.json')
+    await fs.writeFile(manifest, 'original')
+    const runner = async (command: string, args: string[]) => {
+      if (command === 'hb-subset')
+        await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
+      else if (command === 'woff2_compress')
+        await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), 'not-woff2')
+    }
+    await expect(generateSiteFontArtifacts({ ...input(root), runner })).rejects.toThrow(
+      /invalid WOFF2 magic/
+    )
+    expect(await fs.readFile(manifest, 'utf8')).toBe('original')
+  })
+
+  for (const phase of ['after-fonts-swap', 'after-css-swap', 'during-core-write']) {
+    it(`restores fonts, CSS and core when commit fails ${phase}`, async () => {
+      const root = await fixture()
+      const fonts = path.join(root, 'public/static/fonts/chiron')
+      const css = path.join(root, 'css/chiron-font.generated.css')
+      const core = path.join(root, 'font-data/chiron/core-codepoints.txt')
+      await fs.writeFile(path.join(fonts, 'manifest.json'), 'old manifest')
+      await fs.writeFile(path.join(fonts, 'old.woff2'), 'old font')
+      await fs.writeFile(css, 'old css')
+      await fs.writeFile(core, '0041\n')
+      const runner = async (command: string, args: string[]) => {
+        if (command === 'hb-subset')
+          await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
+        else if (command === 'woff2_compress')
+          await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), validWoff())
+        else await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'decompressed')
+      }
+      await expect(
+        generateSiteFontArtifacts({
+          ...input(root),
+          runner,
+          coreOutput: core,
+          commitHook: async (current: string) => {
+            if (current === phase) throw new Error(`fault ${phase}`)
+          },
+        })
+      ).rejects.toThrow(`fault ${phase}`)
+      expect(await fs.readFile(path.join(fonts, 'manifest.json'), 'utf8')).toBe('old manifest')
+      expect(await fs.readFile(path.join(fonts, 'old.woff2'), 'utf8')).toBe('old font')
+      expect(await fs.readdir(fonts)).toEqual(['manifest.json', 'old.woff2'])
+      expect(await fs.readFile(css, 'utf8')).toBe('old css')
+      expect(await fs.readFile(core, 'utf8')).toBe('0041\n')
     })
   }
 
@@ -140,7 +197,9 @@ describe('site font generation', () => {
     const runner = async (command: string, args: string[]) => {
       if (command === 'hb-subset')
         await fs.writeFile(args.find((a) => a.startsWith('--output-file='))!.slice(14), 'ttf')
-      else await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), 'woff')
+      else if (command === 'woff2_compress')
+        await fs.writeFile(args[0].replace(/\.ttf$/, '.woff2'), validWoff())
+      else await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'decompressed')
     }
     await generateSiteFontArtifacts({ ...input(root), runner })
     await expect(fs.stat(orphan)).rejects.toThrow()

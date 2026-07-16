@@ -131,8 +131,8 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 3. `site-font-plan.mjs` 讀取 committed core；只有 `--rebuild-core` 才將符合五文件門檻的字符單調加入並寫回 `core-codepoints.txt`。
 4. 對 source cmap 驗證 corpus。若站內字符不在 Chiron source，命令列出 code point、字符及來源檔案後失敗；必須由人類決定是否允許 fallback，不能默默忽略。
 5. 非核心字符以 `codePoint % 8` 分配。
-6. 每個非空集合使用 `hb-subset` 產生暫存 variable TTF，輸入文字必須走 UTF-8 `--text-file`，並指定 `--layout-features=*`、保留必要 name table、glyph names 和完整 `wght` axis（不得傳入會 instantiate axis 的 `--variations`）。再以 `woff2_compress` 將暫存 TTF 轉成 WOFF2；不得將 CJK 文字放入 argv。
-7. TTF、WOFF2、manifest 與 CSS 全部先寫入 temp staging directory。全部 subset、compression、shape、axis、hash 驗證成功後，才以一次同步步驟更新 committed output；任一 `hb-subset` 或 `woff2_compress` 失敗都不得留下半套產物。
+6. 每個非空集合使用 `hb-subset` 產生暫存 variable TTF，輸入文字必須走 UTF-8 `--text-file`，並指定 `--layout-features=*`、保留必要 name table、glyph names 和完整 `wght` axis（不得傳入會 instantiate axis 的 `--variations`）。再以 `woff2_compress` 將暫存 TTF 轉成 WOFF2，先檢查 `wOF2` magic，並以 `woff2_decompress` 驗證結構可解壓；不得將 CJK 文字放入 argv。Task 4 只負責容器結構，完整 cmap、glyph coverage 與 axis semantic checks 屬 Task 5。
+7. TTF、WOFF2、manifest、CSS 與重建後 core 全部先寫入 temp staging directory。全部生成與結構驗證成功後，才把 fonts directory、generated CSS 與（僅 `--rebuild-core`）core data 視為單一 transaction 同步；任一步驟失敗都反向還原三者。備份使用不可預測的唯一 sibling 路徑，不預先刪除；一致狀態 commit 後的備份清理為 best-effort，清理失敗不得觸發局部 rollback。
 8. WOFF2 檔名為內容 SHA-256 前 16 個 hex，例如 `core.a1b2c3d4e5f60718.woff2`、`supplement-3.….woff2`。
 9. 生成 manifest，再由 manifest 生成 CSS；CSS 中所有 face 使用相同 family、`font-style: normal`、`font-weight: 200 900`、`font-display: swap` 和精確 `unicode-range`。同一份 generated CSS 在 `:root` 定義 `--font-chiron-sung-hk: 'Chiron Sung HK'`，取代原本由 `next/font` class 注入的 variable；`app/layout.tsx` 不再需要字型 class。
 10. 清除不再被新 manifest 引用的舊 hashed WOFF2，但只限 `public/static/fonts/chiron/`，不得清理其他字型。
@@ -148,7 +148,7 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 ### Vercel
 
-- Vercel 沒有 HarfBuzz／`woff2_compress`，因此不生成字型。
+- Vercel 沒有 HarfBuzz／`woff2_compress`／`woff2_decompress`，因此不生成字型。
 - `yarn build` 的 `check:site-font` 永遠執行 manifest schema、檔案存在、檔案 SHA-256、CSS 引用和 core/bucket 集合一致性檢查。
 - `VERCEL=1` 且找不到 `hb-shape`／`hb-subset` 時，可以明確警告後跳過 glyph shaping、axis inspection 和 regenerate freshness 的動態部分；不能跳過上述靜態檢查。
 
@@ -162,13 +162,13 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 ## 失敗處理
 
-- **缺 HarfBuzz／woff2_compress：** 本機 update/full check 立即失敗並提示安裝；只有 Vercel 可依政策跳過動態檢查。macOS 使用 Homebrew `harfbuzz` 與 `woff2`，Ubuntu 使用 `libharfbuzz-bin` 與 `woff2`。
+- **缺 HarfBuzz／woff2_compress／woff2_decompress：** 本機 update/full check 立即失敗並提示安裝；只有 Vercel 可依政策跳過動態檢查。macOS 使用 Homebrew `harfbuzz` 與 `woff2`，Ubuntu 使用 `libharfbuzz-bin` 與 `woff2`；工具 discovery 必須同時確認 compressor 與 decompressor。
 - **source hash 不符：** 立即停止，不寫任何產物；要求明確更新 pinned revision/hash。
 - **Chiron source 缺字：** 列出字符、code point 和來源檔案後失敗。若確定需系統 fallback，必須把例外寫入一份明確 allowlist 並附理由與測試；第一版不建立空白 allowlist 機制。
 - **committed 產物過期：** check 顯示應執行 `yarn update:site-font`；若是核心高頻候選變化，普通 update 仍不改核心，只有維護者選擇 `--rebuild-core`。
 - **生成中斷：** temp outputs 丟棄，repo 內既有完整產物保持不變。
 - **CSS／manifest／檔案不一致：** 所有環境 build 失敗，包括 Vercel。
-- **效能退步：** 若首頁 core 傳輸量較核准基準 297 KB 增加超過 15%，full check 只輸出明確警告與 bytes 差異，不自動刪核心字符；由維護者決定另開核心 prune 設計。功能完整性仍優先於自動縮檔。
+- **效能退步：** 核准 warning baseline 是 297,000 bytes；增加 15% 後的 warning threshold 是 341,550 bytes。core 超過 341,550 bytes 時 full check 只輸出明確警告與 bytes 差異，不自動刪核心字符；由維護者決定另開 core prune 設計。功能完整性與人類核准的單調核心政策仍優先。
 
 ## 測試與驗收
 
@@ -201,7 +201,7 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 ### 視覺與效能驗收
 
 - 比對首頁、文章、搜尋、深色模式、繁中／英文、粗體與標點截圖；不可出現 tofu、明顯 font swap layout shift 或字重退化。
-- 在 production 網路記錄首頁字型 transfer。第一版接受標準：不超過 350 KB，且不超過兩個字型請求。
+- 在 production 網路記錄首頁字型 transfer。第一版接受標準：不超過 350,000 bytes，且不超過兩個字型請求。
 - 代表文章首次直入的總字型 transfer 接受標準：不超過 550 KB。
 - 部署後重跑 PageSpeed Insights；記錄 FCP、LCP、總傳輸量與字型請求，作為結果而非以單次 Lighthouse 分數作 merge gate。
 

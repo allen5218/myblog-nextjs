@@ -220,7 +220,7 @@ git commit -m "feat: define stable Chiron font partitions"
 
 - [ ] **Step 1: Write failing generation tests using a fake command runner**
 
-Assert each artifact invokes `hb-subset` then `woff2_compress`; subset arguments contain `--text-file=` and `--layout-features=*`, preserve the variable axis without `--variations`, never contain corpus text in argv, write both formats to temp first, and leave old outputs intact when the second fake subset or compression fails.
+Assert each artifact invokes `hb-subset`, `woff2_compress`, then `woff2_decompress`; subset arguments contain `--text-file=` and `--layout-features=*`, preserve the variable axis without `--variations`, never contain corpus text in argv, write both formats to temp first, reject bad WOFF2 magic/decompression, and leave all old outputs intact when generation or commit-phase fault injection fails.
 
 ```ts
 expect(args.some((arg) => arg.startsWith('--text-file='))).toBe(true)
@@ -236,7 +236,7 @@ Expected: FAIL because generation module does not exist.
 
 - [ ] **Step 3: Implement atomic generator**
 
-Generate every nonempty set with `hb-subset` arguments `[sourcePath, \`--text-file=${textFile}\`, \`--output-file=${stagedTtf}\`, '--layout-features=*', '--name-IDs=*', '--name-languages=*', '--glyph-names']`, preserving variable `wght` 200–900 by not instantiating `--variations`; then invoke `woff2_compress` on that staged TTF. Write all outputs, manifest and CSS under a temp staging directory; validate all, then synchronize only `public/static/fonts/chiron/`, generated CSS, and (only with `--rebuild-core`) core data. Remove orphan hashes only inside the Chiron output directory.
+Generate every nonempty set with `hb-subset` arguments `[sourcePath, \`--text-file=${textFile}\`, \`--output-file=${stagedTtf}\`, '--layout-features=*', '--name-IDs=*', '--name-languages=*', '--glyph-names']`, preserving variable `wght` 200–900 by not instantiating `--variations`; then invoke `woff2_compress` and structurally validate magic plus `woff2_decompress`. Task 4 owns container validity; Task 5 owns complete cmap, glyph and axis semantics. Stage fonts, manifest, CSS and optional rebuilt core, then transactionally replace all applicable outputs with unique backups and full reverse rollback. Cleanup backups only after consistent commit and never let cleanup failure start a partial rollback. Remove orphan hashes only inside the replaced Chiron output directory.
 
 Generated CSS must contain:
 
@@ -298,7 +298,7 @@ Expected: FAIL with module-not-found.
 
 - [ ] **Step 3: Implement static checks before command discovery**
 
-Always validate schema, source metadata agreement, existence/hash/bytes, CSS references, exact disjoint sets, stable bucket mapping and corpus freshness. Then discover `hb-shape`/inspection support. Only `VERCEL=1` may skip missing dynamic tools; local/CI must fail with install guidance. Full mode shapes UTF-8 text files, rejects `.notdef`, verifies cmap and `wght` min/max. Warn, but do not fail, if core exceeds 341.55 KB (297 KB × 1.15).
+Always validate schema, source metadata agreement, existence/hash/bytes, CSS references, exact disjoint sets, stable bucket mapping and corpus freshness. Then discover `hb-shape`, `woff2_compress`, `woff2_decompress` and inspection support. Only `VERCEL=1` may skip missing dynamic tools; local/CI must fail with install guidance. Full mode shapes UTF-8 text files, rejects `.notdef`, verifies cmap and `wght` min/max. Warn, but do not fail, if core exceeds 341,550 bytes (297,000 × 1.15).
 
 - [ ] **Step 4: Wire command into build**
 
@@ -436,7 +436,7 @@ Expected: all PASS using production build/serve, with homepage ≤2 font request
 - [ ] **Step 3: Inspect artifact budgets and diff scope**
 
 Run: `node -e "const m=require('./public/static/fonts/chiron/manifest.json'); console.log(m.artifacts.map(a=>[a.role,a.bytes]))"`  
-Expected: homepage core ≤350 KB; warning threshold is ≤341.55 KB; representative article manifest-selected total ≤550 KB. Run `git diff --check` and `git status --short`; confirm no unrelated files and `next-env.d.ts` is unstaged.
+Expected: homepage core ≤350,000 bytes; warning threshold is 341,550 bytes; representative article manifest-selected total ≤550,000 bytes. Run `git diff --check` and `git status --short`; confirm no unrelated files and `next-env.d.ts` is unstaged.
 
 - [ ] **Step 4: Request code review before publishing**
 

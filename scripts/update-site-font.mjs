@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -48,6 +48,7 @@ export async function generateSiteFontArtifacts({
   buckets,
   runner = defaultRunner,
   coreOutput,
+  commitHook = async () => {},
 }) {
   const stagingRoot = await fs.mkdtemp(path.join(root, '.site-font-stage-'))
   const stagedFonts = path.join(stagingRoot, 'fonts')
@@ -85,7 +86,17 @@ export async function generateSiteFontArtifacts({
       await runner('woff2_compress', [ttfFile])
       const temporaryWoff = ttfFile.replace(/\.ttf$/, '.woff2')
       const bytes = await fs.readFile(temporaryWoff)
-      if (bytes.length === 0) throw new Error(`woff2_compress produced an empty file for ${stem}`)
+      if (bytes.subarray(0, 4).toString('ascii') !== 'wOF2') {
+        throw new Error(`woff2_compress produced invalid WOFF2 magic for ${stem}`)
+      }
+      const validationDirectory = path.join(stagingRoot, 'validation', stem)
+      await fs.mkdir(validationDirectory, { recursive: true })
+      const validationWoff = path.join(validationDirectory, `${stem}.woff2`)
+      await fs.copyFile(temporaryWoff, validationWoff)
+      await runner('woff2_decompress', [validationWoff])
+      const decompressed = await fs.readFile(path.join(validationDirectory, `${stem}.ttf`))
+      if (decompressed.length === 0)
+        throw new Error(`woff2_decompress produced an empty TTF for ${stem}`)
       const sha256 = digest(bytes)
       const file = `${stem}.${sha256.slice(0, 16)}.woff2`
       await fs.rename(temporaryWoff, path.join(stagedFonts, file))
@@ -120,30 +131,54 @@ export async function generateSiteFontArtifacts({
       `${JSON.stringify(manifest, null, 2)}\n`
     )
     await fs.writeFile(stagedCss, cssFor(artifacts))
+    const stagedCore = coreOutput ? path.join(stagingRoot, 'core-codepoints.txt') : undefined
+    if (stagedCore) await fs.writeFile(stagedCore, serializeCodepoints(core))
 
     await fs.mkdir(path.dirname(outputFonts), { recursive: true })
     await fs.mkdir(path.dirname(outputCss), { recursive: true })
-    const previousFonts = `${outputFonts}.previous-${process.pid}`
-    await fs.rm(previousFonts, { recursive: true, force: true })
+    if (coreOutput) await fs.mkdir(path.dirname(coreOutput), { recursive: true })
+    const transactionId = randomUUID()
+    const outputs = [
+      { staged: stagedFonts, output: outputFonts, phase: 'after-fonts-swap' },
+      { staged: stagedCss, output: outputCss, phase: 'after-css-swap' },
+      ...(coreOutput
+        ? [{ staged: stagedCore, output: coreOutput, phase: 'during-core-write' }]
+        : []),
+    ].map((entry) => ({
+      ...entry,
+      backup: `${entry.output}.backup-${transactionId}`,
+      hadOld: false,
+      installed: false,
+    }))
+
     try {
-      await fs.rename(outputFonts, previousFonts)
+      for (const entry of outputs) {
+        try {
+          await fs.rename(entry.output, entry.backup)
+          entry.hadOld = true
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error
+        }
+      }
+      for (const entry of outputs) {
+        await fs.rename(entry.staged, entry.output)
+        entry.installed = true
+        await commitHook(entry.phase)
+      }
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error
-    }
-    try {
-      await fs.rename(stagedFonts, outputFonts)
-      await fs.rename(stagedCss, outputCss)
-      if (coreOutput) await fs.writeFile(coreOutput, serializeCodepoints(core))
-      await fs.rm(previousFonts, { recursive: true, force: true })
-    } catch (error) {
-      await fs.rm(outputFonts, { recursive: true, force: true })
-      try {
-        await fs.rename(previousFonts, outputFonts)
-      } catch {
-        // There was no previous output directory to restore.
+      for (const entry of [...outputs].reverse()) {
+        if (entry.installed) await fs.rm(entry.output, { recursive: true, force: true })
+        if (entry.hadOld) await fs.rename(entry.backup, entry.output)
       }
       throw error
     }
+
+    // Cleanup is outside the transaction: committed outputs are already consistent.
+    await Promise.all(
+      outputs
+        .filter(({ hadOld }) => hadOld)
+        .map(({ backup }) => fs.rm(backup, { recursive: true, force: true }).catch(() => {}))
+    )
 
     return manifest
   } finally {
