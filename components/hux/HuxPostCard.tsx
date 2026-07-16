@@ -20,7 +20,7 @@ export default function HuxPostCard({ post }: HuxPostCardProps) {
 
   return (
     <div className="post-preview">
-      <Link href={`/${post.path}/`}>
+      <Link href={`/${post.path}/`} prefetch={false}>
         <h2 className="post-title">{post.title}</h2>
         {post.subtitle && <h3 className="post-subtitle">{post.subtitle}</h3>}
         {preview && <div className="post-content-preview">{preview}</div>}

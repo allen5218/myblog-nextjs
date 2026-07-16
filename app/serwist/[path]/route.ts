@@ -17,6 +17,10 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     // 非 Windows 平台預設 useNativeEsbuild=false,會要求 esbuild-wasm(未安裝);
     // 改用專案本來就釘住的原生 esbuild。
     useNativeEsbuild: true,
+    // defaultCache 已會在實際請求時快取頁面與靜態資源;不要再沿用 Serwist 預設的
+    // `.next/static/**/*` + `public/**/*` glob。否則首次安裝會立刻下載全站圖片、
+    // 所有 JS/CSS 與 OG 專用字型(目前約 5.4 MiB),即使當前頁面完全用不到。
+    globPatterns: [],
     additionalPrecacheEntries: [{ url: '/offline/', revision }],
   }
 )

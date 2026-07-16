@@ -8,6 +8,26 @@ const newestPostPath = '/2026/04/26/learning-how-to-learn/'
 const oldestPostPath = '/2021/04/30/typora-latex-mathjax/'
 const siteUrl = 'https://blog.allenspace.de'
 
+test('首頁不預取文章內頁', async ({ page }) => {
+  const prefetchedArticleRoutes: string[] = []
+
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (
+      request.method() === 'GET' &&
+      url.searchParams.has('_rsc') &&
+      /\/20\d\d\//.test(url.pathname)
+    ) {
+      prefetchedArticleRoutes.push(url.pathname)
+    }
+  })
+
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+
+  expect(prefetchedArticleRoutes).toEqual([])
+})
+
 test('首頁的 Older Posts 一次點擊就抵達第 2 頁', async ({ page }) => {
   await page.goto('/')
 

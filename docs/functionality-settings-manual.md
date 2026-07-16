@@ -30,27 +30,27 @@ standalone typecheck.
 
 ### Front matter fields
 
-| Field          | Type        | Required | Behavior                                                                                         |
-| -------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `title`        | string      | ✅       | Display/SEO/search/feed title and structured-data headline.                                      |
-| `date`         | date        | ✅       | Publication date; determines the `/YYYY/MM/DD/` URL prefix.                                      |
-| `tags`         | string list |          | Tag pages, archive filter, feeds, post header. Tag pages use slugified names.                    |
-| `update`       | date        |          | Shown as the updated date; becomes `lastmod` for sitemap/SEO.                                    |
-| `draft`        | boolean     |          | Drafts are excluded from listings, sitemap, RSS, and tag counts in production builds.            |
-| `subtitle`     | string      |          | Visible subtitle; also the fallback `summary` for SEO/feeds.                                     |
-| `images`       | string/list |          | JSON-LD `image` fallback (behind `headerImg`) and the `PostBanner` layout background. **Not** used for the generated `og:image`/Twitter card — see §6.                    |
-| `authors`      | string list |          | References `data/authors/*.mdx` by filename; defaults to `default`.                              |
-| `author`       | string      |          | Legacy single-author field; layouts mainly use `authors`.                                        |
-| `layout`       | string      |          | `PostLayout` (default), `PostSimple`, or `PostBanner`; unknown values fall back to `PostLayout`. |
-| `bibliography` | string      |          | BibTeX file for `rehype-citation` (see `data/references-data.bib`).                              |
-| `canonicalUrl` | string      |          | Schema field only; the post route emits the generated legacy canonical path regardless.          |
-| `headerImg`    | string      |          | Hero image; also feeds the JSON-LD `image` and the generated social-card background (§6).        |
-| `headerBgCss`  | string      |          | Custom CSS background for the hero (alternative to `headerImg`).                                 |
-| `headerMask`   | number/json |          | Hero mask opacity.                                                                               |
-| `iframe`       | string      |          | Full-hero iframe (slide/keynote posts). Source must pass the allowlist in `lib/iframe.ts`.       |
-| `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px) on the post page.                   |
-| `hidden`       | boolean     |          | See "Hidden posts" below.                                                                        |
-| `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.     |
+| Field          | Type        | Required | Behavior                                                                                                                                                            |
+| -------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`        | string      | ✅       | Display/SEO/search/feed title and structured-data headline.                                                                                                         |
+| `date`         | date        | ✅       | Publication date; determines the `/YYYY/MM/DD/` URL prefix.                                                                                                         |
+| `tags`         | string list |          | Tag pages, archive filter, feeds, post header. Tag pages use slugified names.                                                                                       |
+| `update`       | date        |          | Shown as the updated date; becomes `lastmod` for sitemap/SEO.                                                                                                       |
+| `draft`        | boolean     |          | Drafts are excluded from listings, sitemap, RSS, and tag counts in production builds.                                                                               |
+| `subtitle`     | string      |          | Visible subtitle; also the fallback `summary` for SEO/feeds.                                                                                                        |
+| `images`       | string/list |          | JSON-LD `image` fallback (behind `headerImg`) and the `PostBanner` layout background. **Not** used for the generated `og:image`/Twitter card — see §6.              |
+| `authors`      | string list |          | References `data/authors/*.mdx` by filename; defaults to `default`.                                                                                                 |
+| `author`       | string      |          | Legacy single-author field; layouts mainly use `authors`.                                                                                                           |
+| `layout`       | string      |          | `PostLayout` (default), `PostSimple`, or `PostBanner`; unknown values fall back to `PostLayout`.                                                                    |
+| `bibliography` | string      |          | BibTeX file for `rehype-citation` (see `data/references-data.bib`).                                                                                                 |
+| `canonicalUrl` | string      |          | Schema field only; the post route emits the generated legacy canonical path regardless.                                                                             |
+| `headerImg`    | string      |          | Hero image; also feeds the JSON-LD `image` and the generated social-card background (§6).                                                                           |
+| `headerBgCss`  | string      |          | Custom CSS background for the hero (alternative to `headerImg`).                                                                                                    |
+| `headerMask`   | number/json |          | Hero mask opacity.                                                                                                                                                  |
+| `iframe`       | string      |          | Full-hero iframe (slide/keynote posts). Source must pass the allowlist in `lib/iframe.ts`.                                                                          |
+| `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px) on the post page.                                                                                      |
+| `hidden`       | boolean     |          | See "Hidden posts" below.                                                                                                                                           |
+| `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.                                                                        |
 | `mermaid`      | boolean     |          | Legacy migration flag, kept for compatibility — rendering is triggered by the presence of a ` ```mermaid ` fence, not by this flag. See §2 for how diagrams render. |
 
 Computed automatically (do not set manually): reading time, table of contents, excerpt
@@ -237,6 +237,11 @@ authored social image anywhere in the repo.
 - Behavior: Next.js-aware runtime caching (`defaultCache`); previously visited pages work
   offline; unvisited navigations fall back to `/offline/` (precached, revision = git commit hash, or
   `VERCEL_GIT_COMMIT_SHA` on Vercel, or a random uuid as last resort).
+- The precache contains **only `/offline/`**: `createSerwistRoute` explicitly sets
+  `globPatterns: []` so the default rules do not download all of `.next/static` and `public/`
+  (including images, JS/CSS, OG-only fonts, and Chiron site-font buckets unrelated to the current
+  page) during installation. Other resources remain cached on demand by `defaultCache`; do not
+  remove the empty array or add the site-font files to the precache.
 - Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.
@@ -257,6 +262,9 @@ authored social image anywhere in the repo.
   - `img-src`: self + `img.allenspace.de` + GA endpoints + blob/data. The starter's
     `picsum.photos` and `media-src` S3 wildcard are **disabled** (commented with risk notes
     in the config — read those before re-enabling anything).
+    `img.allenspace.de` is behind Cloudflare with a fixed four-hour CDN TTL; changing that TTL is
+    outside this application's performance work. Chiron site fonts are same-origin and do not use
+    the image CDN.
   - `frame-src`: giscus, `slide.allenspace.de`, YouTube nocookie, Vimeo only.
   - **Adding a third-party script/embed/image host requires updating the CSP** in the same
     change, and (for images) `images.remotePatterns`.
@@ -275,9 +283,26 @@ authored social image anywhere in the repo.
 
 - Dark/light theme via `next-themes`; default is **dark**. The switch lives in the navbar
   (sun/moon/monitor menu).
-- Site-wide font: **Chiron Sung HK** (CJK serif, variable 200–900) via `next/font/google`,
-  self-hosted at build time — `font-src 'self'` stays valid, no runtime Google Fonts
-  requests.
+- Site-wide font: **Chiron Sung HK** (CJK serif, variable 200–900), served from committed,
+  same-origin WOFF2 subsets — `font-src 'self'` stays valid and there are no runtime Google Fonts
+  requests. The source variable TTF is pinned to a specific Google Fonts repository revision and
+  SHA-256 in `font-data/chiron/source.json`; Vercel never downloads or generates it.
+- The subset layout uses one committed monotonic core plus five reusable supplemental buckets.
+  `font-data/chiron/supplemental-assignments.json` is the authoritative schema v2 mapping from each
+  non-core code point to a bucket. The initial buckets were optimized by page co-occurrence; normal
+  updates only assign genuinely new characters and never rebalance an existing assignment. The
+  content-addressed WOFF2 files and schema v2 manifest live under
+  `public/static/fonts/chiron/`, while `css/chiron-font.generated.css` supplies the precise
+  `unicode-range` faces and `--font-chiron-sung-hk` variable. These generated files must be committed
+  together and must not be edited by hand.
+- `yarn update:site-font` refreshes the current buckets without shrinking the core; the explicit
+  `--rebuild-core` mode only grows the core with the current fixed UI, high-frequency, and homepage
+  characters. Updates and full checks require HarfBuzz plus `woff2_compress`/`woff2_decompress`
+  (`brew install harfbuzz woff2`). GitHub's required `check` job runs the full glyph, cmap, variable
+  axis, exact-byte budget, and assignment-history checks against the `origin/main` assignment map.
+  The first rollout may have no base map; after that, moving or removing an existing assignment
+  fails CI. Vercel runs static schema/hash/CSS/corpus/budget validation and may skip only dynamic
+  tool-dependent checks when its font tools are unavailable.
 - Focus outline: brand cyan, visible **only for keyboard navigation** (Tab), hidden for
   mouse clicks (`components/FocusVisibleFix.tsx` + `user-is-tabbing` class).
 
@@ -285,19 +310,21 @@ authored social image anywhere in the repo.
 
 ### Commands
 
-| Command            | Purpose                                                               |
-| ------------------ | --------------------------------------------------------------------- |
-| `yarn dev`            | Build Contentlayer, then run its watcher and the dev server at `http://localhost:3000` |
-| `yarn start`          | The same Contentlayer + dev-server flow as `yarn dev`                |
-| `yarn build`          | `check:og-font` + Contentlayer build + production build + postbuild (RSS/tag feeds) |
-| `yarn serve`          | Serve the production build (`next start`)                             |
-| `yarn lint`           | ESLint (+prettier) with `--fix`                                       |
-| `yarn test:unit`      | Vitest unit tests (`tests/unit/`)                                     |
-| `yarn test:parity`    | Playwright parity suite (`tests/playwright/`, binds `127.0.0.1:3012`) |
-| `yarn check:og-font`  | Verify the OG/social-card font subset covers all current card text (§6); runs automatically before `yarn build` |
-| `yarn update:og-font` | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6) |
-| `yarn mermaid:render` | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
-| `yarn analyze`        | Webpack build with bundle analyzer (normal builds stay on Turbopack) |
+| Command                 | Purpose                                                                                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yarn dev`              | Build Contentlayer, then run its watcher and the dev server at `http://localhost:3000`                                                                                                                           |
+| `yarn start`            | The same Contentlayer + dev-server flow as `yarn dev`                                                                                                                                                            |
+| `yarn build`            | `check:og-font` + Contentlayer build + static `check:site-font` + production build + postbuild (RSS/tag feeds)                                                                                                   |
+| `yarn serve`            | Serve the production build (`next start`)                                                                                                                                                                        |
+| `yarn lint`             | ESLint (+prettier) with `--fix`                                                                                                                                                                                  |
+| `yarn test:unit`        | Vitest unit tests (`tests/unit/`)                                                                                                                                                                                |
+| `yarn test:parity`      | Playwright parity suite (`tests/playwright/`, binds `127.0.0.1:3012`)                                                                                                                                            |
+| `yarn check:og-font`    | Verify the OG/social-card font subset covers all current card text (§6); runs automatically before `yarn build`                                                                                                  |
+| `yarn update:og-font`   | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6)                                                                                                         |
+| `yarn check:site-font`  | Verify committed site-font schema, hashes, corpus and page budgets; add `--full` for glyph/cmap/axis checks (§9)                                                                                                 |
+| `yarn update:site-font` | Regenerate committed Chiron site-font buckets; add `--rebuild-core` only for an intentional monotonic core expansion (§9)                                                                                        |
+| `yarn mermaid:render`   | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
+| `yarn analyze`          | Webpack build with bundle analyzer (normal builds stay on Turbopack)                                                                                                                                             |
 
 Operational caveats:
 
@@ -309,11 +336,14 @@ Operational caveats:
   on-demand compilation, not a bug; production navigates in ~15ms. Never judge interaction
   latency from the dev server.
 - `yarn build` / `yarn check:og-font` / `yarn update:og-font` need the HarfBuzz CLI (`hb-shape`,
-  `hb-subset`; e.g. `brew install harfbuzz`) installed locally. Vercel builds skip the glyph
-  check instead of failing (see §6) — HarfBuzz is not installed there; the GitHub Action
-  `og-font-check` re-runs the check on pushes/PRs (see §6).
+  `hb-subset`; e.g. `brew install harfbuzz`) installed locally. Site-font regeneration and
+  `yarn check:site-font --full` additionally need `woff2_compress` and `woff2_decompress`
+  (`brew install woff2`). Vercel skips only the unavailable dynamic font checks and still runs
+  static integrity checks; the required GitHub `og-font-check` workflow installs both Ubuntu
+  packages (`libharfbuzz-bin`, `woff2`) and closes that gap. The manually triggered Pages workflow
+  only builds committed site-font artifacts, so it needs HarfBuzz for the OG check but not woff2.
 - `yarn mermaid:render` needs Playwright Chromium (`yarn playwright install --with-deps
-  chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
+chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   committed `public/mermaid/` cache is what Vercel actually reads. The warn-only GitHub
   Action `mermaid-check` runs `--check` on pushes/PRs (a structural hash↔file comparison,
   no re-render, no Chromium; see §2) but is not a required status check, so a cache
