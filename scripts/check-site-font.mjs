@@ -35,6 +35,23 @@ const PLACEMENT_POLICY = [
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
+/**
+ * @typedef {(command: string, args: string[]) => Promise<string | void | {
+ *   stdout?: string,
+ *   stderr?: string,
+ * }>} SiteFontCheckRunner
+ */
+
+/**
+ * @typedef {object} SiteFontCheckOptions
+ * @property {string} [root]
+ * @property {boolean} [full]
+ * @property {Partial<NodeJS.ProcessEnv>} [env]
+ * @property {SiteFontCheckRunner} [runner]
+ * @property {string} [baseAssignmentsPath]
+ * @property {any[]} [budgetBlogs]
+ */
+
 async function defaultRunner(command, args) {
   return execFileAsync(command, args, { maxBuffer: 64 * 1024 * 1024 })
 }
@@ -190,6 +207,7 @@ function validateAxis(stdout) {
   )
 }
 
+/** @param {SiteFontCheckOptions} [options] */
 export async function checkSiteFont({
   root,
   full = false,

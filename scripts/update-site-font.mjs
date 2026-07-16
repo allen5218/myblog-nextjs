@@ -23,6 +23,21 @@ const sorted = (values) => [...values].sort((a, b) => a - b)
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
+/**
+ * @typedef {object} SiteFontGenerationOptions
+ * @property {string} root
+ * @property {string} sourcePath
+ * @property {string} sourceSha256
+ * @property {any} axes
+ * @property {Set<number>} core
+ * @property {Map<number, Set<number>>} buckets
+ * @property {Buffer} assignmentBytes
+ * @property {string} [assignmentOutput]
+ * @property {(command: string, args: string[]) => Promise<void>} [runner]
+ * @property {string} [coreOutput]
+ * @property {(phase: string) => Promise<void>} [commitHook]
+ */
+
 async function defaultRunner(command, args) {
   await execFileAsync(command, args)
 }
@@ -43,6 +58,7 @@ function cssFor(artifacts) {
   return `:root { --font-chiron-sung-hk: 'Chiron Sung HK'; }\n\n${faces}\n`
 }
 
+/** @param {SiteFontGenerationOptions} options */
 export async function generateSiteFontArtifacts({
   root,
   sourcePath,

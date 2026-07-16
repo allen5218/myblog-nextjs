@@ -111,7 +111,7 @@ async function fixture() {
     core: codePoints,
     buckets: Array.from({ length: 5 }, (_, bucket) => ({
       bucket,
-      codePoints: [],
+      codePoints: [] as string[],
     })),
     artifacts,
   }
