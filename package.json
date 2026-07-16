@@ -5,11 +5,12 @@
   "scripts": {
     "start": "cross-env INIT_CWD=$PWD node ./scripts/dev.mjs",
     "dev": "cross-env INIT_CWD=$PWD node ./scripts/dev.mjs",
-    "build": "yarn check:og-font && yarn contentlayer2 build && cross-env INIT_CWD=$PWD next build && cross-env NODE_OPTIONS='--experimental-json-modules' node ./scripts/postbuild.mjs",
+    "build": "yarn check:og-font && yarn check:site-font && yarn contentlayer2 build && cross-env INIT_CWD=$PWD next build && cross-env NODE_OPTIONS='--experimental-json-modules' node ./scripts/postbuild.mjs",
     "serve": "next start",
     "test:parity": "playwright test --config=playwright.config.ts",
     "test:unit": "vitest run",
     "check:og-font": "node ./scripts/check-og-font.mjs",
+    "check:site-font": "node ./scripts/check-site-font.mjs",
     "update:og-font": "node ./scripts/update-og-font.mjs",
     "update:site-font": "node ./scripts/update-site-font.mjs",
     "mermaid:render": "node ./scripts/mermaid-render.mjs",
