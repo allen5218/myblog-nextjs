@@ -21,6 +21,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `tsc --noEmit`,沒這個檔案,全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
+- **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
+  沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
+  新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、
+  約 15 秒完成整個 build。遇到明顯超過平常約 120 秒的情況,先確認沒有第二個 build、
+  lockfile 或真實編譯錯誤;若都沒有,不要把它診斷成 Next 16 效能退化,直接申請提升權限
+  重跑 `yarn build`。production server 綁定 `127.0.0.1:3012` 若回 `listen EPERM` 也用
+  同一方式在沙箱外啟動;驗證完成後必須關閉該程序。
 - `next/og` 的 `ImageResponse` 只支援 CSS 子集;全版 absolute overlay **不要用
   `inset: 0` shorthand** — Satori 的 inline-style layout 不會把它展開,元素會沒有面積而
   靜默消失。要明寫 `top`/`right`/`bottom`/`left: 0`,並用實際渲染 PNG 的像素測試驗證;
