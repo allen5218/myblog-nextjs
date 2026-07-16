@@ -242,6 +242,10 @@ authored social image anywhere in the repo.
   (including images, JS/CSS, OG-only fonts, and Chiron site-font buckets unrelated to the current
   page) during installation. Other resources remain cached on demand by `defaultCache`; do not
   remove the empty array or add the site-font files to the precache.
+- This tradeoff guarantees that only the `/offline/` HTML is precached; its CSS and JS chunks still
+  depend on runtime caching. If a user goes offline immediately after the first visit, the fallback
+  may render temporarily without styling. This is a known edge case of avoiding an install-time
+  download of all site assets.
 - Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.
@@ -304,6 +308,10 @@ authored social image anywhere in the repo.
   The first rollout may have no base map; after that, moving or removing an existing assignment
   fails CI. Vercel runs static schema/hash/CSS/corpus/budget validation and may skip only dynamic
   tool-dependent checks when its font tools are unavailable.
+- If corpus collection reports `Unknown Unicode category for U+...`, it has encountered a character
+  category without an explicit policy and fails closed. Deliberately classify that category as
+  included or excluded in `classifySiteFontCodePoint`, then run `yarn update:site-font` and commit
+  the generated artifacts together.
 - Focus outline: brand cyan, visible **only for keyboard navigation** (Tab), hidden for
   mouse clicks (`components/FocusVisibleFix.tsx` + `user-is-tabbing` class).
 

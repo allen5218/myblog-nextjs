@@ -81,7 +81,7 @@ app/                  App Router routes (incl. sw.ts, manifest.ts)
 components/hux/       Hux visual components (hero, sidebar, catalog, …)
 layouts/              post/list layouts
 lib/                  pagination, iframe allowlist, social-card generation
-scripts/              postbuild feeds + OG font subsetting tools
+scripts/              postbuild feeds + OG/site-font subsetting and validation tools
 docs/                 manuals and maintenance docs
 faq/                  upstream starter guides (MDX components, KBar, Docker)
 tests/                unit + Playwright parity suites

@@ -27,6 +27,7 @@ async function fixture() {
     fs.mkdir(path.join(root, 'font-data/chiron'), { recursive: true }),
     fs.mkdir(path.join(root, 'css'), { recursive: true }),
     fs.mkdir(path.join(root, 'data/blog'), { recursive: true }),
+    fs.mkdir(path.join(root, 'data/authors'), { recursive: true }),
     fs.mkdir(path.join(root, 'dictionaries'), { recursive: true }),
     fs.mkdir(path.join(root, 'data'), { recursive: true }),
     fs.mkdir(path.join(root, '.contentlayer/generated/Blog'), { recursive: true }),
@@ -473,6 +474,45 @@ describe('site font checks', () => {
     await expect(checkSiteFont({ root, full: true, runner })).rejects.toThrow(
       /hb-info.*probe.*permission denied/i
     )
+  })
+
+  it('accepts woff2 usage probes with different numeric exit codes and messages', async () => {
+    const { root, manifest } = await fixture()
+    const runner = async (command: string, args: string[]) => {
+      if (command.startsWith('woff2_') && args.length === 0) {
+        throw Object.assign(new Error('usage changed'), { code: 64, stderr: 'new usage text' })
+      }
+      if (args.includes('--version')) return { stdout: 'ok' }
+      if (command === 'woff2_decompress') {
+        await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
+        return { stdout: '' }
+      }
+      if (command === 'hb-shape') return { stdout: '[space=0+500]' }
+      if (args.includes('--list-unicodes')) {
+        return { stdout: manifest.core.map((value) => `U+${value}`).join('\n') }
+      }
+      return { stdout: 'wght 200 200 900 Weight' }
+    }
+
+    await expect(checkSiteFont({ root, full: true, runner })).resolves.toMatchObject({ skipped: [] })
+  })
+
+  it('ignores unprefixed hexadecimal words in hb-info unicode output', async () => {
+    const { root, manifest } = await fixture()
+    const runner = async (command: string, args: string[]) => {
+      if (args.includes('--version') || args.length === 0) return { stdout: 'ok' }
+      if (command === 'woff2_decompress') {
+        await fs.writeFile(args[0].replace(/\.woff2$/, '.ttf'), 'ttf')
+        return { stdout: '' }
+      }
+      if (command === 'hb-shape') return { stdout: '[space=0+500]' }
+      if (args.includes('--list-unicodes')) {
+        return { stdout: `${manifest.core.map((value) => `U+${value}`).join('\n')}\nDECADE FACADE` }
+      }
+      return { stdout: 'wght 200 200 900 Weight' }
+    }
+
+    await expect(checkSiteFont({ root, full: true, runner })).resolves.toMatchObject({ skipped: [] })
   })
 
   it('rejects an incorrect variable weight axis', async () => {

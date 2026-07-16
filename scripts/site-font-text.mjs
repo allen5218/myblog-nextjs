@@ -89,7 +89,7 @@ function collectCodePoints(text, excluded) {
       codePoints.add(codePoint)
     } else {
       throw new Error(
-        `Unknown Unicode category for U+${codePoint.toString(16).toUpperCase()} (${character})`
+        `Unknown Unicode category for U+${codePoint.toString(16).toUpperCase()} (${character}); deliberately classify this character category in classifySiteFontCodePoint, then run yarn update:site-font`
       )
     }
   }
@@ -115,7 +115,11 @@ export async function collectSiteFontCorpus(root) {
     excluded
   )
 
-  const files = await markdownFiles(path.join(root, 'data/blog'))
+  const files = (
+    await Promise.all(
+      ['data/blog', 'data/authors'].map((directory) => markdownFiles(path.join(root, directory)))
+    )
+  ).flat()
   const documents = new Map()
   const occurrences = new Map()
   for (const file of files) {

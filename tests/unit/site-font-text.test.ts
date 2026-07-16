@@ -18,6 +18,7 @@ async function fixtureRoot({ includeFlag = false, includeKeycap = false } = {}) 
   fixtureRoots.push(root)
   await Promise.all([
     mkdir(path.join(root, 'data/blog/nested'), { recursive: true }),
+    mkdir(path.join(root, 'data/authors'), { recursive: true }),
     mkdir(path.join(root, 'dictionaries'), { recursive: true }),
   ])
   await writeFile(path.join(root, 'package.json'), '{"type":"commonjs"}')
@@ -33,6 +34,7 @@ async function fixtureRoot({ includeFlag = false, includeKeycap = false } = {}) 
   )
   await writeFile(path.join(root, 'data/blog/nested/two.mdx'), '# 共\né')
   await writeFile(path.join(root, 'data/blog/nested/three.markdown'), '# Third')
+  await writeFile(path.join(root, 'data/authors/default.mdx'), '# Author')
   return root
 }
 
@@ -67,6 +69,15 @@ describe('collectSiteFontCorpus', () => {
     expect(corpus.documents.has('data/blog/nested/three.markdown')).toBe(true)
   })
 
+  it('includes author profiles as corpus documents', async () => {
+    const root = await fixtureRoot()
+    await writeFile(path.join(root, 'data/authors/cjk.mdx'), '# 作者獨有字')
+
+    const corpus = await collectSiteFontCorpus(root)
+
+    expect(corpus.documents.get('data/authors/cjk.mdx')).toContain('獨'.codePointAt(0))
+  })
+
   it('normalizes NFC and counts a code point at most once per document', async () => {
     const corpus = await collectSiteFontCorpus(await fixtureRoot())
 
@@ -97,7 +108,9 @@ describe('collectSiteFontCorpus', () => {
     const root = await fixtureRoot()
     await writeFile(path.join(root, 'data/blog/unknown.md'), '\u20dd')
 
-    await expect(collectSiteFontCorpus(root)).rejects.toThrow(/unknown Unicode category/i)
+    await expect(collectSiteFontCorpus(root)).rejects.toThrow(
+      /classifySiteFontCodePoint.*yarn update:site-font/i
+    )
   })
 
   it('fails closed for private-use code points with a U+ diagnostic', async () => {

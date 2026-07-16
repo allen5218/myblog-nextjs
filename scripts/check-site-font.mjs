@@ -181,9 +181,7 @@ async function discover(runner) {
         continue
       }
       const usageProbeSucceeded =
-        USAGE_PROBE_COMMANDS.has(command) &&
-        error?.code === 1 &&
-        /One argument, the input filename, must be provided\./.test(String(error.stderr))
+        USAGE_PROBE_COMMANDS.has(command) && typeof error?.code === 'number'
       if (!usageProbeSucceeded) {
         throw new Error(`Chiron site font ${command} probe failed: ${error.message}`)
       }
@@ -194,7 +192,7 @@ async function discover(runner) {
 
 function parseUnicodeList(stdout) {
   const values = new Set()
-  for (const match of String(stdout).matchAll(/(?:U\+|^|\s)([0-9A-Fa-f]{4,6})(?=\s|$)/gm)) {
+  for (const match of String(stdout).matchAll(/U\+([0-9A-Fa-f]{4,6})\b/g)) {
     values.add(Number.parseInt(match[1], 16))
   }
   return values

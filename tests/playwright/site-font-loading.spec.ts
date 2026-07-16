@@ -15,7 +15,7 @@ const manifest = JSON.parse(
 ) as { artifacts: FontArtifact[] }
 
 const fontPath = '/static/fonts/chiron/'
-const coreBytes = 295_888
+const coreBytes = manifest.artifacts.find((artifact) => artifact.role === 'core')!.bytes
 const homeBudget = 350_000
 const articleBudget = 550_000
 const articleRequestBudget = 3
