@@ -16,8 +16,19 @@ const SHARED_UI_TEXT = [
   'Search',
   'Older Posts',
   'Newer Posts',
+  'Previous',
+  'Next',
+  'Search articles',
   'Back to top',
-  'Offline',
+  'Theme switcher',
+  'Light',
+  'Dark',
+  'System',
+  'Toggle navigation',
+  '離線',
+  '閱讀過的頁面可以在離線時訪問哦 ;)',
+  '已瀏覽過的頁面仍會從快取顯示,重新連線後即可繼續閱讀其他文章。',
+  '回首頁 →',
 ]
 
 async function markdownFiles(directory) {
@@ -47,8 +58,13 @@ function exclusionCategory(character) {
   ) {
     return 'variation-selector'
   }
-  if (/\p{Cc}|\p{Cf}|\p{Cs}|\p{Co}|\p{Cn}/u.test(character)) return 'control'
-  if (/\p{Extended_Pictographic}|\p{Emoji_Modifier}/u.test(character)) return 'emoji'
+  if (/\p{Cc}|\p{Cf}/u.test(character)) return 'control'
+  if (
+    /\p{Extended_Pictographic}|\p{Emoji_Modifier}/u.test(character) ||
+    (codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff)
+  ) {
+    return 'emoji'
+  }
   return undefined
 }
 
