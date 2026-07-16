@@ -308,7 +308,9 @@ authored social image anywhere in the repo.
   The first rollout may have no base map; after that, moving or removing an existing assignment
   fails CI. Vercel runs static schema/hash/CSS/corpus/budget validation and may skip only dynamic
   tool-dependent checks when its font tools are unavailable.
-- If corpus collection reports `Unknown Unicode category for U+...`, it has encountered a character
+- Corpus collection covers the fixed UI seed, dictionaries, `data/siteMetadata.js`, and the full
+  raw markdown (including frontmatter) of both `data/blog` and `data/authors`.
+  If corpus collection reports `Unknown Unicode category for U+...`, it has encountered a character
   category without an explicit policy and fails closed. Deliberately classify that category as
   included or excluded in `classifySiteFontCodePoint`, then run `yarn update:site-font` and commit
   the generated artifacts together.

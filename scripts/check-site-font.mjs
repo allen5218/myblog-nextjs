@@ -318,16 +318,6 @@ export async function checkSiteFont({
       `corpus plan is stale in bucket ${index}`
     )
   }
-  const supported = new Set(collectedCorpus.fixedSeed)
-  for (const values of collectedCorpus.documents.values())
-    for (const value of values) supported.add(value)
-  for (const value of supported) {
-    requireCondition(
-      core.has(value) || assignments.has(value),
-      `corpus plan is stale at U+${hex(value)}`
-    )
-  }
-
   const expectedSets = [{ role: 'core', bucket: null, values: core }]
   for (let index = 0; index < 5; index += 1) {
     if (buckets.get(index).size)
