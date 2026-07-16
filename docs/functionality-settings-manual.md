@@ -241,9 +241,8 @@ authored social image anywhere in the repo.
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.
 - Favicons: full set regenerated from the same logo (`favicon.ico` also copied to site root
-  because browsers request `/favicon.ico` unconditionally). Known accepted exception:
-  `safari-pinned-tab.svg` still carries the old starter mark (deprecated Safari feature;
-  deliberately not regenerated).
+  because browsers request `/favicon.ico` unconditionally). `safari-pinned-tab.svg` uses a
+  monochrome vector version of the same "A" mark for Safari pinned tabs.
 - SW/TS note: `app/sw.ts` is excluded from `tsconfig.json` and ESLint because the webworker
   lib conflicts with the app's `dom` lib. `app/serwist/[path]/route.ts` is ordinary app code
   and must pass normal linting and typechecking.
