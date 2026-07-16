@@ -4,9 +4,9 @@
 
 **Goal:** Replace `next/font/google`'s generic Chiron Sung HK shards with committed, same-origin variable WOFF2 core and reusable supplemental subsets while preserving Chiron Sung HK 200–900 site-wide.
 
-**Architecture:** A committed core contains fixed UI text plus intentionally promoted cross-document high-frequency characters; all other supported corpus characters use eight stable `codePoint % 8` buckets and exact `unicode-range` faces. Local tooling pins and verifies the upstream source, generates artifacts atomically with HarfBuzz, and commits WOFF2/CSS/manifest; Vercel performs static integrity checks while GitHub's required `check` job performs full glyph and axis checks.
+**Architecture:** A committed core contains fixed UI text plus intentionally promoted cross-document high-frequency characters; all other supported corpus characters use eight stable `codePoint % 8` buckets and exact `unicode-range` faces. Local tooling pins and verifies the upstream source, atomically subsets staged variable TTFs with HarfBuzz and compresses them with `woff2_compress`, then commits WOFF2/CSS/manifest; Vercel performs static integrity checks while GitHub's required `check` job performs full glyph and axis checks.
 
-**Tech Stack:** Node.js 24 ESM, HarfBuzz CLI (`hb-subset`, `hb-shape`), WOFF2, Next.js 16 App Router, Tailwind CSS 4, Vitest 4, Playwright 1.61, GitHub Actions, Serwist 9.
+**Tech Stack:** Node.js 24 ESM, HarfBuzz CLI (`hb-subset`, `hb-shape`), `woff2_compress` (Homebrew/Ubuntu package `woff2`), Next.js 16 App Router, Tailwind CSS 4, Vitest 4, Playwright 1.61, GitHub Actions, Serwist 9.
 
 ## Global Constraints
 
@@ -31,7 +31,7 @@
 - `scripts/site-font-source.mjs`: pinned source metadata validation, download/cache, SHA-256 verification.
 - `scripts/site-font-text.mjs`: visible-text collection, NFC normalization, per-document occurrence provenance.
 - `scripts/site-font-plan.mjs`: monotonic core calculation, stable buckets, range compression, manifest data model.
-- `scripts/update-site-font.mjs`: CLI orchestration, HarfBuzz WOFF2 generation, validation, atomic artifact replacement.
+- `scripts/update-site-font.mjs`: CLI orchestration, staged HarfBuzz variable-TTF subsetting, `woff2_compress`, validation, atomic artifact replacement.
 - `scripts/check-site-font.mjs`: static checks everywhere and full HarfBuzz checks outside Vercel.
 - `scripts/site-font-check-policy.mjs`: narrow Vercel-only dynamic-check skip policy.
 - `font-data/chiron/source.json`: authoritative pinned revision, URL, SHA-256, family, axis, license.
@@ -220,7 +220,7 @@ git commit -m "feat: define stable Chiron font partitions"
 
 - [ ] **Step 1: Write failing generation tests using a fake command runner**
 
-Assert arguments contain `--text-file=`, WOFF2 output flavor, `--layout-features=*`, preserve variable axis, never contain corpus text in argv, write to temp first, and leave old outputs intact when the second fake subset fails.
+Assert each artifact invokes `hb-subset` then `woff2_compress`; subset arguments contain `--text-file=` and `--layout-features=*`, preserve the variable axis without `--variations`, never contain corpus text in argv, write both formats to temp first, and leave old outputs intact when the second fake subset or compression fails.
 
 ```ts
 expect(args.some((arg) => arg.startsWith('--text-file='))).toBe(true)
@@ -236,7 +236,7 @@ Expected: FAIL because generation module does not exist.
 
 - [ ] **Step 3: Implement atomic generator**
 
-Generate every nonempty set with the argument array `[sourcePath, \`--text-file=${textFile}\`, '--output-flavor=woff2', '--layout-features=*', '--name-IDs=*', '--name-languages=*', '--glyph-names']`, preserving `wght` 200–900. Write all outputs, manifest and CSS under a temp staging directory; validate all, then synchronize only `public/static/fonts/chiron/`, generated CSS, and (only with `--rebuild-core`) core data. Remove orphan hashes only inside the Chiron output directory.
+Generate every nonempty set with `hb-subset` arguments `[sourcePath, \`--text-file=${textFile}\`, \`--output-file=${stagedTtf}\`, '--layout-features=*', '--name-IDs=*', '--name-languages=*', '--glyph-names']`, preserving variable `wght` 200–900 by not instantiating `--variations`; then invoke `woff2_compress` on that staged TTF. Write all outputs, manifest and CSS under a temp staging directory; validate all, then synchronize only `public/static/fonts/chiron/`, generated CSS, and (only with `--rebuild-core`) core data. Remove orphan hashes only inside the Chiron output directory.
 
 Generated CSS must contain:
 
@@ -387,7 +387,7 @@ After existing `yarn check:og-font`, add:
 - run: yarn check:site-font --full
 ```
 
-Do not rename workflow job `check`, add `paths:`, or change HarfBuzz installation. Confirm Pages already installs `libharfbuzz-bin`; modify it only if that verified fact changes.
+Do not rename workflow job `check` or add `paths:`. Install Ubuntu packages `libharfbuzz-bin` and `woff2` (the latter provides `woff2_compress`) in the required workflow; confirm Pages tooling separately and only change it if its verified generation requirements demand it.
 
 - [ ] **Step 2: Update both manuals in lockstep**
 

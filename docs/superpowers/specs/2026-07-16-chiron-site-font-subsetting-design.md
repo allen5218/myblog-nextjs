@@ -74,7 +74,7 @@
 - `scripts/site-font-plan.mjs`
   - 高頻統計、核心單調擴充、`codePoint % 8` 分配、range 壓縮及 manifest model。
 - `scripts/update-site-font.mjs`
-  - 明確更新命令；呼叫 `hb-subset` 產生 WOFF2、內容 hash 檔名、CSS 和 manifest。
+  - 明確更新命令；呼叫 `hb-subset` 產生暫存 variable TTF，再以 `woff2_compress` 產生 WOFF2、內容 hash 檔名、CSS 和 manifest。
 - `scripts/check-site-font.mjs`
   - 靜態一致性、source integrity、glyph coverage、variable axis 與產物新鮮度檢查。
 - `scripts/site-font-check-policy.mjs`
@@ -107,7 +107,7 @@
 - `.github/workflows/og-font-check.yml`
   - 在現有 required job `check` 內加上 `yarn check:site-font`，不得改 job/context 名稱。
 - `.github/workflows/pages.yml`
-  - 維持安裝 `libharfbuzz-bin`，讓手動 Pages build 執行完整檢查。
+  - 維持安裝 `libharfbuzz-bin`；若 workflow 需要重產字型，另安裝 `woff2` 套件提供 `woff2_compress`。
 - `app/serwist/[path]/route.ts`
   - 不把字型重新加入 precache；字型維持按瀏覽器需求載入並由既有 runtime cache 處理。
 - `docs/functionality-settings-manual.md`
@@ -131,8 +131,8 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 3. `site-font-plan.mjs` 讀取 committed core；只有 `--rebuild-core` 才將符合五文件門檻的字符單調加入並寫回 `core-codepoints.txt`。
 4. 對 source cmap 驗證 corpus。若站內字符不在 Chiron source，命令列出 code point、字符及來源檔案後失敗；必須由人類決定是否允許 fallback，不能默默忽略。
 5. 非核心字符以 `codePoint % 8` 分配。
-6. 每個非空集合使用 `hb-subset`，輸入文字必須走 UTF-8 `--text-file`，並指定 WOFF2 output flavor、`--layout-features=*`、保留必要 name table、glyph names 和 variable `wght` axis。不得將 CJK 文字放入 argv。
-7. 產物先寫入 temp directory。全部 subset、shape、axis、hash 驗證成功後，才以一次同步步驟更新 committed output；中途失敗不得留下半套 CSS/manifest/WOFF2。
+6. 每個非空集合使用 `hb-subset` 產生暫存 variable TTF，輸入文字必須走 UTF-8 `--text-file`，並指定 `--layout-features=*`、保留必要 name table、glyph names 和完整 `wght` axis（不得傳入會 instantiate axis 的 `--variations`）。再以 `woff2_compress` 將暫存 TTF 轉成 WOFF2；不得將 CJK 文字放入 argv。
+7. TTF、WOFF2、manifest 與 CSS 全部先寫入 temp staging directory。全部 subset、compression、shape、axis、hash 驗證成功後，才以一次同步步驟更新 committed output；任一 `hb-subset` 或 `woff2_compress` 失敗都不得留下半套產物。
 8. WOFF2 檔名為內容 SHA-256 前 16 個 hex，例如 `core.a1b2c3d4e5f60718.woff2`、`supplement-3.….woff2`。
 9. 生成 manifest，再由 manifest 生成 CSS；CSS 中所有 face 使用相同 family、`font-style: normal`、`font-weight: 200 900`、`font-display: swap` 和精確 `unicode-range`。同一份 generated CSS 在 `:root` 定義 `--font-chiron-sung-hk: 'Chiron Sung HK'`，取代原本由 `next/font` class 注入的 variable；`app/layout.tsx` 不再需要字型 class。
 10. 清除不再被新 manifest 引用的舊 hashed WOFF2，但只限 `public/static/fonts/chiron/`，不得清理其他字型。
@@ -148,13 +148,13 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 ### Vercel
 
-- Vercel 沒有 HarfBuzz，因此不生成字型。
+- Vercel 沒有 HarfBuzz／`woff2_compress`，因此不生成字型。
 - `yarn build` 的 `check:site-font` 永遠執行 manifest schema、檔案存在、檔案 SHA-256、CSS 引用和 core/bucket 集合一致性檢查。
 - `VERCEL=1` 且找不到 `hb-shape`／`hb-subset` 時，可以明確警告後跳過 glyph shaping、axis inspection 和 regenerate freshness 的動態部分；不能跳過上述靜態檢查。
 
 ### GitHub Actions
 
-- 沿用 `.github/workflows/og-font-check.yml` 的 required `check` job 和 `libharfbuzz-bin`。
+- 沿用 `.github/workflows/og-font-check.yml` 的 required `check` job；Task 7 必須安裝 `libharfbuzz-bin` 與提供 `woff2_compress` 的 Ubuntu `woff2` 套件。
 - 在 `yarn check:og-font` 後執行 `yarn check:site-font --full`。
 - Full check 必須驗證全部 corpus 無 `.notdef`、每個產物 cmap 與 manifest 相符、`wght` axis 覆蓋 200–900，以及使用 committed core/bucket plan 重產的字符集合沒有過期。
 - 不要求 Linux 重產檔案和 macOS committed WOFF2 byte-for-byte 相等；跨平台 HarfBuzz 版本可能造成二進位差異。CI 驗字符集合、實際 glyph、axis 和 committed hash 自洽，而非重新生成 bytes 比對。
@@ -162,7 +162,7 @@ OG 字型可在後續小型重構中共用 source-download helper，但本案第
 
 ## 失敗處理
 
-- **缺 HarfBuzz：** 本機 update/full check 立即失敗並提示安裝；只有 Vercel 可依政策跳過動態檢查。
+- **缺 HarfBuzz／woff2_compress：** 本機 update/full check 立即失敗並提示安裝；只有 Vercel 可依政策跳過動態檢查。macOS 使用 Homebrew `harfbuzz` 與 `woff2`，Ubuntu 使用 `libharfbuzz-bin` 與 `woff2`。
 - **source hash 不符：** 立即停止，不寫任何產物；要求明確更新 pinned revision/hash。
 - **Chiron source 缺字：** 列出字符、code point 和來源檔案後失敗。若確定需系統 fallback，必須把例外寫入一份明確 allowlist 並附理由與測試；第一版不建立空白 allowlist 機制。
 - **committed 產物過期：** check 顯示應執行 `yarn update:site-font`；若是核心高頻候選變化，普通 update 仍不改核心，只有維護者選擇 `--rebuild-core`。
