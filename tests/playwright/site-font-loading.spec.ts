@@ -145,18 +145,17 @@ for (const article of [
 test('Serwist install 不會 eager fetch 全部 Chiron WOFF2', async ({ browser }) => {
   const context = await browser.newContext({ serviceWorkers: 'allow' })
   const page = await context.newPage()
-  const serviceWorkerFontRequests = new Set<string>()
+  const installRequests = new Set<string>()
 
-  page.on('request', (request) => {
-    if (request.serviceWorker() && new URL(request.url()).pathname.startsWith(fontPath)) {
-      serviceWorkerFontRequests.add(request.url())
-    }
+  context.on('request', (request) => {
+    if (request.serviceWorker()) installRequests.add(new URL(request.url()).pathname)
   })
 
   await page.goto('/')
   await page.evaluate(async () => void (await navigator.serviceWorker.ready))
   await page.waitForTimeout(500)
 
-  expect(serviceWorkerFontRequests.size).toBeLessThan(manifest.artifacts.length)
+  expect(installRequests).toContain('/offline/')
+  expect([...installRequests].filter((path) => path.startsWith(fontPath))).toEqual([])
   await context.close()
 })
