@@ -79,6 +79,8 @@ export async function generateSiteFontArtifacts({
         `--text-file=${textFile}`,
         `--output-file=${ttfFile}`,
         '--layout-features=*',
+        '--no-layout-closure',
+        '--no-bidi-closure',
         '--name-IDs=*',
         '--name-languages=*',
         '--glyph-names',

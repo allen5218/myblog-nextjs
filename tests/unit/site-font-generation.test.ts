@@ -66,6 +66,8 @@ describe('site font generation', () => {
     for (const call of calls.filter(({ command }) => command === 'hb-subset')) {
       expect(call.args.some((arg) => arg.startsWith('--text-file='))).toBe(true)
       expect(call.args).toContain('--layout-features=*')
+      expect(call.args).toContain('--no-layout-closure')
+      expect(call.args).toContain('--no-bidi-closure')
       expect(call.args).not.toContain('繁體中文')
       expect(call.args.some((arg) => arg.includes('--variations'))).toBe(false)
       expect(call.args.find((arg) => arg.startsWith('--output-file='))).toContain(tmpdir())

@@ -1673,9 +1673,9 @@
     {
       "role": "core",
       "bucket": null,
-      "file": "core.f40fc48346c8b374.woff2",
-      "sha256": "f40fc48346c8b3742d47a99bc6ab9811ba5fb19817515b7a3475adc8a090e148",
-      "bytes": 350572,
+      "file": "core.b818ec61caa1ce71.woff2",
+      "sha256": "b818ec61caa1ce71518d88c0f850998184be74b6600ba598754739035b248b96",
+      "bytes": 240832,
       "codePoints": [
         "0020",
         "0021",
@@ -2452,9 +2452,9 @@
     {
       "role": "supplemental",
       "bucket": 1,
-      "file": "supplement-1.becea221a04b42bc.woff2",
-      "sha256": "becea221a04b42bc82642e2860e05575641d5dc639daf4ff4087ff4708f5fc3e",
-      "bytes": 62888,
+      "file": "supplement-1.74ca957b6476001c.woff2",
+      "sha256": "74ca957b6476001c6c11fa18f1b58133d6f5d145d2f59056644e9c6fc6fb8023",
+      "bytes": 62504,
       "codePoints": [
         "2019",
         "4E39",
@@ -2585,9 +2585,9 @@
     {
       "role": "supplemental",
       "bucket": 2,
-      "file": "supplement-2.1748454c9cabab43.woff2",
-      "sha256": "1748454c9cabab43d1056cbf01de2fe0d42ef8cffe3548447fb1cf4628bc5fe1",
-      "bytes": 77428,
+      "file": "supplement-2.7e49307748b057ea.woff2",
+      "sha256": "7e49307748b057eab30b217b7caa7caf0d4ac6ffdee4286fc1b86737c898f736",
+      "bytes": 77044,
       "codePoints": [
         "300A",
         "4E32",
@@ -2734,9 +2734,9 @@
     {
       "role": "supplemental",
       "bucket": 3,
-      "file": "supplement-3.b47857417b06471f.woff2",
-      "sha256": "b47857417b06471f5a9385d72c741d3d72198b8ba763cc0650d8be46ed70b7d5",
-      "bytes": 64908,
+      "file": "supplement-3.92506a454cf37304.woff2",
+      "sha256": "92506a454cf37304b951ed39653ebf362d18d42459ad1b8f77c3d70829d28beb",
+      "bytes": 62156,
       "codePoints": [
         "2013",
         "2193",
@@ -2871,9 +2871,9 @@
     {
       "role": "supplemental",
       "bucket": 4,
-      "file": "supplement-4.ec46e4dbe33e8964.woff2",
-      "sha256": "ec46e4dbe33e89642a32aff8b0ab07731f0d2a50a2977331840fbc0cb7eccaba",
-      "bytes": 63584,
+      "file": "supplement-4.e028a2d661ac8bab.woff2",
+      "sha256": "e028a2d661ac8babe4585209360e05b79e6bfbcede74310c87941c7dbf641749",
+      "bytes": 62140,
       "codePoints": [
         "307C",
         "4ED4",
@@ -2997,9 +2997,9 @@
     {
       "role": "supplemental",
       "bucket": 5,
-      "file": "supplement-5.7cad192cab52863d.woff2",
-      "sha256": "7cad192cab52863dcdd4b225855a85189bb0471eb1e0edade1c52118e424d41b",
-      "bytes": 61152,
+      "file": "supplement-5.1b0c8a42390b0251.woff2",
+      "sha256": "1b0c8a42390b02518f63b77cfc47701748aed3f6c079517722d562ba75b346aa",
+      "bytes": 60648,
       "codePoints": [
         "4E4D",
         "4E5D",
@@ -3235,9 +3235,9 @@
     {
       "role": "supplemental",
       "bucket": 7,
-      "file": "supplement-7.a40e7d75d89a5c89.woff2",
-      "sha256": "a40e7d75d89a5c8925395300097efd42aa2b5357a9a24f0511bc18f0c184fb92",
-      "bytes": 62464,
+      "file": "supplement-7.f945dd853969f873.woff2",
+      "sha256": "f945dd853969f87399ba102cb30ce24726d550ad194a0ec3daca7542e76b0e52",
+      "bytes": 61448,
       "codePoints": [
         "00B7",
         "00D7",
