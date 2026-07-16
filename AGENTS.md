@@ -46,11 +46,12 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `app/serwist/[path]/route.ts` 產生 service worker;註冊網址是 `/serwist/sw.js`,不再以
   webpack child compilation 寫入 `public/sw.js`。`app/sw.ts` 繼續因 webworker 型別排除於
   主 tsconfig/ESLint,但 route handler 是一般 app 程式碼,不得排除。
-- **固定浮動控制項不要用過於通用的 class 名稱**:實測 Safari 內容阻擋器會把
-  `.back-top` 誤判為應隱藏的頁面元素,造成 Safari、Discord WebView 與主畫面 Web App
-  的返回頂部按鈕消失,而 LINE WebView 仍正常。這類問題先用 Safari 無痕模式與
-  單站關閉內容阻擋器做鑑別;站內控制項用專屬前綴與中性名稱(目前為
-  `.hux-elevator-control`),不要改回容易命中 cosmetic filtering 的通用語意名稱。
+- **固定浮動控制項要避開內容阻擋器的通用 selector**:實測 AdGuard 啟用的
+  Fanboy's Annoyances 同時以 `##.back-top` 與 `##[aria-label="Back to top"]` 隱藏返回頂部
+  按鈕,造成 Safari、Discord WebView 與部分主畫面 Web App 消失,而 LINE WebView 仍
+  正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
+  做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
+  `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
 - **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
   鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
   `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,

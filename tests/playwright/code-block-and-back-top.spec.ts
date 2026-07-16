@@ -38,6 +38,7 @@ test('返回頂部按鈕是方角,桌面/手機位置比照舊站', async ({ pag
   const backTop = page.getByRole('button', { name: 'Back to top' })
   await expect(backTop).toHaveClass(/\bhux-elevator-control\b/)
   await expect(backTop).not.toHaveClass(/\bback-top(?:-visible)?\b/)
+  await expect(backTop).not.toHaveAttribute('aria-label')
   const radius = await backTop.evaluate((el) => getComputedStyle(el).borderRadius)
   expect(radius).toBe('0px')
 

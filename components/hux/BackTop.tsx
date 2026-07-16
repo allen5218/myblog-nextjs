@@ -14,12 +14,12 @@ export default function BackTop() {
 
   return (
     <button
-      aria-label="Back to top"
       className={`hux-elevator-control ${visible ? 'hux-elevator-control-visible' : ''}`}
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       type="button"
     >
-      ↑
+      <span aria-hidden="true">↑</span>
+      <span className="sr-only">Back to top</span>
     </button>
   )
 }
