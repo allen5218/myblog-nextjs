@@ -7,7 +7,13 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 import { canSkipDynamicSiteFontChecks } from './site-font-check-policy.mjs'
-import { buildFontPlan, parseCodepoints } from './site-font-plan.mjs'
+import {
+  buildFontPlan,
+  corpusFromGeneratedBlogs,
+  homepageFromGeneratedBlogs,
+  parseAssignments,
+  parseCodepoints,
+} from './site-font-plan.mjs'
 import { loadSourceMetadata } from './site-font-source.mjs'
 import { collectSiteFontCorpus } from './site-font-text.mjs'
 
@@ -16,6 +22,15 @@ const FONT_DIRECTORY = 'public/static/fonts/chiron'
 const DYNAMIC_COMMANDS = ['hb-shape', 'hb-subset', 'hb-info', 'woff2_compress', 'woff2_decompress']
 const USAGE_PROBE_COMMANDS = new Set(['woff2_compress', 'woff2_decompress'])
 const WARNING_BYTES = 341_550
+const HOMEPAGE_BUDGET_BYTES = 350_000
+const HOMEPAGE_BUDGET_REQUESTS = 2
+const ARTICLE_BUDGET_BYTES = 550_000
+const PLACEMENT_POLICY = [
+  'max-cooccurrence',
+  'max-touched-pages',
+  'min-artifact-bytes',
+  'lowest-bucket-id',
+]
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
@@ -48,24 +63,37 @@ function sameSet(left, right) {
   return left.size === right.size && [...left].every((value) => right.has(value))
 }
 
+const belongsToChiron = (codePoint) => {
+  const character = String.fromCodePoint(codePoint)
+  return !(
+    /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) ||
+    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) ||
+    (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+  )
+}
+
 function validateManifestSchema(manifest) {
-  requireCondition(manifest?.schemaVersion === 1, 'manifest schemaVersion must be 1')
+  requireCondition(manifest?.schemaVersion === 2, 'manifest schemaVersion must be 2')
   requireCondition(
     typeof manifest.sourceSha256 === 'string',
     'manifest source SHA-256 schema is invalid'
   )
   requireCondition(
-    manifest.policy?.core === 'committed-monotonic',
+    manifest.policy?.core === 'committed-monotonic-homepage',
     'manifest core policy is invalid'
   )
-  requireCondition(manifest.policy?.bucketCount === 8, 'manifest bucket count must be 8')
+  requireCondition(manifest.policy?.bucketCount === 5, 'manifest bucket count must be 5')
   requireCondition(
-    manifest.policy?.bucketFunction === 'codePoint % 8',
-    'manifest bucket function is invalid'
+    manifest.policy?.assignment === 'committed-cooccurrence-v2',
+    'manifest assignment policy is invalid'
   )
   requireCondition(
-    Array.isArray(manifest.buckets) && manifest.buckets.length === 8,
-    'manifest must retain eight buckets'
+    JSON.stringify(manifest.policy?.newCharacterPlacement) === JSON.stringify(PLACEMENT_POLICY),
+    'manifest new-character placement policy is invalid'
+  )
+  requireCondition(
+    Array.isArray(manifest.buckets) && manifest.buckets.length === 5,
+    'manifest must retain five buckets'
   )
   requireCondition(
     Array.isArray(manifest.artifacts) && manifest.artifacts.length > 0,
@@ -142,37 +170,103 @@ export async function checkSiteFont({
   )
 
   const core = parseList(manifest.core, 'manifest core')
+  const assignmentPath = path.join(root, 'font-data/chiron/supplemental-assignments.json')
+  let assignmentBytes
+  try {
+    assignmentBytes = await fs.readFile(assignmentPath)
+  } catch (error) {
+    throw new Error(`Chiron site font assignment file is missing: ${error.message}`)
+  }
+  requireCondition(
+    digest(assignmentBytes) === manifest.assignmentSha256,
+    'assignment SHA-256 disagrees with authoritative assignment file'
+  )
+  const assignments = parseAssignments(assignmentBytes.toString('utf8'))
   const committedCore = parseCodepoints(
     await fs.readFile(path.join(root, 'font-data/chiron/core-codepoints.txt'), 'utf8')
   )
+  for (const codePoint of committedCore) {
+    requireCondition(belongsToChiron(codePoint), `excluded core code point U+${hex(codePoint)}`)
+  }
   requireCondition(sameSet(core, committedCore), 'manifest core disagrees with committed core')
   const buckets = new Map()
   const union = new Set(core)
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 5; index += 1) {
     const entry = manifest.buckets[index]
     requireCondition(entry?.bucket === index, 'manifest buckets are not stable and ordered')
     const values = parseList(entry.codePoints, `bucket ${index}`)
     for (const value of values) {
-      requireCondition(value % 8 === index, `bucket ${index} violates codePoint % 8`)
       requireCondition(!union.has(value), `core/bucket overlap at U+${hex(value)}`)
+      requireCondition(
+        assignments.get(value) === index,
+        `bucket ${index} disagrees with assignments`
+      )
       union.add(value)
     }
     buckets.set(index, values)
   }
+  requireCondition(
+    assignments.size === [...buckets.values()].reduce((sum, values) => sum + values.size, 0),
+    'manifest buckets omit historical assignments'
+  )
+  for (const codePoint of assignments.keys()) {
+    requireCondition(
+      belongsToChiron(codePoint),
+      `excluded assignment code point U+${hex(codePoint)}`
+    )
+    requireCondition(!core.has(codePoint), `core/assignment overlap at U+${hex(codePoint)}`)
+  }
 
-  const corpus = await collectSiteFontCorpus(root)
-  const expectedPlan = buildFontPlan({ corpus, committedCore, rebuildCore: false })
-  for (let index = 0; index < 8; index += 1) {
+  const collectedCorpus = await collectSiteFontCorpus(root)
+  let modelCorpus = collectedCorpus
+  let homepage = collectedCorpus.fixedSeed
+  try {
+    const blogs = JSON.parse(
+      await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
+    )
+    modelCorpus = corpusFromGeneratedBlogs(blogs)
+    homepage = homepageFromGeneratedBlogs(blogs)
+  } catch {
+    // Minimal fixtures fall back to the collector model; production has generated Blog data.
+  }
+  const supplementalBytes = Array.from(
+    { length: 5 },
+    (_, bucket) =>
+      manifest.artifacts.find(
+        (artifact) => artifact.role === 'supplemental' && artifact.bucket === bucket
+      )?.bytes ?? 0
+  )
+  const expectedPlan = buildFontPlan({
+    corpus: modelCorpus,
+    committedCore,
+    committedAssignments: assignments,
+    artifactBytes: supplementalBytes,
+    rebuildCore: false,
+  })
+  for (let index = 0; index < 5; index += 1) {
     requireCondition(
       sameSet(buckets.get(index), expectedPlan.buckets.get(index)),
       `corpus plan is stale in bucket ${index}`
     )
   }
+  const supported = new Set(collectedCorpus.fixedSeed)
+  for (const values of collectedCorpus.documents.values())
+    for (const value of values) supported.add(value)
+  for (const value of supported) {
+    requireCondition(
+      core.has(value) || assignments.has(value),
+      `corpus plan is stale at U+${hex(value)}`
+    )
+  }
 
   const expectedSets = [{ role: 'core', bucket: null, values: core }]
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 5; index += 1) {
     if (buckets.get(index).size)
-      expectedSets.push({ role: 'supplemental', bucket: index, values: buckets.get(index) })
+      expectedSets.push({
+        role: 'supplemental',
+        bucket: index,
+        values: buckets.get(index),
+      })
   }
   requireCondition(
     manifest.artifacts.length === expectedSets.length,
@@ -245,7 +339,40 @@ export async function checkSiteFont({
     )
   }
 
-  const result = { skipped: [], artifactBytes, warnings }
+  const pageCost = (values) => {
+    const touched = new Set()
+    for (const value of values) {
+      const bucket = assignments.get(value)
+      if (bucket !== undefined) touched.add(bucket)
+    }
+    return {
+      bytes:
+        coreArtifact.bytes +
+        [...touched].reduce((sum, bucket) => sum + supplementalBytes[bucket], 0),
+      requests: 1 + touched.size,
+    }
+  }
+  const homepageCost = pageCost(homepage)
+  requireCondition(
+    homepageCost.bytes <= HOMEPAGE_BUDGET_BYTES &&
+      homepageCost.requests <= HOMEPAGE_BUDGET_REQUESTS,
+    `homepage budget exceeds ${HOMEPAGE_BUDGET_BYTES} bytes or ${HOMEPAGE_BUDGET_REQUESTS} requests`
+  )
+  const pages = []
+  for (const [name, values] of modelCorpus.documents) {
+    const cost = pageCost(values)
+    requireCondition(
+      cost.bytes <= ARTICLE_BUDGET_BYTES,
+      `article ${name} budget exceeds ${ARTICLE_BUDGET_BYTES} bytes`
+    )
+    pages.push({ name, ...cost })
+  }
+  const result = {
+    skipped: [],
+    artifactBytes,
+    warnings,
+    pages: [{ name: 'homepage', ...homepageCost }, ...pages],
+  }
   if (!full) return result
 
   const missing = await discover(runner)

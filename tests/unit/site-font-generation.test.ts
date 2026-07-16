@@ -24,19 +24,28 @@ const input = (root: string) => ({
   sourceSha256: 'source-sha',
   axes: { wght: { min: 200, max: 900 } },
   core: new Set([0x20, 0x41, 0x4e00]),
+  assignmentBytes: Buffer.from('{"schemaVersion":2}\n'),
   buckets: new Map([
     [0, new Set<number>()],
     [1, new Set([0x4e01])],
     [2, new Set<number>()],
     [3, new Set<number>()],
     [4, new Set<number>()],
-    [5, new Set<number>()],
-    [6, new Set<number>()],
-    [7, new Set<number>()],
   ]),
 })
 
 describe('site font generation', () => {
+  it('rejects collector-excluded emoji before producing artifacts', async () => {
+    const root = await fixture()
+    await expect(
+      generateSiteFontArtifacts({
+        ...input(root),
+        core: new Set([...input(root).core, 0x1f39e]),
+        runner: async () => {},
+      })
+    ).rejects.toThrow(/excluded code point U\+1F39E/i)
+  })
+
   it('subsets through text files then compresses staged variable TTFs', async () => {
     const root = await fixture()
     const calls: Array<{ command: string; args: string[] }> = []
@@ -92,14 +101,21 @@ describe('site font generation', () => {
     const manifest = JSON.parse(
       await fs.readFile(path.join(root, 'public/static/fonts/chiron/manifest.json'), 'utf8')
     )
-    expect(manifest.schemaVersion).toBe(1)
+    expect(manifest.schemaVersion).toBe(2)
+    expect(manifest.assignmentSha256).toBe(sha(input(root).assignmentBytes))
     expect(manifest.policy).toEqual({
-      core: 'committed-monotonic',
-      bucketCount: 8,
-      bucketFunction: 'codePoint % 8',
+      core: 'committed-monotonic-homepage',
+      bucketCount: 5,
+      assignment: 'committed-cooccurrence-v2',
+      newCharacterPlacement: [
+        'max-cooccurrence',
+        'max-touched-pages',
+        'min-artifact-bytes',
+        'lowest-bucket-id',
+      ],
       axes: { wght: { min: 200, max: 900 } },
     })
-    expect(manifest.buckets).toHaveLength(8)
+    expect(manifest.buckets).toHaveLength(5)
     expect(manifest.artifacts[0].codePoints).toEqual(['0020', '0041', '4E00'])
     for (const artifact of manifest.artifacts) {
       const bytes = await fs.readFile(path.join(root, 'public/static/fonts/chiron', artifact.file))

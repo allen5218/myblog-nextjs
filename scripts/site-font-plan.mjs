@@ -255,11 +255,19 @@ function codePointsIn(text) {
   return new Set(
     [...text.normalize('NFC')]
       .map((character) => character.codePointAt(0))
-      .filter((codePoint) => codePoint >= 0x20)
+      .filter((codePoint) => {
+        const character = String.fromCodePoint(codePoint)
+        return (
+          codePoint >= 0x20 &&
+          !/\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) &&
+          !(codePoint >= 0xfe00 && codePoint <= 0xfe0f) &&
+          !(codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+        )
+      })
   )
 }
 
-function corpusFromGeneratedBlogs(blogs) {
+export function corpusFromGeneratedBlogs(blogs) {
   const documents = new Map()
   const occurrences = new Map()
   for (const blog of blogs) {
@@ -275,7 +283,7 @@ function corpusFromGeneratedBlogs(blogs) {
   return { fixedSeed: new Set(), documents, occurrences, excluded: new Map() }
 }
 
-function homepageFromGeneratedBlogs(blogs) {
+export function homepageFromGeneratedBlogs(blogs) {
   const cards = blogs
     .filter((blog) => blog.listed !== false)
     .sort((left, right) => right.date.localeCompare(left.date))

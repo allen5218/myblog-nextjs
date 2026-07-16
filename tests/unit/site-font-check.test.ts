@@ -44,13 +44,20 @@ async function fixture() {
   for (const codePoints of corpus.documents.values()) {
     for (const codePoint of codePoints) supported.add(codePoint)
   }
-  supported.add(0x2603) // historical core extras are intentionally valid
+  supported.add(0x2606) // historical core extras are intentionally valid
   const codePoints = [...supported]
     .sort((a, b) => a - b)
     .map((value) => value.toString(16).toUpperCase().padStart(4, '0'))
   await fs.writeFile(
     path.join(root, 'font-data/chiron/core-codepoints.txt'),
     `${codePoints.join('\n')}\n`
+  )
+  const assignmentBytes = Buffer.from(
+    `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: {} }, null, 2)}\n`
+  )
+  await fs.writeFile(
+    path.join(root, 'font-data/chiron/supplemental-assignments.json'),
+    assignmentBytes
   )
   const core = Buffer.from('wOF2-core')
   const artifacts = [
@@ -64,16 +71,23 @@ async function fixture() {
     },
   ]
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceSha256: source.sha256,
+    assignmentSha256: sha256(assignmentBytes),
     policy: {
-      core: 'committed-monotonic',
-      bucketCount: 8,
-      bucketFunction: 'codePoint % 8',
+      core: 'committed-monotonic-homepage',
+      bucketCount: 5,
+      assignment: 'committed-cooccurrence-v2',
+      newCharacterPlacement: [
+        'max-cooccurrence',
+        'max-touched-pages',
+        'min-artifact-bytes',
+        'lowest-bucket-id',
+      ],
       axes: source.axes,
     },
     core: codePoints,
-    buckets: Array.from({ length: 8 }, (_, bucket) => ({
+    buckets: Array.from({ length: 5 }, (_, bucket) => ({
       bucket,
       codePoints: [],
     })),
@@ -119,6 +133,46 @@ describe('site font checks', () => {
     const { root } = await fixture()
     await fs.writeFile(path.join(root, 'public/static/fonts/chiron', CORE_FILE), 'wOF2-bad!')
     await expect(checkSiteFont({ root })).rejects.toThrow(/SHA-256/)
+  })
+
+  it('fails when the authoritative assignment file hash changes', async () => {
+    const { root } = await fixture()
+    await fs.writeFile(
+      path.join(root, 'font-data/chiron/supplemental-assignments.json'),
+      '{"schemaVersion":2,"bucketCount":5,"assignments":{"4E00":0}}\n'
+    )
+    await expect(checkSiteFont({ root })).rejects.toThrow(/assignment SHA-256/)
+  })
+
+  it('rejects collector-excluded characters in authoritative assignments', async () => {
+    const { root, manifest } = await fixture()
+    const assignmentBytes = Buffer.from(
+      `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: { FE0F: 4 } }, null, 2)}\n`
+    )
+    await fs.writeFile(
+      path.join(root, 'font-data/chiron/supplemental-assignments.json'),
+      assignmentBytes
+    )
+    manifest.assignmentSha256 = sha256(assignmentBytes)
+    manifest.buckets[4].codePoints = ['FE0F']
+    await writeManifest(root, manifest)
+    await expect(checkSiteFont({ root })).rejects.toThrow(/excluded assignment.*FE0F/i)
+  })
+
+  it('enforces the hard homepage byte budget from manifest artifact bytes', async () => {
+    const { root, manifest } = await fixture()
+    const bytes = Buffer.concat([Buffer.from('wOF2'), Buffer.alloc(350_001 - 4)])
+    const hash = sha256(bytes)
+    const file = `core.${hash.slice(0, 16)}.woff2`
+    await fs.rm(path.join(root, 'public/static/fonts/chiron', CORE_FILE))
+    await fs.writeFile(path.join(root, 'public/static/fonts/chiron', file), bytes)
+    Object.assign(manifest.artifacts[0], { file, sha256: hash, bytes: bytes.length })
+    await writeManifest(root, manifest)
+    await fs.writeFile(
+      path.join(root, 'css/chiron-font.generated.css'),
+      `@font-face { src: url('/static/fonts/chiron/${file}') format('woff2'); }`
+    )
+    await expect(checkSiteFont({ root })).rejects.toThrow(/homepage.*350000/i)
   })
 
   it('fails when generated CSS does not reference every artifact exactly once', async () => {
@@ -179,7 +233,7 @@ describe('site font checks', () => {
 
   it('still rejects a bad manifest on Vercel before discovering tools', async () => {
     const { root, manifest } = await fixture()
-    manifest.schemaVersion = 2
+    manifest.schemaVersion = 1
     await writeManifest(root, manifest)
     const runner = async () => {
       throw new Error('runner must not be called')

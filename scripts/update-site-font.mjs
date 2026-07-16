@@ -8,16 +8,27 @@ import { fileURLToPath } from 'node:url'
 import {
   buildFontPlan,
   compressUnicodeRanges,
+  corpusFromGeneratedBlogs,
+  homepageFromGeneratedBlogs,
+  parseAssignments,
   parseCodepoints,
+  serializeAssignments,
   serializeCodepoints,
 } from './site-font-plan.mjs'
 import { ensureSourceFont, loadSourceMetadata } from './site-font-source.mjs'
-import { collectSiteFontCorpus } from './site-font-text.mjs'
 
 const execFileAsync = promisify(execFile)
 const sorted = (values) => [...values].sort((a, b) => a - b)
 const hex = (value) => value.toString(16).toUpperCase().padStart(4, '0')
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
+const belongsToChiron = (codePoint) => {
+  const character = String.fromCodePoint(codePoint)
+  return !(
+    /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Cc}|\p{Cf}/u.test(character) ||
+    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) ||
+    (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+  )
+}
 
 async function defaultRunner(command, args) {
   await execFileAsync(command, args)
@@ -46,10 +57,17 @@ export async function generateSiteFontArtifacts({
   axes,
   core,
   buckets,
+  assignmentBytes,
+  assignmentOutput,
   runner = defaultRunner,
   coreOutput,
   commitHook = async () => {},
 }) {
+  for (const codePoint of [...core, ...[...buckets.values()].flatMap((values) => [...values])]) {
+    if (!belongsToChiron(codePoint)) {
+      throw new Error(`Excluded code point U+${hex(codePoint)} cannot enter Chiron artifacts`)
+    }
+  }
   const stagingRoot = await fs.mkdtemp(path.join(root, '.site-font-stage-'))
   const stagedFonts = path.join(stagingRoot, 'fonts')
   const stagedCss = path.join(stagingRoot, 'chiron-font.generated.css')
@@ -59,8 +77,12 @@ export async function generateSiteFontArtifacts({
   try {
     await fs.mkdir(stagedFonts, { recursive: true })
     const sets = [{ role: 'core', bucket: null, codePoints: core }]
-    for (let bucket = 0; bucket < 8; bucket += 1) {
-      sets.push({ role: 'supplemental', bucket, codePoints: buckets.get(bucket) ?? new Set() })
+    for (let bucket = 0; bucket < 5; bucket += 1) {
+      sets.push({
+        role: 'supplemental',
+        bucket,
+        codePoints: buckets.get(bucket) ?? new Set(),
+      })
     }
 
     const artifacts = []
@@ -113,16 +135,23 @@ export async function generateSiteFontArtifacts({
     }
 
     const manifest = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceSha256,
+      assignmentSha256: digest(assignmentBytes),
       policy: {
-        core: 'committed-monotonic',
-        bucketCount: 8,
-        bucketFunction: 'codePoint % 8',
+        core: 'committed-monotonic-homepage',
+        bucketCount: 5,
+        assignment: 'committed-cooccurrence-v2',
+        newCharacterPlacement: [
+          'max-cooccurrence',
+          'max-touched-pages',
+          'min-artifact-bytes',
+          'lowest-bucket-id',
+        ],
         axes,
       },
       core: sorted(core).map(hex),
-      buckets: Array.from({ length: 8 }, (_, bucket) => ({
+      buckets: Array.from({ length: 5 }, (_, bucket) => ({
         bucket,
         codePoints: sorted(buckets.get(bucket) ?? []).map(hex),
       })),
@@ -135,6 +164,10 @@ export async function generateSiteFontArtifacts({
     await fs.writeFile(stagedCss, cssFor(artifacts))
     const stagedCore = coreOutput ? path.join(stagingRoot, 'core-codepoints.txt') : undefined
     if (stagedCore) await fs.writeFile(stagedCore, serializeCodepoints(core))
+    const stagedAssignments = assignmentOutput
+      ? path.join(stagingRoot, 'supplemental-assignments.json')
+      : undefined
+    if (stagedAssignments) await fs.writeFile(stagedAssignments, assignmentBytes)
 
     await fs.mkdir(path.dirname(outputFonts), { recursive: true })
     await fs.mkdir(path.dirname(outputCss), { recursive: true })
@@ -145,6 +178,15 @@ export async function generateSiteFontArtifacts({
       { staged: stagedCss, output: outputCss, phase: 'after-css-swap' },
       ...(coreOutput
         ? [{ staged: stagedCore, output: coreOutput, phase: 'during-core-write' }]
+        : []),
+      ...(assignmentOutput
+        ? [
+            {
+              staged: stagedAssignments,
+              output: assignmentOutput,
+              phase: 'during-assignment-write',
+            },
+          ]
         : []),
     ].map((entry) => ({
       ...entry,
@@ -194,9 +236,39 @@ async function main() {
   const metadata = await loadSourceMetadata(root)
   const sourcePath = await ensureSourceFont(root)
   const corePath = path.join(root, 'font-data/chiron/core-codepoints.txt')
+  const assignmentsPath = path.join(root, 'font-data/chiron/supplemental-assignments.json')
   const committedCore = parseCodepoints(await fs.readFile(corePath, 'utf8'))
-  const corpus = await collectSiteFontCorpus(root)
-  const plan = buildFontPlan({ corpus, committedCore, rebuildCore })
+  const committedAssignmentBytes = await fs.readFile(assignmentsPath)
+  const committedAssignments = parseAssignments(committedAssignmentBytes.toString('utf8'))
+  const blogs = JSON.parse(
+    await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
+  )
+  const corpus = corpusFromGeneratedBlogs(blogs)
+  const homepage = homepageFromGeneratedBlogs(blogs)
+  let artifactBytes = Array(5).fill(0)
+  try {
+    const previous = JSON.parse(
+      await fs.readFile(path.join(root, 'public/static/fonts/chiron/manifest.json'), 'utf8')
+    )
+    artifactBytes = Array.from(
+      { length: 5 },
+      (_, bucket) =>
+        previous.artifacts.find(
+          (artifact) => artifact.role === 'supplemental' && artifact.bucket === bucket
+        )?.bytes ?? 0
+    )
+  } catch {
+    // A first generation has no committed artifact-byte tie-break data yet.
+  }
+  const plan = buildFontPlan({
+    corpus,
+    homepage,
+    committedCore,
+    committedAssignments,
+    artifactBytes,
+    rebuildCore,
+  })
+  const assignmentBytes = Buffer.from(serializeAssignments(plan.assignments))
   const manifest = await generateSiteFontArtifacts({
     root,
     sourcePath,
@@ -204,6 +276,8 @@ async function main() {
     axes: metadata.axes,
     core: plan.core,
     buckets: plan.buckets,
+    assignmentBytes,
+    assignmentOutput: assignmentsPath,
     coreOutput: rebuildCore ? corePath : undefined,
   })
   const bytes = manifest.artifacts.reduce((sum, artifact) => sum + artifact.bytes, 0)
