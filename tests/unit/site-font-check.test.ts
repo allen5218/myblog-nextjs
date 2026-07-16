@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   checkSiteFont,
   validateAssignmentHistory,
+  validateFixedSeedCore,
   validatePageBudgets,
 } from '../../scripts/check-site-font.mjs'
 import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
@@ -193,6 +194,17 @@ describe('site font checks', () => {
     ).toThrow(/scattered.*3 requests/i)
   })
 
+  it('requires every fixed UI seed character in core, never supplemental or absent', () => {
+    const fixedSeed = new Set([0x806f])
+    expect(() => validateFixedSeedCore({ fixedSeed, core: new Set() })).toThrow(
+      /fixed UI seed.*806F/i
+    )
+    expect(() => validateFixedSeedCore({ fixedSeed, core: new Set([0x4e00]) })).toThrow(
+      /must be in core/i
+    )
+    expect(() => validateFixedSeedCore({ fixedSeed, core: new Set([0x806f]) })).not.toThrow()
+  })
+
   it('fails clearly when the generated budget model is missing or malformed', async () => {
     const { root } = await fixture()
     const model = path.join(root, '.contentlayer/generated/Blog/_index.json')
@@ -298,7 +310,7 @@ describe('site font checks', () => {
       path.join(root, 'css/chiron-font.generated.css'),
       `@font-face { src: url('/static/fonts/chiron/${CORE_FILE}') format('woff2'); }`
     )
-    await expect(checkSiteFont({ root })).rejects.toThrow(/corpus.*stale/i)
+    await expect(checkSiteFont({ root })).rejects.toThrow(/fixed UI seed.*must be in core/i)
   })
 
   it('skips only dynamic checks on Vercel when tools are missing', async () => {

@@ -16,7 +16,7 @@ import {
   serializeCodepoints,
 } from './site-font-plan.mjs'
 import { ensureSourceFont, loadSourceMetadata } from './site-font-source.mjs'
-import { classifySiteFontCodePoint } from './site-font-text.mjs'
+import { classifySiteFontCodePoint, collectSiteFontCorpus } from './site-font-text.mjs'
 
 const execFileAsync = promisify(execFile)
 const sorted = (values) => [...values].sort((a, b) => a - b)
@@ -237,6 +237,7 @@ async function main() {
     await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
   )
   const corpus = corpusFromGeneratedBlogs(blogs)
+  corpus.fixedSeed = (await collectSiteFontCorpus(root)).fixedSeed
   const homepage = homepageFromGeneratedBlogs(blogs)
   let artifactBytes = Array(5).fill(0)
   try {

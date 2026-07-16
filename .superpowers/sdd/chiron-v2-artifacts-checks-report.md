@@ -57,3 +57,13 @@ Unrelated Serwist, prefetch, pagination, documentation and `next-env.d.ts` workt
 - Extended the atomic transaction test through `during-assignment-write`, including byte-exact assignment restoration.
 - The homepage preview model now matches `HuxPostCard`: `preview || (summary !== subtitle ? summary : undefined)`.
 - The raw article-body budget remains a conservative CI model. Task 6 production DOM/network verification is final acceptance and may show that raw Markdown or monospaced text was overcounted; the current hard gate remains unchanged.
+
+## Fixed footer/sidebar UI promotion
+
+Task 6 DOM/network verification found that the shared sidebar footer copy `聯絡信箱:` was not in the explicit fixed UI seed. The collector now includes the exact rendered shared copy. U+7BB1, U+7D61 and U+806F were monotonically promoted from supplemental bucket 4 into core; no other assignment moved and no assignment was added.
+
+- Core: 757 code points, 295,888 bytes.
+- Buckets: `[134, 120, 110, 121, 371]`.
+- Artifact bytes: `[295888, 72136, 65404, 57652, 63444, 175004]`; total 729,528 bytes.
+- Homepage: 295,888 bytes, 1 request.
+- Worst article: `2026/07/13/cryosleep-hodl-economy`, 543,028 bytes, 3 requests.

@@ -29,6 +29,8 @@ const SHARED_UI_TEXT = [
   '閱讀過的頁面可以在離線時訪問哦 ;)',
   '已瀏覽過的頁面仍會從快取顯示,重新連線後即可繼續閱讀其他文章。',
   '回首頁 →',
+  '分享技術和生活',
+  '聯絡信箱:',
 ]
 
 async function markdownFiles(directory) {

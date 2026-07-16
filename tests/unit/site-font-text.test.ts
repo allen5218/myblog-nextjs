@@ -61,6 +61,7 @@ describe('collectSiteFontCorpus', () => {
     )
     expect(corpus.fixedSeed).toContain('首'.codePointAt(0))
     expect(corpus.fixedSeed).toContain('正'.codePointAt(0))
+    expectSeedToCover(corpus.fixedSeed, '分享技術和生活聯絡信箱:')
     expect(corpus.documents.get('data/blog/one.md')).toContain('臺'.codePointAt(0))
     expect(corpus.documents.has('data/blog/nested/two.mdx')).toBe(true)
     expect(corpus.documents.has('data/blog/nested/three.markdown')).toBe(true)

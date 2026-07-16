@@ -78,6 +78,12 @@ export function validateAssignmentHistory({ baseAssignments, assignments, core }
   }
 }
 
+export function validateFixedSeedCore({ fixedSeed, core }) {
+  for (const codePoint of fixedSeed) {
+    requireCondition(core.has(codePoint), `fixed UI seed U+${hex(codePoint)} must be in core`)
+  }
+}
+
 export function validatePageBudgets({ homepage, articles }) {
   requireCondition(
     homepage.bytes <= HOMEPAGE_BUDGET_BYTES && homepage.requests <= HOMEPAGE_BUDGET_REQUESTS,
@@ -265,6 +271,7 @@ export async function checkSiteFont({
   }
 
   const collectedCorpus = await collectSiteFontCorpus(root)
+  validateFixedSeedCore({ fixedSeed: collectedCorpus.fixedSeed, core })
   const blogs = budgetBlogs ?? (await loadBudgetBlogs(root))
   requireCondition(
     Array.isArray(blogs) && blogs.length === 15,
