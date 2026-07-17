@@ -1,8 +1,8 @@
 import 'css/tailwind.css'
+import 'css/chiron-font.generated.css'
 import 'pliny/search/algolia.css'
 import 'remark-github-blockquote-alert/alert.css'
 
-import { Chiron_Sung_HK } from 'next/font/google'
 import { SerwistProvider } from '@serwist/turbopack/react'
 import { Analytics, AnalyticsConfig } from 'pliny/analytics'
 import { SearchProvider, SearchConfig } from 'pliny/search'
@@ -15,18 +15,6 @@ import FocusVisibleFix from '@/components/FocusVisibleFix'
 import siteMetadata from '@/data/siteMetadata'
 import { ThemeProviders } from './theme-providers'
 import { Metadata } from 'next'
-
-// Chiron Sung HK 是全套 CJK 變量字型(weight 200–900)。
-// CJK 字型會被拆成 100+ 個 woff2,因此關閉 preload(否則全部 preload 會拖慢首屏);
-// preload 關閉後 font-display 預設為 swap。不指定 subsets 以避免 google-fonts-missing-subsets。
-// next/font 會在 build 時自動 self-host 這些字型,CSP 維持 font-src 'self' 即可。
-const chiron_sung_hk = Chiron_Sung_HK({
-  preload: false,
-  display: 'swap',
-  variable: '--font-chiron-sung-hk',
-  // Chiron Sung HK 沒有 capsize fallback 度量,關閉自動 fallback 調整以消除 build 警告
-  adjustFontFallback: false,
-})
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteMetadata.siteUrl),
@@ -76,11 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const basePath = process.env.BASE_PATH || ''
 
   return (
-    <html
-      lang={siteMetadata.language}
-      className={`${chiron_sung_hk.variable} scroll-smooth`}
-      suppressHydrationWarning
-    >
+    <html lang={siteMetadata.language} className="scroll-smooth" suppressHydrationWarning>
       <link
         rel="apple-touch-icon"
         sizes="76x76"

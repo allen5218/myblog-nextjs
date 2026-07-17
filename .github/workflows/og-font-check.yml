@@ -1,7 +1,8 @@
 # Vercel 的 build 機器沒有 HarfBuzz,check:og-font 在那裡會跳過字符檢查
 # (scripts/og-font-check-policy.mjs,以 VERCEL=1 判斷)。若新文章沒經本機
-# build 就直接 push,子集外的字符會讓 OG 卡片默默出現豆腐字。這個 workflow
-# 在 push/PR 時於裝得起 HarfBuzz 的 runner 上補跑同一道檢查。
+# build 就直接 push,子集外的字符會讓 OG 卡片默默出現豆腐字。網站 Chiron
+# committed WOFF2 也需要 woff2/HarfBuzz 才能做完整 cmap、axis、glyph 與歷史
+# assignment 檢查。這個 workflow 在 push/PR 時於裝得起兩組工具的 runner 上補齊。
 #
 # 故意不用 paths 過濾:這是 main 分支保護的必過 status check 之一,而 GitHub
 # 對「必過檢查」的語意是「等到它回報結果為止」——有條件跳過的 workflow 在
@@ -26,7 +27,48 @@ jobs:
         with:
           node-version: '24'
           cache: yarn
-      - name: Install HarfBuzz CLI
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-bin
+      - name: Install font tooling
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-bin woff2
       - run: yarn
       - run: yarn check:og-font
+      # The site-font checker derives its exact homepage/article budget models from
+      # Contentlayer output. A clean Actions checkout does not contain that output.
+      - name: Generate Contentlayer models
+        run: yarn contentlayer2 build
+      - name: Extract base Chiron font history
+        id: chiron-base
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          # ref 不存在是環境壞掉,要 fail-loud;只有「ref 在、檔案不在」才算 initial rollout。
+          git rev-parse --verify origin/main
+          base="$RUNNER_TEMP/chiron-supplemental-assignments.base.json"
+          if git cat-file -e origin/main:font-data/chiron/supplemental-assignments.json; then
+            git show origin/main:font-data/chiron/supplemental-assignments.json > "$base"
+            echo "path=$base" >> "$GITHUB_OUTPUT"
+          else
+            # Initial rollout: main does not have an assignment history yet.
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
+          base_core="$RUNNER_TEMP/chiron-core-codepoints.base.txt"
+          if git cat-file -e origin/main:font-data/chiron/core-codepoints.txt; then
+            git show origin/main:font-data/chiron/core-codepoints.txt > "$base_core"
+            echo "core-path=$base_core" >> "$GITHUB_OUTPUT"
+          else
+            # Initial rollout: main does not have a committed core yet.
+            echo "core-path=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check Chiron site font
+        shell: bash
+        env:
+          BASE_ASSIGNMENTS: ${{ steps.chiron-base.outputs.path }}
+          BASE_CORE: ${{ steps.chiron-base.outputs.core-path }}
+        run: |
+          args=(--full)
+          if [[ -n "$BASE_ASSIGNMENTS" ]]; then
+            args+=("--base-assignments=$BASE_ASSIGNMENTS")
+          fi
+          if [[ -n "$BASE_CORE" ]]; then
+            args+=("--base-core=$BASE_CORE")
+          fi
+          yarn check:site-font "${args[@]}"

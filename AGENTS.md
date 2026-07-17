@@ -21,6 +21,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `tsc --noEmit`,沒這個檔案,全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
+- **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
+  沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
+  新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、
+  約 15 秒完成整個 build。遇到明顯超過平常約 120 秒的情況,先確認沒有第二個 build、
+  lockfile 或真實編譯錯誤;若都沒有,不要把它診斷成 Next 16 效能退化,直接申請提升權限
+  重跑 `yarn build`。production server 綁定 `127.0.0.1:3012` 若回 `listen EPERM` 也用
+  同一方式在沙箱外啟動;驗證完成後必須關閉該程序。
 - `next/og` 的 `ImageResponse` 只支援 CSS 子集;全版 absolute overlay **不要用
   `inset: 0` shorthand** — Satori 的 inline-style layout 不會把它展開,元素會沒有面積而
   靜默消失。要明寫 `top`/`right`/`bottom`/`left: 0`,並用實際渲染 PNG 的像素測試驗證;
@@ -29,10 +36,23 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   對 HarfBuzz(或任何 CLI)傳非 ASCII 文字**一律用 `--text-file`/stdin,不要走 argv**
   — argv 會經過呼叫端 locale 的編碼轉換,在沒設 UTF-8 locale 的 shell(CI、
   非互動環境)會直接炸。
-- Vercel 上沒有 HarfBuzz,`check:og-font` 在那裡跳過(`VERCEL=1`);缺口由 GitHub
-  Action `og-font-check` 補(push/PR 動到內容/字體時跑同一道檢查,只警報不擋部署)。
-  GitHub Actions 的 runner 用 `apt-get install -y libharfbuzz-bin` 裝 HarfBuzz —
-  任何會跑 `yarn build` 的新 workflow 都要記得裝。
+- 網頁本體的 Chiron Sung HK 不再由 `next/font/google` 分片。`font-data/chiron/` 的
+  committed 單調 core 加 schema v2 `supplemental-assignments.json` 是 authoritative
+  input；五個 supplemental buckets 依頁面共現分配，既有 code point 不得由普通更新
+  重排。產物是 `public/static/fonts/chiron/*.woff2`、manifest 與
+  `css/chiron-font.generated.css`，全部必須一起 commit；不要手改 generated CSS/manifest。
+  新內容使產物過期時執行 `yarn update:site-font`（命令會先 fresh build Contentlayer，
+  不會讀取過期的 `.contentlayer`）；只有刻意擴張 core 才用
+  `yarn update:site-font --rebuild-core`。本機更新/完整檢查還需要 Homebrew `woff2`
+  (`woff2_compress`/`woff2_decompress`)；文字一樣只能透過 `--text-file` 傳 HarfBuzz。
+- Vercel 上沒有 HarfBuzz/woff2；`check:og-font` 與 `check:site-font` 的動態部分在
+  `VERCEL=1` 時依窄化 policy 跳過，但 manifest、assignment、hash、CSS、corpus 與頁面
+  budget 靜態檢查仍必須通過。required GitHub Action `og-font-check` 會安裝
+  `libharfbuzz-bin` + `woff2`，先生成 Contentlayer model，再跑
+  `check:site-font --full`；它會用 `origin/main` 的 assignment map 與 core 快照驗證
+  既有字元沒有換桶、core 沒有被縮減。
+  任何新增會跑完整 site-font check 的 workflow 都要安裝兩個套件；只跑 `yarn build`
+  則 site-font 不重產，只因 `check:og-font` 需要 HarfBuzz。
 - `app/`、`layouts/` 多處 `import` 自 `contentlayer/generated`(`.contentlayer/`,
   gitignore)。Next 16 的 Turbopack 不會執行 `next-contentlayer2` webpack hook,所以此 repo
   改由 scripts 明確執行 `contentlayer2`:`yarn dev`/`yarn start` 先 blocking build 再併行

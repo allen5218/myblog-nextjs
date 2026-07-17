@@ -53,3 +53,10 @@ yarn-error.log*
 
 # Contentlayer
 .contentlayer
+
+# Site-font transactional staging and backups
+/.site-font-stage-*/
+/public/static/fonts/chiron.backup-*/
+/css/chiron-font.generated.css.backup-*
+/font-data/chiron/core-codepoints.txt.backup-*
+/font-data/chiron/supplemental-assignments.json.backup-*

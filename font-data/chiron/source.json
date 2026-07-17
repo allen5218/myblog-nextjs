@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "family": "Chiron Sung HK",
+  "revision": "26c5c976d82d50c24a8f0a7ac455e0a7c639c226",
+  "url": "https://raw.githubusercontent.com/google/fonts/26c5c976d82d50c24a8f0a7ac455e0a7c639c226/ofl/chironsunghk/ChironSungHK%5Bwght%5D.ttf",
+  "sha256": "c88d5db947f4aad3399105d2c1c808a64580ab65e8cb26e58bb81cd96843d130",
+  "axes": {
+    "wght": {
+      "min": 200,
+      "max": 900
+    }
+  },
+  "license": "OFL-1.1"
+}

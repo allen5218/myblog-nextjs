@@ -33,7 +33,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
       # yarn build 會先跑 check:og-font,需要 hb-shape(runner 沒有預裝,
-      # 這裡也沒有 VERCEL=1 的跳過條件)
+      # 這裡也沒有 VERCEL=1 的跳過條件)。site-font 在 build 只做 committed
+      # artifact 的靜態驗證,不重產字型,所以這個 workflow 不需要 woff2 套件。
       - name: Install HarfBuzz CLI
         run: sudo apt-get update && sudo apt-get install -y libharfbuzz-bin
       - run: yarn
