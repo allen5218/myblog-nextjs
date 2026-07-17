@@ -73,7 +73,10 @@ test('header-image post generates a valid dedicated social card', async ({ reque
   expect(pngDimensions(await response.body())).toEqual({ width: 1200, height: 630 })
 })
 
-test('hub and pagination pages use branded page-specific social cards', async ({ page, request }) => {
+test('hub and pagination pages use branded page-specific social cards', async ({
+  page,
+  request,
+}) => {
   const paths = ['/page2/', '/archive/', '/tags/', '/about/', '/en/about/']
 
   for (const path of paths) {

@@ -146,15 +146,18 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共用該 slot,只接受
 `pageN`,其餘(含真正的年份 `/2025/`)一律 404。
 
+- **首頁 Hero**:首頁預設 Hero 背景圖為 `/img/home-bg.webp`;`HomeHeroPreload` 只在首頁的完整文件回應中輸出這張 WebP 圖的 preload,讓瀏覽器能在解析 Hero inline style 前提早發現它。文章、archive、tags 與其他路由的完整文件回應不帶這個 preload。站內 SPA 導覽時,瀏覽器可能在同一份文件保留已發出的 resource hint;這不代表新路由回應含有 preload,也不會觸發第二次圖片傳輸。
+
 ## 5. 搜尋、留言、分析
 
 - **搜尋**:Pliny KBar(`⌘K` / `Ctrl+K`)。索引在 `/search.json`,build 時產生,排除隱藏
   文章。索引是公開的 — 列出的文章絕不可含機密。選中結果的高亮色是品牌青色
   (`--color-primary-600`,`#4db8d1`)。
-- **留言**:giscus(`allen5218/myblog` 的 GitHub Discussions),讀者按「Load Comments」
-  才載入。對應方式是 `pathname` — 留言串綁定確切的 `/YYYY/MM/DD/slug/` 路徑,這是網址
-  必須穩定的另一個原因。設定來自 `NEXT_PUBLIC_GISCUS_*` 環境變數(有已提交的後備值)。
-  語言 `zh-TW`;明暗主題跟隨站點主題。
+- **留言**:giscus(`allen5218/myblog` 的 GitHub Discussions),留言容器距離 viewport 前後
+  1000px 時才自動載入,不需要「Load Comments」按鈕；不支援 `IntersectionObserver` 的瀏覽器會
+  自動載入,避免留言永久消失。對應方式是 `pathname` — 留言串綁定確切的
+  `/YYYY/MM/DD/slug/` 路徑,這是網址必須穩定的另一個原因。設定來自
+  `NEXT_PUBLIC_GISCUS_*` 環境變數(有已提交的後備值)。語言 `zh-TW`;明暗主題跟隨站點主題。
 - **分析**:GA4(見 §3)。CSP 已允許 googletagmanager / google-analytics 端點。
 
 ## 6. Feed、Sitemap、SEO 與社群卡片

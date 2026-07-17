@@ -1,5 +1,6 @@
 import { sortPosts, allCoreContent } from 'pliny/utils/contentlayer'
 import { allBlogs } from 'contentlayer/generated'
+import HomeHeroPreload from '@/components/HomeHeroPreload'
 import HuxListLayout from '@/layouts/HuxListLayout'
 import { POSTS_PER_PAGE, blogPageHref, totalPagesFor } from '@/lib/pagination'
 
@@ -9,11 +10,14 @@ export default async function Page() {
   const posts = allCoreContent(sortPosts(allBlogs.filter((post) => post.listed !== false)))
 
   return (
-    <HuxListLayout
-      posts={posts}
-      displayPosts={posts.slice(0, POSTS_PER_PAGE)}
-      pagination={{ currentPage: 1, totalPages: totalPagesFor(posts.length) }}
-      pageHref={blogPageHref}
-    />
+    <>
+      <HomeHeroPreload />
+      <HuxListLayout
+        posts={posts}
+        displayPosts={posts.slice(0, POSTS_PER_PAGE)}
+        pagination={{ currentPage: 1, totalPages: totalPagesFor(posts.length) }}
+        pageHref={blogPageHref}
+      />
+    </>
   )
 }

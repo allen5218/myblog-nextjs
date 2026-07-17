@@ -161,16 +161,25 @@ dynamic segments at the same level, and the root level is already taken by `[yea
 the post URLs. Pagination therefore shares that slot, accepts only `pageN`, and 404s
 everything else (including real years such as `/2025/`).
 
+- **Home hero**: The home page's default Hero background is `/img/home-bg.webp`.
+  `HomeHeroPreload` emits a preload for that WebP image only in the home page's full-document
+  response, so the browser can discover it before parsing the Hero inline style. The full-document
+  responses for posts, archive, tags, and every other route do not include it. During SPA
+  navigation, a browser can retain an already-issued resource hint in the same document; that does
+  not mean the new route response includes the preload, nor does it trigger a second image transfer.
+
 ## 5. Search, Comments, Analytics
 
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
   excludes hidden posts. The index is public — never put secrets in listed posts. Active
   result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
-- **Comments**: giscus (GitHub Discussions on `allen5218/myblog`), loaded only after the
-  reader clicks "Load Comments". Mapping is `pathname` — comment threads are tied to the
-  exact `/YYYY/MM/DD/slug/` path, another reason URLs must stay stable. Config comes from
-  `NEXT_PUBLIC_GISCUS_*` env vars with committed fallbacks. Language `zh-TW`; light/dark
-  theme follows the site theme.
+- **Comments**: giscus (GitHub Discussions on `allen5218/myblog`) loads automatically once its
+  container is within 1000px before or after the viewport; there is no "Load Comments" button.
+  Browsers without `IntersectionObserver` load it automatically so comments cannot disappear
+  permanently. Mapping is `pathname` — comment threads are tied to the exact
+  `/YYYY/MM/DD/slug/` path, another reason URLs must stay stable. Config comes from
+  `NEXT_PUBLIC_GISCUS_*` env vars with committed fallbacks. Language `zh-TW`; light/dark theme
+  follows the site theme.
 - **Analytics**: GA4 (see §3). CSP already allows googletagmanager / google-analytics
   endpoints.
 
