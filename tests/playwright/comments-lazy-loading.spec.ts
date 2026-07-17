@@ -18,7 +18,7 @@ test('Giscus loads once when comments approach and keeps its theme in sync', asy
     window.IntersectionObserver = new Proxy(NativeIntersectionObserver, {
       construct(Target, args) {
         rootMargins.push((args[1] as IntersectionObserverInit | undefined)?.rootMargin ?? '')
-        return new Target(...args)
+        return Reflect.construct(Target, args)
       },
     })
     window.addEventListener('message', (event) => {
