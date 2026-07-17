@@ -120,7 +120,10 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
   `dictionaries/en.json`)。**兩個檔案都要改**,讓 `/about/`(zh-TW)與 `/en/about/`
   保持一致。舊制 `?lang=` 網址會 308 轉址到正確路由。`about.body` 的段落支援最小限度的
   markdown 連結語法 `[文字](網址)`(由 `components/about/AboutPage.tsx` 解析,站內/站外
-  連結自動分流),其餘 markdown 語法不支援。
+  連結自動分流),其餘 markdown 語法不支援。兩條路由都放在不改變網址的
+  `app/(about)/` route group,由共用 layout 持有相同的 Hero,讓切換語言時保留其 DOM
+  與已解碼背景圖。未來若擴充其它頁面或全站 i18n,語系間不變的視覺外殼應放進共同
+  layout;若在每個語系 page 內各自重複,語言導覽會重掛載外殼,在行動瀏覽器上可能閃爍。
 
 ## 4. 路由
 
