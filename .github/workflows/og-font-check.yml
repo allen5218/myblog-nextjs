@@ -40,6 +40,8 @@ jobs:
         shell: bash
         run: |
           git fetch --no-tags --depth=1 origin main
+          # ref 不存在是環境壞掉,要 fail-loud;只有「ref 在、檔案不在」才算 initial rollout。
+          git rev-parse --verify origin/main
           base="$RUNNER_TEMP/chiron-supplemental-assignments.base.json"
           if git cat-file -e origin/main:font-data/chiron/supplemental-assignments.json; then
             git show origin/main:font-data/chiron/supplemental-assignments.json > "$base"

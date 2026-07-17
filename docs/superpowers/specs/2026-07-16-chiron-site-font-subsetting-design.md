@@ -3,6 +3,12 @@
 **日期：** 2026-07-16  
 **狀態：** 已核准設計，尚未實作
 
+> **2026-07-17 過時註記:** 本文件是歷史規劃快照。其中「Serwist 必須維持
+> `globPatterns: []`」已被後續決策取代 —— 離線後備頁的呈現依賴(全站 CSS、
+> Chiron core、hero 圖)現在會精準預快取,JS chunks 由 `app/sw.ts` 於 activate
+> 暖入;唯「不得把所有字型 bucket 加回 install-time precache」仍然有效。
+> 現行守則以 `docs/functionality-settings-manual.zh-TW.md` §PWA 與 AGENTS.md 為準。
+
 ## 目標
 
 全站繼續使用 Chiron Sung HK 可變字型（`font-weight: 200 900`），但以本站字集重新分片，避免 `next/font/google` 產生的 118 個通用 CJK 分片讓單頁命中二十多個大型檔案。

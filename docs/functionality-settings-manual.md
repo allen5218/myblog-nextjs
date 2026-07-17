@@ -243,11 +243,16 @@ authored social image anywhere in the repo.
   core font, and the hero background image (roughly 0.5 MiB total). Everything else (JS, images,
   OG-only fonts, supplemental font buckets) remains cached on demand by `defaultCache`; do not
   restore the default globs or add supplemental fonts to the precache.
-- This guarantees the offline fallback page looks **identical to the online site** (styles, font,
+- This guarantees the offline fallback page is **identical to the online site** (styles, font,
   and hero image all come from the precache), even if the user goes offline immediately after the
-  first visit. JS is deliberately not precached: the fallback page is server-rendered and its
-  appearance does not depend on hydration. Playwright
-  (`tests/playwright/serwist-precache.spec.ts`) verifies the precache contents and offline styling.
+  first visit. The page's JS chunks cannot be listed at build time (Turbopack's prerender order is
+  not guaranteed), so `app/sw.ts` warms them on service-worker activate by parsing the deployed
+  `/offline/` HTML into a front-positioned `next-static-js-immutable` CacheFirst cache — the
+  fallback page hydrates offline too (client components like ThemeSwitch do not stay in their SSR
+  placeholder look). Warming is best-effort: on failure the fallback still renders fully styled,
+  just without hydration, and the next activate retries. Playwright
+  (`tests/playwright/serwist-precache.spec.ts`) verifies precache contents, styling, and hydration
+  via offline navigation after clearing the HTTP cache.
 - Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.

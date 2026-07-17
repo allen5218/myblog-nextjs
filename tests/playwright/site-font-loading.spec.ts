@@ -156,8 +156,10 @@ test('Serwist install 不會 eager fetch 全部 Chiron WOFF2', async ({ browser 
   await page.waitForTimeout(500)
 
   expect(installRequests).toContain('/offline/')
-  // 離線後備頁的呈現依賴允許預快取 core,但絕不 eager fetch supplemental buckets。
+  // 離線後備頁的呈現依賴會預快取 core(必須真的抓,空集合不算過),
+  // 但絕不 eager fetch supplemental buckets。
   const fontInstallRequests = [...installRequests].filter((path) => path.startsWith(fontPath))
+  expect(fontInstallRequests.length).toBeGreaterThan(0)
   expect(fontInstallRequests.every((path) => path.includes('/core.'))).toBe(true)
   expect(fontInstallRequests.some((path) => path.includes('supplement-'))).toBe(false)
   await context.close()

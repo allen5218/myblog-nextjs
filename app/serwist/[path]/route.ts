@@ -20,10 +20,12 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     // defaultCache 已會在實際請求時快取頁面與靜態資源;不要再沿用 Serwist 預設的
     // `.next/static/**/*` + `public/**/*` glob。否則首次安裝會立刻下載全站圖片、
     // 所有 JS/CSS 與 OG 專用字型(目前約 5.4 MiB),即使當前頁面完全用不到。
-    // 但離線後備頁必須與線上視覺一致,不能退化成無樣式頁面,所以精準預快取它的
-    // 呈現依賴(合計約 0.5 MiB):全站 CSS、Chiron core 字型(後備頁固定 UI 文字
-    // 全在 core)與 hero 背景圖。JS 刻意不預快取 —— 後備頁是 server-rendered,
-    // 外觀不依賴 hydration。
+    // 但離線後備頁必須與線上一致,不能退化成無樣式頁面,所以預快取它的呈現
+    // 依賴(合計約 0.5 MiB):全站 CSS、Chiron core 字型(後備頁固定 UI 文字
+    // 全在 core)與 hero 背景圖。JS chunks 無法在這裡列舉(Turbopack prerender
+    // 順序沒有保證,此 route 產生時 offline.html 未必存在),由 app/sw.ts 在
+    // activate 時解析 /offline/ HTML 暖入 runtime 快取,讓離線後備頁也能完整
+    // hydration(ThemeSwitch 等 client 元件 SSR 時是佔位外觀)。
     globPatterns: [
       '.next/static/**/*.css',
       'public/static/fonts/chiron/core.*.woff2',
