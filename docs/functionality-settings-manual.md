@@ -166,11 +166,13 @@ everything else (including real years such as `/2025/`).
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
   excludes hidden posts. The index is public — never put secrets in listed posts. Active
   result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
-- **Comments**: giscus (GitHub Discussions on `allen5218/myblog`), loaded only after the
-  reader clicks "Load Comments". Mapping is `pathname` — comment threads are tied to the
-  exact `/YYYY/MM/DD/slug/` path, another reason URLs must stay stable. Config comes from
-  `NEXT_PUBLIC_GISCUS_*` env vars with committed fallbacks. Language `zh-TW`; light/dark
-  theme follows the site theme.
+- **Comments**: giscus (GitHub Discussions on `allen5218/myblog`) loads automatically once its
+  container is within 1000px before or after the viewport; there is no "Load Comments" button.
+  Browsers without `IntersectionObserver` load it automatically so comments cannot disappear
+  permanently. Mapping is `pathname` — comment threads are tied to the exact
+  `/YYYY/MM/DD/slug/` path, another reason URLs must stay stable. Config comes from
+  `NEXT_PUBLIC_GISCUS_*` env vars with committed fallbacks. Language `zh-TW`; light/dark theme
+  follows the site theme.
 - **Analytics**: GA4 (see §3). CSP already allows googletagmanager / google-analytics
   endpoints.
 
