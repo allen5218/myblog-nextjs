@@ -50,9 +50,8 @@ export default function HuxHero({
     : cleanedBgCss
       ? { background: cleanedBgCss }
       : {
-          backgroundImage: headerImg
-            ? `url(${resolveHeaderImage(headerImg)})`
-            : `url(${resolveHeaderImage()}), linear-gradient(to right, #1e3a8a, #3b82f6)`,
+          backgroundColor: headerImg ? undefined : '#2D2D2D',
+          backgroundImage: `url(${resolveHeaderImage(headerImg)})`,
         }
 
   return (
