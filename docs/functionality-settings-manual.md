@@ -241,13 +241,15 @@ authored social image anywhere in the repo.
   does not use the default globs (which would download all of `.next/static` and `public/`,
   roughly 5.4 MiB, during installation) and instead lists exactly the site-wide CSS, the Chiron
   core font, and the hero background image (roughly 0.5 MiB total). Everything else (JS, images,
-  OG-only fonts, supplemental font buckets) remains cached on demand by `defaultCache`; do not
-  restore the default globs or add supplemental fonts to the precache.
+  OG-only fonts, supplemental font buckets) remains cached on demand — `/_next/static` JS is
+  handled by the front-positioned CacheFirst route in `app/sw.ts` (reusing the
+  `next-static-js-assets` cache name), everything else by `defaultCache`; do not restore the
+  default globs or add supplemental fonts to the precache.
 - This guarantees the offline fallback page is **identical to the online site** (styles, font,
   and hero image all come from the precache), even if the user goes offline immediately after the
   first visit. The page's JS chunks cannot be listed at build time (Turbopack's prerender order is
   not guaranteed), so `app/sw.ts` warms them on service-worker activate by parsing the deployed
-  `/offline/` HTML into a front-positioned `next-static-js-immutable` CacheFirst cache — the
+  `/offline/` HTML into the front-positioned `next-static-js-assets` CacheFirst cache — the
   fallback page hydrates offline too (client components like ThemeSwitch do not stay in their SSR
   placeholder look). Warming is best-effort: on failure the fallback still renders fully styled,
   just without hydration, and the next activate retries. Playwright
@@ -412,9 +414,22 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   hidden-post exclusion, KaTeX-without-MathJax, i18n about routes, Hux visual shell parity,
   post hero/nav geometry, MDX enhancers (responsive media + Medium Zoom), mobile keynote/pager
   sizing and colors, and the service worker's cross-origin hero image.
-- `tests/playwright/pagination.spec.ts` — 7 contracts: one-click "Older Posts" reaching a
+- `tests/playwright/pagination.spec.ts` — 10 contracts: every post list surface (homepage,
+  pagination, tag pages) skips article RSC prefetch and only fetches on click (with a positive
+  control so a stale detector fails first), one-click "Older Posts" reaching a
   genuinely different page, the legacy `/blog/*` redirects, and the sitemap's contents and
   `lastmod` honesty.
+- `tests/unit/site-font-*.test.ts` — unit suites for the site-font pipeline (corpus collection,
+  bucket planning, canonical CSS, transactional artifact updates, the checker's
+  schema/history/budget validation, and CLI forwarding), including mutation tests proving each
+  validated field fails when broken.
+- `tests/playwright/site-font-loading.spec.ts` — 4 contracts: the homepage requests only the core
+  artifact with immutable cache headers, two representative articles select shards by rendered
+  DOM code points while keeping variable weights, and SW install prefetches core only, never
+  supplemental buckets.
+- `tests/playwright/serwist-precache.spec.ts` — 2 contracts: the precache holds exactly the
+  offline fallback page plus its presentation dependencies, and offline navigation after clearing
+  the HTTP cache still renders the fallback identical to the online site (styling + hydration).
 - `tests/playwright/code-block-and-back-top.spec.ts` — 5 contracts pinning the reverted
   code-block colors, mobile full-bleed layout, and the back-to-top button's shape, position,
   and light/dark hover colors.

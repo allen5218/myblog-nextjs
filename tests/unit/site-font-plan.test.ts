@@ -44,6 +44,39 @@ describe('committed data formats', () => {
     expect(homepage).toContain('摘'.codePointAt(0))
     expect(homepage).toContain('重'.codePointAt(0)) // subtitle only; duplicate summary adds nothing
   })
+
+  test('homepage model covers sidebar featured tags from every listed post, not only top cards', () => {
+    const base = { author: '', subtitle: '', summary: '', preview: '', body: { raw: '' } }
+    const blogs = [
+      // 前五張卡片(日期最新),不帶會重複的標籤。
+      ...Array.from({ length: 5 }, (_, index) => ({
+        ...base,
+        path: `card-${index}`,
+        title: 'A',
+        tags: [`unique-${index}`],
+        listed: true,
+        date: `2026-02-0${index + 1}`,
+      })),
+      // 兩篇排在前五之外的舊文章共用含 CJK 的標籤 → 側欄 Featured Tags 會渲染它。
+      ...['old-a', 'old-b'].map((path, index) => ({
+        ...base,
+        path,
+        title: 'A',
+        tags: ['共現標'],
+        listed: true,
+        date: `2026-01-0${index + 1}`,
+      })),
+      // 只出現一次的標籤與未列出文章的標籤都不會上側欄。
+      { ...base, path: 'old-c', title: 'A', tags: ['孤標'], listed: true, date: '2026-01-03' },
+      { ...base, path: 'hidden', title: 'A', tags: ['隱標', '隱標二'], listed: false, date: '2026-01-04' },
+    ]
+    const homepage = homepageFromGeneratedBlogs(blogs)
+    for (const character of '共現標') {
+      expect(homepage).toContain(character.codePointAt(0))
+    }
+    expect(homepage).not.toContain('孤'.codePointAt(0))
+    expect(homepage).not.toContain('隱'.codePointAt(0))
+  })
   test('parses and deterministically serializes code points', () => {
     expect(parseCodepoints('0042\n0041 1F600\n')).toEqual(new Set([0x42, 0x41, 0x1f600]))
     expect(serializeCodepoints(new Set([0x1f600, 0x42, 0x41]))).toBe('0041\n0042\n1F600\n')

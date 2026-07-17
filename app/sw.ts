@@ -10,12 +10,13 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope
 
-// /_next/static 的 JS 是 content-hashed 不可變資產,改用無 revalidation 的
-// CacheFirst 並放在 defaultCache 之前(Serwist 依序取第一個命中的 route)。
-// 這個快取同時是離線後備頁的 hydration 來源:activate 時預先暖入
-// /offline/ 引用的 chunks(見下),讓離線後備頁與線上完全一致 —— 主題切換、
-// 選單等 client 元件在離線時也能正常 hydration。
-const IMMUTABLE_SCRIPT_CACHE = 'next-static-js-immutable'
+// /_next/static 的 JS 是 content-hashed 不可變資產,改用較長效期的 CacheFirst
+// 並放在 defaultCache 之前(Serwist 依序取第一個命中的 route)。cache 名沿用
+// defaultCache 既有的 `next-static-js-assets`,直接接管既有使用者的快取內容,
+// 不會留下永遠沒人讀寫的孤兒 cache。這個快取同時是離線後備頁的 hydration
+// 來源:activate 時預先暖入 /offline/ 引用的 chunks(見下),讓離線後備頁與
+// 線上完全一致 —— 主題切換、選單等 client 元件在離線時也能正常 hydration。
+const IMMUTABLE_SCRIPT_CACHE = 'next-static-js-assets'
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,

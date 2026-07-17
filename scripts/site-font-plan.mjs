@@ -282,13 +282,18 @@ export function corpusFromGeneratedBlogs(blogs) {
 }
 
 export function homepageFromGeneratedBlogs(blogs) {
-  const cards = blogs
-    .filter((blog) => blog.listed !== false)
-    .sort((left, right) => right.date.localeCompare(left.date))
-    .slice(0, 5)
+  const listed = blogs.filter((blog) => blog.listed !== false)
+  const cards = listed.sort((left, right) => right.date.localeCompare(left.date)).slice(0, 5)
+  // 側欄 Featured Tags 與 HuxSidebar 同邏輯:所有 listed 文章中出現超過一次的標籤
+  // 都會渲染在首頁,不只前五張卡片的標籤。
+  const tagCounts = new Map()
+  for (const blog of listed) {
+    for (const tag of blog.tags ?? []) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+  }
+  const featuredTags = [...tagCounts].filter(([, count]) => count > 1).map(([tag]) => tag)
   return codePointsIn(
-    cards
-      .map((blog) =>
+    [
+      ...cards.map((blog) =>
         [
           blog.title,
           blog.subtitle,
@@ -298,8 +303,9 @@ export function homepageFromGeneratedBlogs(blogs) {
         ]
           .filter(Boolean)
           .join('\n')
-      )
-      .join('\n')
+      ),
+      ...featuredTags,
+    ].join('\n')
   )
 }
 

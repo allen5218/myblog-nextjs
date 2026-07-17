@@ -8,25 +8,38 @@ const newestPostPath = '/2026/04/26/learning-how-to-learn/'
 const oldestPostPath = '/2021/04/30/typora-latex-mathjax/'
 const siteUrl = 'https://blog.allenspace.de'
 
-test('首頁不預取文章內頁', async ({ page }) => {
-  const prefetchedArticleRoutes: string[] = []
+// 政策:所有文章列表(首頁、分頁、標籤頁)的文章卡片一律 prefetch={false}
+// (共用的 HuxPostCard),RSC payload 在點擊時才抓 —— 靜態頁面經 CDN,點擊延遲
+// 只有一個 RTT,換掉列表頁載入即預抓全部文章的流量成本。
+for (const surface of ['/', '/page2/', '/tags/ai/']) {
+  test(`${surface} 不預取文章內頁,點擊時才抓 RSC`, async ({ page }) => {
+    const articleRscRequests: string[] = []
 
-  page.on('request', (request) => {
-    const url = new URL(request.url())
-    if (
-      request.method() === 'GET' &&
-      url.searchParams.has('_rsc') &&
-      /\/20\d\d\//.test(url.pathname)
-    ) {
-      prefetchedArticleRoutes.push(url.pathname)
-    }
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (
+        request.method() === 'GET' &&
+        url.searchParams.has('_rsc') &&
+        /\/20\d\d\//.test(url.pathname)
+      ) {
+        articleRscRequests.push(url.pathname)
+      }
+    })
+
+    await page.goto(surface)
+    await page.waitForLoadState('networkidle')
+    expect(articleRscRequests).toEqual([])
+
+    // positive control:同一個偵測器必須能看到點擊後的 RSC 導航請求。
+    // 若未來 Next 更換 _rsc 標記方式,這裡會先失敗,而不是讓上面的
+    // 零預取斷言在偵測器失效時空洞地通過。
+    const article = page.locator('a[href^="/20"]').first()
+    const href = await article.getAttribute('href')
+    await article.click()
+    await page.waitForURL(`**${href}`)
+    expect(articleRscRequests.length).toBeGreaterThan(0)
   })
-
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
-
-  expect(prefetchedArticleRoutes).toEqual([])
-})
+}
 
 test('首頁的 Older Posts 一次點擊就抵達第 2 頁', async ({ page }) => {
   await page.goto('/')
