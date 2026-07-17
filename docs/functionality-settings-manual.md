@@ -237,15 +237,17 @@ authored social image anywhere in the repo.
 - Behavior: Next.js-aware runtime caching (`defaultCache`); previously visited pages work
   offline; unvisited navigations fall back to `/offline/` (precached, revision = git commit hash, or
   `VERCEL_GIT_COMMIT_SHA` on Vercel, or a random uuid as last resort).
-- The precache contains **only `/offline/`**: `createSerwistRoute` explicitly sets
-  `globPatterns: []` so the default rules do not download all of `.next/static` and `public/`
-  (including images, JS/CSS, OG-only fonts, and Chiron site-font buckets unrelated to the current
-  page) during installation. Other resources remain cached on demand by `defaultCache`; do not
-  remove the empty array or add the site-font files to the precache.
-- This tradeoff guarantees that only the `/offline/` HTML is precached; its CSS and JS chunks still
-  depend on runtime caching. If a user goes offline immediately after the first visit, the fallback
-  may render temporarily without styling. This is a known edge case of avoiding an install-time
-  download of all site assets.
+- The precache contains `/offline/` plus its **presentation dependencies**: `createSerwistRoute`
+  does not use the default globs (which would download all of `.next/static` and `public/`,
+  roughly 5.4 MiB, during installation) and instead lists exactly the site-wide CSS, the Chiron
+  core font, and the hero background image (roughly 0.5 MiB total). Everything else (JS, images,
+  OG-only fonts, supplemental font buckets) remains cached on demand by `defaultCache`; do not
+  restore the default globs or add supplemental fonts to the precache.
+- This guarantees the offline fallback page looks **identical to the online site** (styles, font,
+  and hero image all come from the precache), even if the user goes offline immediately after the
+  first visit. JS is deliberately not precached: the fallback page is server-rendered and its
+  appearance does not depend on hydration. Playwright
+  (`tests/playwright/serwist-precache.spec.ts`) verifies the precache contents and offline styling.
 - Manifest: `app/manifest.ts` (Next auto-injects the `<link rel="manifest">`). Icons are the
   blue "A" logo (192/512 px) under `public/static/favicons/`, reused from the old site's
   PWA icons.
@@ -304,9 +306,9 @@ authored social image anywhere in the repo.
   `--rebuild-core` mode only grows the core with the current fixed UI, high-frequency, and homepage
   characters. Updates and full checks require HarfBuzz plus `woff2_compress`/`woff2_decompress`
   (`brew install harfbuzz woff2`). GitHub's required `check` job runs the full glyph, cmap, variable
-  axis, exact-byte budget, and assignment-history checks against the `origin/main` assignment map.
-  The first rollout may have no base map; after that, moving or removing an existing assignment
-  fails CI. Vercel runs static schema/hash/CSS/corpus/budget validation and may skip only dynamic
+  axis, exact-byte budget, and history checks against the `origin/main` assignment map and core
+  snapshot (`--base-core`). The first rollout may have no base files; after that, moving or removing
+  an existing assignment, or shrinking the committed core, fails CI. Vercel runs static schema/hash/CSS/corpus/budget validation and may skip only dynamic
   tool-dependent checks when its font tools are unavailable.
 - Corpus collection covers the fixed UI seed, dictionaries, `data/siteMetadata.js`, and the full
   raw markdown (including frontmatter) of both `data/blog` and `data/authors`.

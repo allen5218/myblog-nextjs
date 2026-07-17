@@ -49,7 +49,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `VERCEL=1` 時依窄化 policy 跳過，但 manifest、assignment、hash、CSS、corpus 與頁面
   budget 靜態檢查仍必須通過。required GitHub Action `og-font-check` 會安裝
   `libharfbuzz-bin` + `woff2`，先生成 Contentlayer model，再跑
-  `check:site-font --full`；它會用 `origin/main` 的 assignment map 驗證既有字元沒有換桶。
+  `check:site-font --full`；它會用 `origin/main` 的 assignment map 與 core 快照驗證
+  既有字元沒有換桶、core 沒有被縮減。
   任何新增會跑完整 site-font check 的 workflow 都要安裝兩個套件；只跑 `yarn build`
   則 site-font 不重產，只因 `check:og-font` 需要 HarfBuzz。
 - `app/`、`layouts/` 多處 `import` 自 `contentlayer/generated`(`.contentlayer/`,

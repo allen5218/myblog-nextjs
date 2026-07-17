@@ -9,6 +9,7 @@ import {
   checkSiteFont,
   validateCanonicalSiteFontCss,
   validateAssignmentHistory,
+  validateCoreHistory,
   validateFixedSeedCore,
   validatePageBudgets,
 } from '../../scripts/check-site-font.mjs'
@@ -156,6 +157,29 @@ describe('site font checks', () => {
         core: new Set([0x4e01]),
       })
     ).not.toThrow()
+  })
+
+  it('rejects historical core removal while allowing monotonic growth', () => {
+    expect(() =>
+      validateCoreHistory({ baseCore: new Set([0x41]), core: new Set([0x41, 0x42]) })
+    ).not.toThrow()
+    expect(() =>
+      validateCoreHistory({ baseCore: new Set([0x41, 0x4e45]), core: new Set([0x41]) })
+    ).toThrow(/core code point U\+4E45 was removed/i)
+  })
+
+  it('anchors the committed core against a base snapshot end to end', async () => {
+    const { root } = await fixture()
+    const corePath = path.join(root, 'font-data/chiron/core-codepoints.txt')
+    await expect(checkSiteFont({ root, baseCorePath: corePath })).resolves.toMatchObject({
+      skipped: [],
+    })
+    const baseCorePath = path.join(root, 'base-core-codepoints.txt')
+    const current = (await fs.readFile(corePath, 'utf8')).trim()
+    await fs.writeFile(baseCorePath, `${current}\n4E45\n`)
+    await expect(checkSiteFont({ root, baseCorePath })).rejects.toThrow(
+      /core code point U\+4E45 was removed/i
+    )
   })
 
   it('rejects historical assignment removal and rebucketing', () => {

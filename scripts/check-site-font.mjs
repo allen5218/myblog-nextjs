@@ -49,6 +49,7 @@ const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
  * @property {Partial<NodeJS.ProcessEnv>} [env]
  * @property {SiteFontCheckRunner} [runner]
  * @property {string} [baseAssignmentsPath]
+ * @property {string} [baseCorePath]
  * @property {any[]} [budgetBlogs]
  */
 
@@ -86,6 +87,15 @@ function parseList(values, label) {
 
 function sameSet(left, right) {
   return left.size === right.size && [...left].every((value) => right.has(value))
+}
+
+export function validateCoreHistory({ baseCore, core }) {
+  for (const codePoint of baseCore) {
+    requireCondition(
+      core.has(codePoint),
+      `historical core code point U+${hex(codePoint)} was removed`
+    )
+  }
 }
 
 export function validateAssignmentHistory({ baseAssignments, assignments, core }) {
@@ -216,6 +226,7 @@ export async function checkSiteFont({
   env = process.env,
   runner = defaultRunner,
   baseAssignmentsPath,
+  baseCorePath,
   budgetBlogs,
 } = {}) {
   root ??= process.cwd()
@@ -288,6 +299,10 @@ export async function checkSiteFont({
   if (baseAssignmentsPath) {
     const baseAssignments = parseAssignments(await fs.readFile(baseAssignmentsPath, 'utf8'))
     validateAssignmentHistory({ baseAssignments, assignments, core })
+  }
+  if (baseCorePath) {
+    const baseCore = parseCodepoints(await fs.readFile(baseCorePath, 'utf8'))
+    validateCoreHistory({ baseCore, core })
   }
 
   const collectedCorpus = await collectSiteFontCorpus(root)
@@ -465,10 +480,12 @@ export async function checkSiteFont({
 
 async function main() {
   const baseArgument = process.argv.find((argument) => argument.startsWith('--base-assignments='))
+  const baseCoreArgument = process.argv.find((argument) => argument.startsWith('--base-core='))
   const result = await checkSiteFont({
     root: process.cwd(),
     full: process.argv.includes('--full'),
     baseAssignmentsPath: baseArgument?.slice('--base-assignments='.length),
+    baseCorePath: baseCoreArgument?.slice('--base-core='.length),
   })
   for (const warning of result.warnings) console.warn(`WARNING: ${warning}`)
   if (result.skipped.length)

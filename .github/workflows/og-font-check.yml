@@ -35,7 +35,7 @@ jobs:
       # Contentlayer output. A clean Actions checkout does not contain that output.
       - name: Generate Contentlayer models
         run: yarn contentlayer2 build
-      - name: Extract base Chiron assignments
+      - name: Extract base Chiron font history
         id: chiron-base
         shell: bash
         run: |
@@ -48,13 +48,25 @@ jobs:
             # Initial rollout: main does not have an assignment history yet.
             echo "path=" >> "$GITHUB_OUTPUT"
           fi
+          base_core="$RUNNER_TEMP/chiron-core-codepoints.base.txt"
+          if git cat-file -e origin/main:font-data/chiron/core-codepoints.txt; then
+            git show origin/main:font-data/chiron/core-codepoints.txt > "$base_core"
+            echo "core-path=$base_core" >> "$GITHUB_OUTPUT"
+          else
+            # Initial rollout: main does not have a committed core yet.
+            echo "core-path=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check Chiron site font
         shell: bash
         env:
           BASE_ASSIGNMENTS: ${{ steps.chiron-base.outputs.path }}
+          BASE_CORE: ${{ steps.chiron-base.outputs.core-path }}
         run: |
+          args=(--full)
           if [[ -n "$BASE_ASSIGNMENTS" ]]; then
-            yarn check:site-font --full "--base-assignments=$BASE_ASSIGNMENTS"
-          else
-            yarn check:site-font --full
+            args+=("--base-assignments=$BASE_ASSIGNMENTS")
           fi
+          if [[ -n "$BASE_CORE" ]]; then
+            args+=("--base-core=$BASE_CORE")
+          fi
+          yarn check:site-font "${args[@]}"
