@@ -164,9 +164,9 @@ everything else (including real years such as `/2025/`).
 - **Home hero**: The default Hero background is the quality-80 AVIF `/img/home-bg.avif`
   (77 KiB). `HomeHeroPreload` emits a high-priority preload for that image only in the home page's
   full-document response, so the browser can discover it before parsing the Hero inline style.
-  Browsers that cannot decode AVIF show the underlying
-  `linear-gradient(to right, #1e3a8a, #3b82f6)` instead; the site deliberately does not request a
-  WebP fallback. Full-document responses for posts, archive, tags, and every other route do not
+  Browsers that cannot decode AVIF show the fixed `#2D2D2D` background instead in both light and
+  dark themes; the site deliberately does not request a WebP fallback. Full-document responses for
+  posts, archive, tags, and every other route do not
   include the preload. During SPA navigation, a browser can retain an already-issued resource hint
   in the same document; that does not mean the new route response includes the preload, nor does it
   trigger a second image transfer.

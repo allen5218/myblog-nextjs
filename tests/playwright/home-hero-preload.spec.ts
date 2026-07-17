@@ -26,7 +26,7 @@ test('首頁初始 HTML 以高優先級預載 AVIF Hero，文章頁不預載', a
   expect(homeHeroPreloads(articleHtml)).toHaveLength(0)
 })
 
-test('預設 Hero 使用 AVIF，解碼失敗時保留藍色漸層背景', async ({ page, request }) => {
+test('預設 Hero 使用 AVIF，解碼失敗時保留固定深灰背景', async ({ page, request }) => {
   const imageResponse = await request.get('/img/home-bg.avif')
   const heroRequests: string[] = []
 
@@ -38,14 +38,24 @@ test('預設 Hero 使用 AVIF，解碼失敗時保留藍色漸層背景', async 
   })
   await page.route('**/img/home-bg.avif', (route) => route.abort())
   await page.goto('/')
-  const backgroundImage = await page
-    .locator('.intro-header-home')
-    .evaluate((element) => getComputedStyle(element).backgroundImage)
+  const background = await page.locator('.intro-header-home').evaluate((element) => {
+    document.documentElement.classList.remove('dark')
+    const light = getComputedStyle(element).backgroundColor
+    document.documentElement.classList.add('dark')
+    const dark = getComputedStyle(element).backgroundColor
+    const image = getComputedStyle(element).backgroundImage
+    return {
+      colors: { dark, light },
+      image,
+    }
+  })
 
-  expect(backgroundImage).toContain('home-bg.avif')
-  expect(backgroundImage).toContain('linear-gradient')
-  expect(backgroundImage).toContain('rgb(30, 58, 138)')
-  expect(backgroundImage).toContain('rgb(59, 130, 246)')
+  expect(background.image).toContain('home-bg.avif')
+  expect(background.image).not.toContain('linear-gradient')
+  expect(background.colors).toEqual({
+    dark: 'rgb(45, 45, 45)',
+    light: 'rgb(45, 45, 45)',
+  })
   expect(heroRequests.some((url) => url.endsWith('/img/home-bg.avif'))).toBe(true)
   expect(heroRequests.some((url) => url.endsWith('/img/home-bg.webp'))).toBe(false)
 })

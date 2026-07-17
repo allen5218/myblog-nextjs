@@ -146,7 +146,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共用該 slot,只接受
 `pageN`,其餘(含真正的年份 `/2025/`)一律 404。
 
-- **首頁 Hero**:預設 Hero 背景圖是 quality 80、77 KiB 的 `/img/home-bg.avif`;`HomeHeroPreload` 只在首頁的完整文件回應中輸出這張圖片的高優先級 preload,讓瀏覽器能在解析 Hero inline style 前提早發現它。不支援 AVIF 的瀏覽器會顯示底層的 `linear-gradient(to right, #1e3a8a, #3b82f6)`,站點刻意不請求 WebP fallback。文章、archive、tags 與其他路由的完整文件回應不帶這個 preload。站內 SPA 導覽時,瀏覽器可能在同一份文件保留已發出的 resource hint;這不代表新路由回應含有 preload,也不會觸發第二次圖片傳輸。
+- **首頁 Hero**:預設 Hero 背景圖是 quality 80、77 KiB 的 `/img/home-bg.avif`;`HomeHeroPreload` 只在首頁的完整文件回應中輸出這張圖片的高優先級 preload,讓瀏覽器能在解析 Hero inline style 前提早發現它。不支援 AVIF 的瀏覽器會顯示固定的 `#2D2D2D` 背景,深色與淺色主題皆相同;站點刻意不請求 WebP fallback。文章、archive、tags 與其他路由的完整文件回應不帶這個 preload。站內 SPA 導覽時,瀏覽器可能在同一份文件保留已發出的 resource hint;這不代表新路由回應含有 preload,也不會觸發第二次圖片傳輸。
 
 ## 5. 搜尋、留言、分析
 
