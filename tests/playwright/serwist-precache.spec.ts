@@ -17,9 +17,7 @@ test('service worker 只預快取離線後備頁與其呈現依賴', async ({ re
   expect(source).not.toMatch(/\/_next\/static\/[^"]+\.js"/)
 })
 
-test('未瀏覽過的頁面在離線時仍顯示與線上一致的後備頁(樣式 + hydration)', async ({
-  browser,
-}) => {
+test('未瀏覽過的頁面在離線時仍顯示與線上一致的後備頁(樣式 + hydration)', async ({ browser }) => {
   const context = await browser.newContext({ serviceWorkers: 'allow' })
   const page = await context.newPage()
 
@@ -64,9 +62,7 @@ test('未瀏覽過的頁面在離線時仍顯示與線上一致的後備頁(樣�
   // hydration(ThemeSwitch SSR 是空白 svg,mounted 後才有圖示子節點)。
   await expect
     .poll(() =>
-      page.evaluate(
-        () => document.querySelector('.theme-switch-icon svg')?.childElementCount ?? 0
-      )
+      page.evaluate(() => document.querySelector('.theme-switch-icon svg')?.childElementCount ?? 0)
     )
     .toBeGreaterThan(0)
   const styled = await page.evaluate(async () => {
