@@ -13,9 +13,11 @@ const validAiUrlWithoutSlash = validAiUrl.replace(/\/$/, '')
 test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page, request }) => {
   await page.goto('/')
   await expect(page).toHaveTitle("Allen's Blog")
-  await expect(page.getByRole('link', { name: /課程啟動 - AI 跨領域學習社群/ })).toHaveAttribute(
+  // 首頁就是分頁的第 1 頁,列出的文章會隨新文章滾動,所以只驗證卡片輸出 legacy URL 格式,
+  // 不釘特定文章;「AI 文章 = 這個精確 legacy URL」由下方 /archive/ 與 search.json 釘定。
+  await expect(page.locator('.hux-post-list .post-preview a').first()).toHaveAttribute(
     'href',
-    validAiPath
+    /^\/20\d\d\/\d\d\/\d\d\/[^/]+\/$/
   )
   await expect(page.getByText('FEATURED TAGS')).toBeVisible()
   await expect(page.getByText('ABOUT ME')).toBeVisible()
