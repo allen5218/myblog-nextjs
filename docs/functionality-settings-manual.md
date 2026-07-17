@@ -162,9 +162,11 @@ the post URLs. Pagination therefore shares that slot, accepts only `pageN`, and 
 everything else (including real years such as `/2025/`).
 
 - **Home hero**: The home page's default Hero background is `/img/home-bg.webp`.
-  `HomeHeroPreload` preloads that WebP image only while the home page renders, so the browser can
-  discover it before parsing the Hero inline style. Posts, archive, tags, and every other route do
-  not include this preload.
+  `HomeHeroPreload` emits a preload for that WebP image only in the home page's full-document
+  response, so the browser can discover it before parsing the Hero inline style. The full-document
+  responses for posts, archive, tags, and every other route do not include it. During SPA
+  navigation, a browser can retain an already-issued resource hint in the same document; that does
+  not mean the new route response includes the preload, nor does it trigger a second image transfer.
 
 ## 5. Search, Comments, Analytics
 

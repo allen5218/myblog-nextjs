@@ -146,7 +146,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共用該 slot,只接受
 `pageN`,其餘(含真正的年份 `/2025/`)一律 404。
 
-- **首頁 Hero**:首頁預設 Hero 背景圖為 `/img/home-bg.webp`;`HomeHeroPreload` 只在首頁 render 時預載這張 WebP 圖,讓瀏覽器能在解析 Hero inline style 前提早發現它。文章、archive、tags 與其他路由不帶這個 preload。
+- **首頁 Hero**:首頁預設 Hero 背景圖為 `/img/home-bg.webp`;`HomeHeroPreload` 只在首頁的完整文件回應中輸出這張 WebP 圖的 preload,讓瀏覽器能在解析 Hero inline style 前提早發現它。文章、archive、tags 與其他路由的完整文件回應不帶這個 preload。站內 SPA 導覽時,瀏覽器可能在同一份文件保留已發出的 resource hint;這不代表新路由回應含有 preload,也不會觸發第二次圖片傳輸。
 
 ## 5. 搜尋、留言、分析
 
