@@ -161,6 +161,11 @@ dynamic segments at the same level, and the root level is already taken by `[yea
 the post URLs. Pagination therefore shares that slot, accepts only `pageN`, and 404s
 everything else (including real years such as `/2025/`).
 
+- **Home hero**: The home page's default Hero background is `/img/home-bg.webp`.
+  `HomeHeroPreload` preloads that WebP image only while the home page renders, so the browser can
+  discover it before parsing the Hero inline style. Posts, archive, tags, and every other route do
+  not include this preload.
+
 ## 5. Search, Comments, Analytics
 
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
