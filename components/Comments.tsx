@@ -51,9 +51,10 @@ export default function Comments({ slug }: { slug: string }) {
   const theme = giscus.themeURL || (resolvedTheme === 'dark' ? giscus.darkTheme : giscus.theme)
 
   return (
-    <div id="comments-container" ref={containerRef}>
+    <div id="comments-sentinel" ref={containerRef}>
       {mounted && shouldLoad && (
         <Giscus
+          id="comments-container"
           repo={giscus.repo as `${string}/${string}`}
           repoId={giscus.repositoryId}
           category={giscus.category}

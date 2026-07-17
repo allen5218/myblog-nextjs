@@ -44,7 +44,7 @@ test('Giscus loads once when comments approach and keeps its theme in sync', asy
 
   await page.goto(postPath)
 
-  const comments = page.locator('#comments-container')
+  const comments = page.locator('#comments-sentinel')
   await expect(comments).toBeAttached()
   await expect
     .poll(() =>
@@ -67,6 +67,11 @@ test('Giscus loads once when comments approach and keeps its theme in sync', asy
   const frame = page.locator('#comments-container iframe[src*="giscus.app"]')
   await expect(frame).toHaveCount(1)
   await expect(frame).toHaveAttribute('src', /theme=dark_dimmed/)
+  const iframeSrc = await frame.getAttribute('src')
+  expect(iframeSrc).not.toBeNull()
+  const giscusOrigin = new URL(iframeSrc!).searchParams.get('origin')
+  expect(giscusOrigin).not.toBeNull()
+  expect(decodeURIComponent(giscusOrigin!)).toMatch(/#comments-container$/)
   await expect.poll(() => giscusRequests.length).toBe(1)
   await expect
     .poll(() =>
