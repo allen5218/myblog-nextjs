@@ -426,10 +426,11 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
 - `tests/unit/og-font-text.test.ts` — 3 tests pinning the OG font text-collection coverage
   (posts + dictionaries + fixed UI copy, emoji excluded) and the Vercel-only `hb-shape`-skip
   policy.
-- `tests/playwright/blog-parity.spec.ts` — 9 end-to-end contracts: legacy URL behavior,
-  hidden-post exclusion, KaTeX-without-MathJax, i18n about routes, Hux visual shell parity,
-  post hero/nav geometry, MDX enhancers (responsive media + Medium Zoom), mobile keynote/pager
-  sizing and colors, and the service worker's cross-origin hero image.
+- `tests/playwright/blog-parity.spec.ts` — 10 end-to-end contracts: legacy URL behavior,
+  hidden-post exclusion, KBar search (cyan active result + legacy navigation),
+  KaTeX-without-MathJax, i18n about routes, Hux visual shell parity, post hero/nav geometry,
+  blockquote long-string wrapping, MDX enhancers (responsive media + Medium Zoom), mobile
+  keynote/pager sizing and colors, and the service worker's cross-origin hero image.
 - `tests/playwright/pagination.spec.ts` — 10 contracts: every post list surface (homepage,
   pagination, tag pages) skips article RSC prefetch and only fetches on click (with a positive
   control so a stale detector fails first), one-click "Older Posts" reaching a
