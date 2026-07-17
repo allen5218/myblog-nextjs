@@ -18,7 +18,7 @@ type HuxHeroProps = {
 }
 
 function resolveHeaderImage(src?: string) {
-  if (!src) return '/img/home-bg.webp'
+  if (!src) return '/img/home-bg.avif'
   if (src.startsWith('http') || src.startsWith('/')) return src
   return `/${src}`
 }
@@ -49,7 +49,11 @@ export default function HuxHero({
     ? undefined
     : cleanedBgCss
       ? { background: cleanedBgCss }
-      : { backgroundImage: `url(${resolveHeaderImage(headerImg)})` }
+      : {
+          backgroundImage: headerImg
+            ? `url(${resolveHeaderImage(headerImg)})`
+            : `url(${resolveHeaderImage()}), linear-gradient(to right, #1e3a8a, #3b82f6)`,
+        }
 
   return (
     <header
