@@ -104,13 +104,13 @@ test('KaTeX renders math without MathJax', async ({ page }) => {
 test('about page uses new i18n routes without changing legacy blog URLs', async ({ page }) => {
   await page.goto('/about/')
   await expect(page.locator('.site-heading h1')).toHaveText('About')
-  await expect(page.locator('article[lang="zh-TW"]')).toContainText('Hey，我是與倫')
+  await expect(page.locator('article[lang="zh-TW"]')).toContainText('嗨，我是與倫')
   await expect(page.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/en/about/')
 
   await page.getByRole('link', { name: 'English' }).click()
   await page.waitForURL('**/en/about/')
   await expect.poll(() => page.evaluate(() => document.documentElement.lang)).toBe('en')
-  await expect(page.locator('article[lang="en"]')).toContainText("Hey, I'm Allen")
+  await expect(page.locator('article[lang="en"]')).toContainText("Hi, I'm Allen")
   await expect(page.getByRole('link', { name: '中文' })).toHaveAttribute('href', '/about/')
 
   await expect(page.locator('.navbar-brand')).toHaveAttribute('href', '/')

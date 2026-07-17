@@ -133,7 +133,11 @@ search. Highlights:
   (zh-TW) and `/en/about/` aligned. Legacy `?lang=` URLs 308-redirect to the right route.
   Paragraphs in `about.body` support minimal markdown link syntax `[text](url)` (parsed by
   `components/about/AboutPage.tsx`; internal/external links are routed automatically); no
-  other markdown syntax is supported.
+  other markdown syntax is supported. Both routes live under the URL-neutral `app/(about)/`
+  route group, whose shared layout owns the identical Hero so locale changes preserve its DOM and
+  decoded background image. If i18n expands elsewhere, keep locale-invariant visual shells in a
+  common layout; duplicating them inside each localized page remounts those shells during locale
+  navigation and can visibly flash on mobile browsers.
 
 ## 4. Routes
 

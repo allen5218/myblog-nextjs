@@ -59,6 +59,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   watcher + Next dev,`yarn build` 在 Next build 前先 build。乾淨 checkout(CI runner、新
   clone)單獨跑 `tsc --noEmit` 或其他型別檢查前,仍要先跑 `yarn contentlayer2 build`,否則會
   炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
+- **擴充 i18n 時要把語系間不變的視覺外殼放在共同 layout。** `/about/` 與
+  `/en/about/` 已放進不改變 URL 的 `app/(about)/` route group,Hero 由該 group 的
+  `layout.tsx` 持有;若把相同 Hero 重複放回各語系 page,App Router 切換 page segment
+  會重掛載背景圖層,iPhone 上即使完全離線且圖片已快取仍會閃出底色約 2–3 個影格。
+  未來其它頁面或全站 i18n 應沿用共同 layout 保留 DOM;語系特有內容留在 page。
 - Next 16 已移除 `next lint`;本機 `yarn lint` 與 CI 都直接使用 ESLint CLI。Next 的
   core-web-vitals 規則必須從 `eslint-config-next/core-web-vitals` 的 flat config 匯入,不要
   改回 FlatCompat 的 legacy `next` extends。
