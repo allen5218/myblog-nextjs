@@ -13,6 +13,11 @@ type SideCatalogProps = {
   enabled?: boolean
 }
 
+type TocSection = {
+  parent: TocItem
+  children: TocItem[]
+}
+
 function headingIdFromUrl(url: string) {
   const id = url.replace(/^#/, '')
   try {
@@ -25,11 +30,24 @@ function headingIdFromUrl(url: string) {
 export default function SideCatalog({ toc, enabled = true }: SideCatalogProps) {
   const [folded, setFolded] = useState(false)
   const [activeUrl, setActiveUrl] = useState(toc?.[0]?.url || '')
+  const [expandedUrls, setExpandedUrls] = useState<Set<string>>(() => new Set())
   const containerRef = useRef<HTMLElement>(null)
 
   const items = useMemo(
     () => (enabled ? toc?.filter((item) => item.url && item.value) || [] : []),
     [enabled, toc]
+  )
+  const sections = useMemo(
+    () =>
+      items.reduce<TocSection[]>((grouped, item) => {
+        if (item.depth === 2) {
+          grouped.push({ parent: item, children: [] })
+        } else if (item.depth > 2) {
+          grouped.at(-1)?.children.push(item)
+        }
+        return grouped
+      }, []),
+    [items]
   )
 
   useEffect(() => {
@@ -85,7 +103,7 @@ export default function SideCatalog({ toc, enabled = true }: SideCatalogProps) {
     }
   }, [activeUrl])
 
-  if (!items.length) return null
+  if (!sections.length) return null
 
   return (
     <aside
@@ -104,16 +122,64 @@ export default function SideCatalog({ toc, enabled = true }: SideCatalogProps) {
         </button>
       </h5>
       <ul className="catalog-body">
-        {items.map((item) => (
-          <li
-            className={`h${item.depth}_nav ${activeUrl === item.url ? 'active' : ''}`}
-            key={`${item.url}-${item.value}`}
-          >
-            <a href={item.url} rel="nofollow">
-              {item.value}
-            </a>
-          </li>
-        ))}
+        {sections.map(({ parent, children }, sectionIndex) => {
+          const expanded = expandedUrls.has(parent.url)
+          const containsActive =
+            activeUrl === parent.url || children.some((item) => item.url === activeUrl)
+          const parentIsActive = activeUrl === parent.url || (!expanded && containsActive)
+          const childListId = `catalog-children-${sectionIndex}`
+
+          return (
+            <li
+              className={`h${parent.depth}_nav ${parentIsActive ? 'active' : ''}`}
+              key={`${parent.url}-${parent.value}`}
+            >
+              <div className="catalog-item-row">
+                <a href={parent.url} rel="nofollow">
+                  {parent.value}
+                </a>
+                {children.length > 0 && (
+                  <button
+                    aria-controls={childListId}
+                    aria-expanded={expanded}
+                    aria-label={`${expanded ? '收合' : '展開'}「${parent.value}」的子目錄`}
+                    className="catalog-expand"
+                    type="button"
+                    onClick={() =>
+                      setExpandedUrls((current) => {
+                        const next = new Set(current)
+                        if (next.has(parent.url)) {
+                          next.delete(parent.url)
+                        } else {
+                          next.add(parent.url)
+                        }
+                        return next
+                      })
+                    }
+                  >
+                    <span aria-hidden="true">{expanded ? '−' : '+'}</span>
+                  </button>
+                )}
+              </div>
+              {expanded && (
+                <ul className="catalog-children" id={childListId}>
+                  {children.map((item) => (
+                    <li
+                      className={`h${item.depth}_nav ${activeUrl === item.url ? 'active' : ''}`}
+                      key={`${item.url}-${item.value}`}
+                    >
+                      <div className="catalog-item-row">
+                        <a href={item.url} rel="nofollow">
+                          {item.value}
+                        </a>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </aside>
   )

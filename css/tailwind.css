@@ -772,6 +772,7 @@ body {
   color: var(--hux-text);
   font-weight: 700;
   letter-spacing: 0;
+  scroll-margin-top: 80px;
 }
 
 .post-container .prose h2 {
@@ -1029,8 +1030,17 @@ body {
   list-style: none;
 }
 
+.side-catalog .catalog-item-row {
+  display: flex;
+  width: 180px;
+  align-items: center;
+  border-radius: 4px;
+}
+
 .side-catalog .catalog-body li a {
-  display: inline-block;
+  display: block;
+  min-width: 0;
+  flex: 1;
   max-width: 180px;
   height: 30px;
   overflow: hidden;
@@ -1041,6 +1051,26 @@ body {
   text-overflow: ellipsis;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.side-catalog .catalog-expand {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  color: var(--hux-muted);
+  font-size: 18px;
+  line-height: 30px;
+  text-align: center;
+}
+
+.side-catalog .catalog-expand:hover,
+.side-catalog .catalog-expand:focus-visible {
+  color: #0085a1;
+}
+
+.side-catalog .catalog-children {
+  margin: 0;
+  padding: 0;
 }
 
 .side-catalog .catalog-body li a:hover {
@@ -1080,12 +1110,11 @@ body {
   max-width: 170px;
 }
 
-.side-catalog .catalog-body .active {
-  border-radius: 4px;
+.side-catalog .catalog-body .active > .catalog-item-row {
   background-color: var(--hux-quote-bg);
 }
 
-.side-catalog .catalog-body .active a {
+.side-catalog .catalog-body .active > .catalog-item-row a {
   color: #0085a1;
 }
 

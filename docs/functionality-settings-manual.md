@@ -48,7 +48,7 @@ standalone typecheck.
 | `headerBgCss`  | string      |          | Custom CSS background for the hero (alternative to `headerImg`).                                                                                                    |
 | `headerMask`   | number/json |          | Hero mask opacity.                                                                                                                                                  |
 | `iframe`       | string      |          | Full-hero iframe (slide/keynote posts). Source must pass the allowlist in `lib/iframe.ts`.                                                                          |
-| `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px) on the post page.                                                                                      |
+| `catalog`      | boolean     |          | Shows the sticky table-of-contents sidebar (desktop ≥1200px). It lists only `##` headings by default; use a section's `+` to reveal its `###`/`####` descendants.   |
 | `hidden`       | boolean     |          | See "Hidden posts" below.                                                                                                                                           |
 | `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.                                                                        |
 | `mermaid`      | boolean     |          | Legacy migration flag, kept for compatibility — rendering is triggered by the presence of a ` ```mermaid ` fence, not by this flag. See §2 for how diagrams render. |
