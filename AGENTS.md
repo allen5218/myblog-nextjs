@@ -77,6 +77,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
   做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
   `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
+- **文章標題的 hash 落點必須保留 80px 上方空間。** 桌面 Hux 導覽列向下捲時藏在
+  `top:-61px`,向上捲時會出現在 `top:0`;若標題維持瀏覽器預設的 `top:0` anchor 落點,
+  只有向上跳轉會被導覽列蓋住,同時 SideCatalog 的 `rootMargin:-80px` 會把下一個標題
+  誤判為 active。文章 `h1`–`h6` 的 `scroll-margin-top` 與 observer 邊界要一起維持,
+  catalog 回歸測試也必須同時驗證向下與向上跳轉。
 - **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
   鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
   `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,
