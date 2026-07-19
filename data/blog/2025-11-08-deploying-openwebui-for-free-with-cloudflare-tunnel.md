@@ -3,6 +3,7 @@ layout:     post
 title:      "免費搭建 OpenWebUI：Cloudflare Tunnel 零成本部署方案"
 subtitle:   "Deploying OpenWebUI for Free with Cloudflare Tunnel"
 date:       2025-11-08
+update:     2026-07-19
 author:     "Allen"
 headerImg: "https://img.allenspace.de/IMG_0325.8z6xy7a4vc.webp"
 headerMask: 0.7
@@ -48,8 +49,8 @@ tags:
 1. **Cloudflare 帳號** - https://dash.cloudflare.com/sign-up
    - 用途：域名 DNS 託管、CDN、Tunnel 服務
 2. **GitHub 帳號** - https://github.com/signup
-   - 用於Digital Plate帳號註冊的KYC認證
-3. **Digital Plate 帳號**
+   - 用於DigitalPlat帳號註冊的KYC認證
+3. **DigitalPlat 帳號**
    - 用途：獲取免費域名，託管到Cloudflare
 4. **AWS 帳號** - https://aws.amazon.com
    - 用途：部署 EC2 服務器
@@ -59,14 +60,14 @@ tags:
 
 **步驟**：
 
-1. 在 Digital Plate 申請免費域名
+1. 在 DigitalPlat 申請免費域名
 2. 登入 Cloudflare 控制台
 3. 點擊「添加站點」
 4. 輸入你的域名
 5. 選擇「Free」方案
 6. 記錄 Cloudflare 提供的 Nameserver（通常是兩個）
-7. 回到 Digital Plate，將 Nameserver 修改為 Cloudflare 提供的地址
-8. 等待 DNS 生效（通常 5-30 分鐘）
+7. 回到 DigitalPlat，將 Nameserver 修改為 Cloudflare 提供的地址
+8. 等待 DNS 生效（通常數十分鐘內，最長可能需要 24 小時）
 
 **詳細教學請參考這部影片**：
 
@@ -92,7 +93,7 @@ tags:
 
    ![](https://img.allenspace.de/Fasa-file-4E04CA11-8BF8-490F-ABCD-45A26E8A5BA8.2h8q4maag7.webp)
 
-4. 選擇「Cloudflared」類型，點擊「Docker」
+4. 選擇「Cloudflared」類型
 
    ![](https://img.allenspace.de/Fasa-file-C20D435A-A1E7-496C-90ED-22127DD7DEB3.4ubclto3n0.webp)
 
@@ -100,7 +101,7 @@ tags:
 
    ![](https://img.allenspace.de/Fasa-file-5DF2A935-B924-4B2B-ACAD-69F91BF082D6.pfr9pqxk9.webp)
 
-6. 複製Docker命令（後續需要使用）
+6. 在「Choose your environment」中選擇「Docker」，複製顯示的 Docker 命令（後續需要使用）
 
    ![](https://img.allenspace.de/Fasa-file-C20D435A-A1E7-496C-90ED-22127DD7DEB3.4ubclto3n0.webp)
 
@@ -192,7 +193,7 @@ sudo systemctl start docker
 
 ![](https://img.allenspace.de/Fasa-file-C20D435A-A1E7-496C-90ED-22127DD7DEB3.4ubclto3n0.webp)
 
-複製**2.2中Cloudflare頁面中的docker指令**，應該會長這樣
+複製**2.1 第 6 步Cloudflare頁面中的docker指令**，應該會長這樣
 
 ```bash
 docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <你的 TUNNEL_TOKEN>
@@ -204,9 +205,11 @@ docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <你
 # 創建 Docker 網絡
 docker network create cloudflare-tunnel
 
-# 運行 cloudflared
+# 運行 cloudflared（注意要加入剛創建的 cloudflare-tunnel 網絡，
+# 否則後續用容器名稱 openwebui:8080 會解析不到）
 docker run -d \
   --name cloudflared-tunnel \
+  --network cloudflare-tunnel \
   --restart unless-stopped \
   cloudflare/cloudflared:latest \
   tunnel --no-autoupdate run --token <你的 TUNNEL_TOKEN>
@@ -228,7 +231,6 @@ docker logs cloudflared-tunnel
 docker run -d \
   --name openwebui \
   --network cloudflare-tunnel \
-  -p 8080:8080 \
   -v open-webui:/app/backend/data \
   --restart unless-stopped \
   ghcr.io/open-webui/open-webui:main
@@ -236,7 +238,7 @@ docker run -d \
 
 **參數說明**：
 
-- `-p 8080:8080`：映射端口（僅內網訪問，透過Cloudflare Tunnel內網穿透）
+- `--network cloudflare-tunnel`：與 cloudflared 同網絡，Tunnel 直接以容器名稱 `openwebui:8080` 連線，因此**不需要** `-p` 對主機發布任何端口（`-p` 會把端口開放到主機所有網絡介面，並非「僅內網」）
 - `-v open-webui:/app/backend/data`：持久化數據存儲
 
 **驗證運行**：
@@ -311,8 +313,8 @@ https://openwebui.yourname.example.com
 ### 7.2 健康檢查
 
 ```bash
-# 在 EC2 上測試本地訪問
-curl http://localhost:8080
+# 在 EC2 上測試（未對主機發布端口，所以從容器內測試）
+docker exec openwebui curl -sf http://localhost:8080 -o /dev/null && echo OK
 
 # 檢查 Tunnel 連接狀態
 docker logs cloudflared-tunnel | grep "registered"
@@ -336,8 +338,8 @@ docker logs cloudflared-tunnel
 # 3. 檢查 OpenWebUI 運行狀態
 docker logs openwebui
 
-# 4. 測試容器間網絡
-docker exec cloudflared-tunnel ping openwebui
+# 4. 確認兩個容器都在同一網絡（cloudflared 鏡像很精簡，沒有 ping 可用）
+docker network inspect cloudflare-tunnel
 ```
 
 ### 問題 2：502 Bad Gateway
