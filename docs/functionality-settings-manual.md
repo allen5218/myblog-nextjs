@@ -65,8 +65,54 @@ preview (~200 chars from body), and JSON-LD structured data.
 
 ## 2. Markdown / MDX Capabilities
 
-- **GFM** (tables, task lists, strikethrough) plus GitHub-style alert blockquotes
-  (`> [!NOTE]`, `> [!WARNING]`, …).
+- **GFM** (tables, task lists, strikethrough) plus GitHub-style alert blockquotes.
+
+### GitHub-style alert blockquotes
+
+Posts can use `remark-github-blockquote-alert` to render important asides as prominent alert
+boxes. The first line must contain an uppercase `[!TYPE]`, and every following line must retain
+the `>` marker:
+
+```markdown
+> [!NOTE]
+> Useful context that readers should know even when skimming.
+>
+> A single alert can contain multiple paragraphs.
+```
+
+Five types are supported; choose one according to the purpose of the message:
+
+| Type | Use for |
+|------|---------|
+| `NOTE` | Background, definitions, or useful information that is easy to overlook |
+| `TIP` | Practical advice that makes a task easier or more efficient |
+| `IMPORTANT` | Key information readers need before they can achieve the goal |
+| `WARNING` | Urgent information that needs attention to prevent an error |
+| `CAUTION` | High-risk actions that may cause data loss, security issues, or other negative outcomes |
+
+Complete syntax:
+
+```markdown
+> [!NOTE]
+> Supplementary information.
+
+> [!TIP]
+> A more efficient approach.
+
+> [!IMPORTANT]
+> Key information required before completing this step.
+
+> [!WARNING]
+> Ignoring this may cause an error.
+
+> [!CAUTION]
+> This action may have irreversible consequences.
+```
+
+Use alerts for information that genuinely benefits from being noticeable while scanning. Do not
+wrap ordinary paragraphs or long stretches of the article in alerts; select the one type that best
+matches the severity of the consequence.
+
 - **Math**: KaTeX via `remark-math` + `rehype-katex`. Write `$inline$` and `$$block$$`.
   MathJax must not be reintroduced.
 - **Code blocks**: Prism highlighting (`rehype-prism-plus`), line numbers/highlighting
