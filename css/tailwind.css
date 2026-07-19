@@ -961,6 +961,10 @@ body {
   display: none;
 }
 
+.dark .prose hr {
+  border-color: var(--hux-border);
+}
+
 .article-toc {
   margin: 30px 0 10px;
   border-top: 1px solid var(--hux-border);

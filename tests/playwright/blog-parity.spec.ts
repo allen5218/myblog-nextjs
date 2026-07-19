@@ -7,6 +7,7 @@ const openWebUiPath = '/2025/11/08/deploying-openwebui-for-free-with-cloudflare-
 const mathPath = '/2021/04/30/typora-latex-mathjax/'
 const learningPath = '/2026/04/26/learning-how-to-learn/'
 const blockquotePath = '/2025/08/16/blockquote-test/'
+const kamiinaPath = '/2026/07/14/kamiina-botan-anime-review/'
 const validAiUrl = `https://blog.allenspace.de${validAiPath}`
 const validAiUrlWithoutSlash = validAiUrl.replace(/\/$/, '')
 
@@ -237,6 +238,17 @@ test('blockquote wraps an unbroken string within its content box', async ({ page
 
   expect(geometry.overflowWrap).toBe('break-word')
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth)
+})
+
+test('dark article separators match the table of contents border', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(kamiinaPath)
+
+  const separator = page.locator('.post-container .prose hr').first()
+  const tableOfContents = page.locator('.article-toc')
+
+  await expect(separator).toHaveCSS('border-top-color', 'rgb(68, 68, 68)')
+  await expect(tableOfContents).toHaveCSS('border-top-color', 'rgb(68, 68, 68)')
 })
 
 test('post enhancers render responsive media and client Medium Zoom', async ({ page }) => {
