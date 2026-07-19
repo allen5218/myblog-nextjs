@@ -45,7 +45,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `headerBgCss`  | string      |      | Hero 的自訂 CSS 背景(`headerImg` 的替代方案)。                                                                                    |
 | `headerMask`   | number/json |      | Hero 遮罩不透明度。                                                                                                               |
 | `iframe`       | string      |      | 全版 hero iframe(投影片/keynote 文章)。來源必須通過 `lib/iframe.ts` 允許清單。                                                    |
-| `catalog`      | boolean     |      | 在文章頁顯示黏性目錄側欄(桌面 ≥1200px)。預設只列 `##`;有子標題的章節可用 `+` 展開該節全部 `###`/`####`。                          |
+| `catalog`      | boolean     |      | 顯示文章目錄:窄螢幕為正文上方原生折疊區,桌面 ≥1200px 為黏性側欄;`false` 同時關閉兩者。側欄預設只列 `##`,可展開 `###`/`####`。      |
 | `hidden`       | boolean     |      | 見下方「隱藏文章」。                                                                                                              |
 | `mathjax`      | boolean     |      | 純遷移相容旗標 — **絕不**載入 MathJax;數學一律由 KaTeX 渲染。                                                                     |
 | `mermaid`      | boolean     |      | 純遷移相容旗標 — 渲染由 ` ```mermaid ` fence 是否存在觸發,不是這個旗標。渲染方式見 §2。                                           |
