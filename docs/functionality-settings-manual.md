@@ -56,6 +56,10 @@ standalone typecheck.
 Computed automatically (do not set manually): reading time, table of contents, excerpt
 preview (~200 chars from body), and JSON-LD structured data.
 
+When the catalog is enabled, start article sections with `##`, then use `###` and `####` in
+order. Child headings before the first `##` are omitted. Do not use `#####` or `######`,
+because mobile and desktop catalogs handle them differently.
+
 ### Draft vs. hidden
 
 - `draft: true` — unpublished. Excluded everywhere in production.
