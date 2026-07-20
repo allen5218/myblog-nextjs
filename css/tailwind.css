@@ -846,6 +846,8 @@ body {
 
 .about-shell {
   max-width: 780px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .about-container {
@@ -1536,18 +1538,48 @@ body {
   }
 }
 
+/* 還原舊 Hux/Bootstrap 在側欄目錄出現前的文章欄寬:
+   sm 的 750px container 與 md 的 970px container + col-md-10 offset。
+   手機繼續使用滿寬單欄,≥1200px 則交給下方含側欄的 1170px grid。 */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .post-shell:not(.about-shell) {
+    width: 750px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .post-shell:not(.about-shell) > .post-container {
+    padding-right: 37.5px;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .post-shell:not(.about-shell) {
+    width: 970px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .post-shell:not(.about-shell) > .post-container {
+    width: 83.333333%;
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: 48.5px;
+  }
+}
+
 @media (min-width: 1200px) {
   .article-toc {
     display: none;
   }
 
-  .post-shell {
+  .post-shell:not(.about-shell) {
     display: grid;
     grid-template-columns: 195px minmax(0, 780px) 195px;
     column-gap: 0;
   }
 
-  .post-container {
+  .post-shell:not(.about-shell) > .post-container {
     grid-column: 2;
     width: 780px;
     padding-right: 58.5px;
