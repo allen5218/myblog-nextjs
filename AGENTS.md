@@ -77,6 +77,14 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
   做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
   `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
+- **文章正文必須保留 Hux 的中間斷點行寬。** `<768px` 使用滿寬單欄;`768–991px`
+  使用 750px 外框;`992–1199px` 使用 970px 外框與 `col-md-10` 等效欄寬;`≥1200px`
+  才切到含側欄目錄的 1170px grid。不能只留下 1200px 斷點,否則平板與窄桌面的正文
+  會退化成 `viewport - 30px`,在 1199px 時寬達 1140px。`tests/playwright/article-width.spec.ts`
+  釘住中間斷點實際行寬與 320 CSS px reflow;調整文章容器時必須一起驗證。About 頁也
+  共用 `.post-shell`/`.post-container`,但它是獨立置中的 780px 窄欄;所有文章專用的
+  breakpoint selector(包含 `≥1200px` grid)都必須排除 `.about-shell`,並保留測試裡
+  About 固定寬度、窄螢幕壓縮與 viewport 置中的契約。
 - **文章標題的 hash 落點必須保留 80px 上方空間。** 桌面 Hux 導覽列向下捲時藏在
   `top:-61px`,向上捲時會出現在 `top:0`;若標題維持瀏覽器預設的 `top:0` anchor 落點,
   只有向上跳轉會被導覽列蓋住,同時 SideCatalog 的 `rootMargin:-80px` 會把下一個標題
