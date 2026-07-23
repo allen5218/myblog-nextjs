@@ -70,15 +70,26 @@ yarn dev          # http://localhost:3000
 To write a post: drop `YYYY-MM-DD-slug.md` into `data/blog/` with at least `title` and
 `date` in the front matter — see the manual §1 for every field.
 
-Agent 文件:`openwiki/` 是給 coding agent 讀的 codebase wiki,由
-[OpenWiki](https://github.com/langchain-ai/openwiki) 生成與維護。**開 PR 前先 commit 變更,
-再**無頭跑 `openwiki code --update --print`,把 wiki 的更新併進同一個 PR(工作樹必須乾淨,
-否則它會做完整重生成;無實質變動時會自動跳過)。
-Agent docs: `openwiki/` is a codebase wiki for coding agents, generated and maintained by
-OpenWiki. Commit your changes first, then run `openwiki code --update --print` headlessly
-before opening a PR and include any wiki updates in it (the worktree must be clean,
-otherwise it regenerates everything; it skips automatically when nothing meaningful
-changed).
+Agent 文件 / OpenWiki:`openwiki/` 是給 coding agent 讀的 codebase wiki,由
+[OpenWiki](https://github.com/langchain-ai/openwiki) 生成與維護。第一次要用先裝 CLI 並登入 /
+First-time setup — install the CLI and log in:
+
+```bash
+npm install -g openwiki   # install the CLI
+openwiki --init           # interactive first run: pick provider, enter API key/token, choose model
+                          # credentials are saved to ~/.openwiki/.env (provider/key specifics: AGENTS.md)
+```
+
+之後維護 wiki:**開 PR 前先 commit 變更,再**無頭跑 `openwiki code --update --print`,把更新
+併進同一個 PR(工作樹必須乾淨,否則會做完整重生成;無實質變動時自動跳過)。它是付費的模型
+呼叫,**不會**在 CI / `main` 上自動執行。
+To keep it fresh: commit your changes first, then run `openwiki code --update --print`
+headlessly and fold any wiki updates into the same PR (the worktree must be clean, otherwise
+it regenerates everything; it skips automatically when nothing meaningful changed). It is a
+paid model call and never runs automatically in CI or on `main`.
+
+進階用法(其他 provider、CI 整合、旗標)見 / For advanced usage (other providers, CI
+integration, flags) see the [OpenWiki repo](https://github.com/langchain-ai/openwiki).
 
 ## Project Layout
 
