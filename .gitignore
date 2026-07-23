@@ -54,6 +54,11 @@ yarn-error.log*
 # Contentlayer
 .contentlayer
 
+# OpenWiki:生成的 workflow 每次 --init/--update 都被無條件覆寫(手改必被蓋),
+# 且它用 Actions 開 PR,需要 repo 層「Allow Actions to create and approve pull
+# requests」—— 本專案刻意不開(見 AGENTS.md)。故本機任它重寫,但永不入庫。
+/.github/workflows/openwiki-update.yml
+
 # Site-font transactional staging and backups
 /.site-font-stage-*/
 /public/static/fonts/chiron.backup-*/
