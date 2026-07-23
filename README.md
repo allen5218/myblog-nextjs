@@ -70,6 +70,16 @@ yarn dev          # http://localhost:3000
 To write a post: drop `YYYY-MM-DD-slug.md` into `data/blog/` with at least `title` and
 `date` in the front matter — see the manual §1 for every field.
 
+Agent 文件:`openwiki/` 是給 coding agent 讀的 codebase wiki,由
+[OpenWiki](https://github.com/langchain-ai/openwiki) 生成與維護。**開 PR 前先 commit 變更,
+再**無頭跑 `openwiki code --update --print`,把 wiki 的更新併進同一個 PR(工作樹必須乾淨,
+否則它會做完整重生成;無實質變動時會自動跳過)。
+Agent docs: `openwiki/` is a codebase wiki for coding agents, generated and maintained by
+OpenWiki. Commit your changes first, then run `openwiki code --update --print` headlessly
+before opening a PR and include any wiki updates in it (the worktree must be clean,
+otherwise it regenerates everything; it skips automatically when nothing meaningful
+changed).
+
 ## Project Layout
 
 ```text
@@ -83,6 +93,7 @@ layouts/              post/list layouts
 lib/                  pagination, iframe allowlist, social-card generation
 scripts/              postbuild feeds + OG/site-font subsetting and validation tools
 docs/                 manuals and maintenance docs
+openwiki/             agent-facing codebase wiki (generated; see AGENTS.md)
 faq/                  upstream starter guides (MDX components, KBar, Docker)
 tests/                unit + Playwright parity suites
 ```
