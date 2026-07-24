@@ -104,9 +104,8 @@ rebalanceAssignments({ corpus, core, bucketCount = 5, maxBucketsPerDocument = 2 
    確定性地擾動組別順序,再貪婪放置:每組選擇讓
    `(是否害某文件超過 maxBucketsPerDocument, 新增碰觸的文件數, 該桶目前 cp 數, 桶 ID)`
    字典序最小的桶。
-4. **評分與選優。** 每個候選解算
-   `(超標文件數, 最大單頁 cp 數, 最大碰桶數)`,取字典序最小。完全平手時取
-   assignment 的正規序列化字串較小者,保證同輸入必得同輸出。
+4. **評分與選優。** 每個候選解算 `(最大碰桶數, 最大單頁 cp 數)`,取字典序最小。
+   比較用嚴格小於,平手時保留較早的 restart —— 結果與重啟次數無關,同輸入必得同輸出。
 5. **失敗要大聲。** 若最佳解仍有文件超過 `maxBucketsPerDocument`,`throw` —— 不得
    靜默輸出一個超標的 plan。
 
