@@ -36,6 +36,19 @@ export function serializeCodepoints(codePoints) {
   return lines.length === 0 ? '' : `${lines.join('\n')}\n`
 }
 
+export function parseAssignmentEpoch(text) {
+  const value = String(text).trim()
+  if (!/^\d+$/.test(value)) throw new Error(`Invalid assignment epoch: ${JSON.stringify(text)}`)
+  return Number.parseInt(value, 10)
+}
+
+export function serializeAssignmentEpoch(epoch) {
+  if (!Number.isInteger(epoch) || epoch < 0) {
+    throw new Error(`Invalid assignment epoch: ${epoch}`)
+  }
+  return `${epoch}\n`
+}
+
 export function parseAssignments(text) {
   let data
   try {

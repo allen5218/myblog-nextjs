@@ -5,9 +5,11 @@ import {
   compressUnicodeRanges,
   homepageFromGeneratedBlogs,
   migrateAssignmentsV2,
+  parseAssignmentEpoch,
   parseAssignments,
   parseCodepoints,
   placeNewAssignments,
+  serializeAssignmentEpoch,
   serializeAssignments,
   serializeCodepoints,
 } from '../../scripts/site-font-plan.mjs'
@@ -325,5 +327,27 @@ describe('compressUnicodeRanges', () => {
   test('sorts and compresses adjacent code points', () => {
     expect(compressUnicodeRanges(new Set([0x41, 0x42, 0x44]))).toBe('U+0041-0042,U+0044')
     expect(compressUnicodeRanges(new Set())).toBe('')
+  })
+})
+
+describe('assignment epoch', () => {
+  test('解析十進位整數並容忍尾端換行', () => {
+    expect(parseAssignmentEpoch('0\n')).toBe(0)
+    expect(parseAssignmentEpoch('7')).toBe(7)
+    expect(parseAssignmentEpoch('  12  \n')).toBe(12)
+  })
+
+  test('拒絕非整數、負數與空字串', () => {
+    expect(() => parseAssignmentEpoch('')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('-1')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('1.5')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('abc')).toThrow(/Invalid assignment epoch/)
+  })
+
+  test('序列化為單行加換行,並拒絕非法輸入', () => {
+    expect(serializeAssignmentEpoch(0)).toBe('0\n')
+    expect(serializeAssignmentEpoch(3)).toBe('3\n')
+    expect(() => serializeAssignmentEpoch(-1)).toThrow(/Invalid assignment epoch/)
+    expect(() => serializeAssignmentEpoch(1.5)).toThrow(/Invalid assignment epoch/)
   })
 })
