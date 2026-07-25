@@ -5,9 +5,12 @@ import {
   compressUnicodeRanges,
   homepageFromGeneratedBlogs,
   migrateAssignmentsV2,
+  parseAssignmentEpoch,
   parseAssignments,
   parseCodepoints,
   placeNewAssignments,
+  rebalanceAssignments,
+  serializeAssignmentEpoch,
   serializeAssignments,
   serializeCodepoints,
 } from '../../scripts/site-font-plan.mjs'
@@ -325,5 +328,230 @@ describe('compressUnicodeRanges', () => {
   test('sorts and compresses adjacent code points', () => {
     expect(compressUnicodeRanges(new Set([0x41, 0x42, 0x44]))).toBe('U+0041-0042,U+0044')
     expect(compressUnicodeRanges(new Set())).toBe('')
+  })
+})
+
+describe('rebalanceAssignments', () => {
+  // 五份文件各自獨佔一批字元,外加一批被全部文件共用的字元。
+  const shared = [0x4e00, 0x4e01, 0x4e02]
+  const documents = new Map<string, Set<number>>(
+    Array.from({ length: 5 }, (_, index) => [
+      `doc-${index}`,
+      new Set([...shared, 0x5000 + index * 2, 0x5001 + index * 2]),
+    ])
+  )
+  const corpus = corpusWith({ documents })
+  const core = new Set<number>()
+
+  test('每份文件碰到的桶數不超過上限', () => {
+    const assignments = rebalanceAssignments({ corpus, core })
+    for (const codePoints of documents.values()) {
+      const touched = new Set([...codePoints].map((codePoint) => assignments.get(codePoint)))
+      expect(touched.size).toBeLessThanOrEqual(2)
+    }
+  })
+
+  test('相同輸入必得完全相同輸出', () => {
+    const first = rebalanceAssignments({ corpus, core })
+    const second = rebalanceAssignments({ corpus, core })
+    expect(serializeAssignments(first)).toBe(serializeAssignments(second))
+  })
+
+  test('同一文件簽名的字元必定同桶', () => {
+    const assignments = rebalanceAssignments({ corpus, core })
+    for (const codePoint of shared) {
+      expect(assignments.get(codePoint)).toBe(assignments.get(shared[0]))
+    }
+  })
+
+  test('覆蓋所有 non-core 字元,且不含 core 字元', () => {
+    const withCore = new Set([0x4e00])
+    const assignments = rebalanceAssignments({ corpus, core: withCore })
+    expect(assignments.has(0x4e00)).toBe(false)
+    expect(assignments.has(0x4e01)).toBe(true)
+    for (const codePoints of documents.values()) {
+      for (const codePoint of codePoints) {
+        if (!withCore.has(codePoint)) expect(assignments.has(codePoint)).toBe(true)
+      }
+    }
+  })
+
+  test('保留已離開 corpus 的歷史 assignment,不讓它們消失', () => {
+    const assignments = rebalanceAssignments({
+      corpus,
+      core,
+      committedAssignments: new Map([[0x9fff, 3]]),
+    })
+    expect(assignments.has(0x9fff)).toBe(true)
+    expect(assignments.get(0x9fff)).toBeGreaterThanOrEqual(0)
+    expect(assignments.get(0x9fff)).toBeLessThan(5)
+  })
+
+  test('buildFontPlan 帶 rebalance 時改用重排結果,不帶時維持既有 assignment', () => {
+    const committed = new Map([
+      [0x4e00, 4],
+      [0x4e01, 4],
+      [0x4e02, 4],
+    ])
+    const incremental = buildFontPlan({
+      corpus,
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+      rebuildCore: false,
+    })
+    // 增量放置不得移動既有 assignment。
+    for (const codePoint of shared) expect(incremental.assignments.get(codePoint)).toBe(4)
+
+    const rebalanced = buildFontPlan({
+      corpus,
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+      rebuildCore: false,
+      rebalance: true,
+    })
+    // 重排會重新推導:全文件共用的字元落到共用桶,各文件獨佔字元散到專屬桶。
+    for (const codePoint of shared) expect(rebalanced.assignments.get(codePoint)).toBe(0)
+    const privateBuckets = [...documents.values()].map(
+      (codePoints) =>
+        new Set(
+          [...codePoints]
+            .filter((codePoint) => !shared.includes(codePoint))
+            .map((codePoint) => rebalanced.assignments.get(codePoint))
+        )
+    )
+    expect(privateBuckets.every((buckets) => buckets.size === 1)).toBe(true)
+    expect(new Set(privateBuckets.map((buckets) => [...buckets][0])).size).toBeGreaterThan(1)
+    for (const codePoints of documents.values()) {
+      const touched = new Set(
+        [...codePoints].map((codePoint) => rebalanced.assignments.get(codePoint))
+      )
+      expect(touched.size).toBeLessThanOrEqual(2)
+    }
+  })
+
+  // 爬山接受某個移動後,同一輪稍後的候選被拒絕時若還原成「本輪開始前」的分群,
+  // 輸出就會和內部評分/驗證所依據的分群脫鉤 —— 安全檢查可能驗到另一組分群。
+  // 用暴力解當基準:小 corpus 下輸出必須真的達到最佳值。
+  test('輸出的分群必須就是內部評分的那一組(以暴力最佳解驗證)', () => {
+    const optimum = (
+      docs: string[],
+      pagesOf: Map<number, number[]>,
+      groupCount: number,
+      bucketCount: number
+    ) => {
+      const groupOf = Array(docs.length).fill(0)
+      const worstFor = () => {
+        const sizes = Array(bucketCount).fill(0)
+        const touched = Array.from({ length: docs.length }, () => new Set<number>())
+        for (const [, pages] of pagesOf) {
+          const first = groupOf[pages[0]]
+          const bucket = pages.some((page) => groupOf[page] !== first) ? 0 : first + 1
+          sizes[bucket] += 1
+          for (const page of pages) touched[page].add(bucket)
+        }
+        let worst = 0
+        for (const buckets of touched) {
+          let cost = 0
+          for (const bucket of buckets) cost += sizes[bucket]
+          worst = Math.max(worst, cost)
+        }
+        return worst
+      }
+      let best = Infinity
+      const walk = (index: number) => {
+        if (index === docs.length) {
+          best = Math.min(best, worstFor())
+          return
+        }
+        for (let group = 0; group < groupCount; group += 1) {
+          groupOf[index] = group
+          walk(index + 1)
+        }
+      }
+      walk(0)
+      return best
+    }
+
+    // 這組共用關係實測會讓爬山在同一輪內「先接受某個移動、再拒絕下一個候選」。
+    const names = ['d0', 'd1', 'd2', 'd3']
+    const spec: Array<[number, string[]]> = [
+      [0x4e00, ['d3']],
+      [0x4e01, ['d3']],
+      [0x4e02, ['d0', 'd1', 'd3']],
+      [0x4e03, ['d0', 'd2']],
+      [0x4e04, ['d0']],
+      [0x4e05, ['d3']],
+      [0x4e06, ['d0', 'd2']],
+      [0x4e07, ['d1', 'd3']],
+      [0x4e08, ['d1', 'd2']],
+      [0x4e09, ['d0', 'd1', 'd3']],
+      [0x4e0a, ['d0', 'd1', 'd2']],
+      [0x4e0b, ['d2']],
+      [0x4e0c, ['d0', 'd1', 'd3']],
+      [0x4e0d, ['d0']],
+      [0x4e0e, ['d0']],
+      [0x4e0f, ['d0', 'd1', 'd2', 'd3']],
+      [0x4e10, ['d0', 'd1', 'd2']],
+      [0x4e11, ['d1', 'd3']],
+    ]
+    const docs = new Map<string, Set<number>>(names.map((name) => [name, new Set<number>()]))
+    const pagesOf = new Map<number, number[]>()
+    for (const [codePoint, owners] of spec) {
+      for (const owner of owners) docs.get(owner)!.add(codePoint)
+      pagesOf.set(
+        codePoint,
+        owners.map((owner) => names.indexOf(owner))
+      )
+    }
+    const localCorpus = corpusWith({ documents: docs })
+
+    const assignments = rebalanceAssignments({ corpus: localCorpus, core: new Set<number>() })
+    const sizes = Array(5).fill(0)
+    for (const bucket of assignments.values()) sizes[bucket] += 1
+    let emitted = 0
+    for (const codePoints of docs.values()) {
+      const touched = new Set([...codePoints].map((codePoint) => assignments.get(codePoint)!))
+      let cost = 0
+      for (const bucket of touched) cost += sizes[bucket]
+      emitted = Math.max(emitted, cost)
+    }
+
+    expect(emitted).toBe(optimum(names, pagesOf, 4, 5))
+  })
+
+  test('bucket 數不足以滿足約束時大聲失敗,而不是回傳超標的 plan', () => {
+    // 12 份文件,每份都獨佔一批字元且兩兩不共用 → 每份至少要自己的桶。
+    const crowded = corpusWith({
+      documents: new Map(
+        Array.from({ length: 12 }, (_, index) => [`doc-${index}`, new Set([0x6000 + index])])
+      ),
+    })
+    expect(() =>
+      rebalanceAssignments({ corpus: crowded, core: new Set(), maxBucketsPerDocument: 0 })
+    ).toThrow(/could not keep every document within/)
+  })
+})
+
+describe('assignment epoch', () => {
+  test('解析十進位整數並容忍尾端換行', () => {
+    expect(parseAssignmentEpoch('0\n')).toBe(0)
+    expect(parseAssignmentEpoch('7')).toBe(7)
+    expect(parseAssignmentEpoch('  12  \n')).toBe(12)
+  })
+
+  test('拒絕非整數、負數與空字串', () => {
+    expect(() => parseAssignmentEpoch('')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('-1')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('1.5')).toThrow(/Invalid assignment epoch/)
+    expect(() => parseAssignmentEpoch('abc')).toThrow(/Invalid assignment epoch/)
+  })
+
+  test('序列化為單行加換行,並拒絕非法輸入', () => {
+    expect(serializeAssignmentEpoch(0)).toBe('0\n')
+    expect(serializeAssignmentEpoch(3)).toBe('3\n')
+    expect(() => serializeAssignmentEpoch(-1)).toThrow(/Invalid assignment epoch/)
+    expect(() => serializeAssignmentEpoch(1.5)).toThrow(/Invalid assignment epoch/)
   })
 })

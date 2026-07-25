@@ -12,7 +12,7 @@ The test suite protects migration and user-facing behavior, not only isolated im
 4. `yarn tsc --noEmit`;
 5. `yarn test:unit`.
 
-[`og-font-check.yml`](../../.github/workflows/og-font-check.yml) is a separate required check. It installs HarfBuzz/woff2, validates social-card glyph coverage, generates Contentlayer models, retrieves base font assignment/core data from `origin/main`, and runs full Chiron validation. It must run on every PR rather than use `paths` filtering, because a required check that never starts leaves GitHub branch protection permanently pending.
+[`og-font-check.yml`](../../.github/workflows/og-font-check.yml) is a separate required check. It installs HarfBuzz/woff2, validates social-card glyph coverage, generates Contentlayer models, retrieves base Chiron assignment, core, and epoch data from `origin/main`, and runs full Chiron validation. Core history is checked whenever a base core exists; assignment history is checked only when the committed epoch equals the base epoch, so an intentional epoch advance is reported as a warning instead. It must run on every PR rather than use `paths` filtering, because a required check that never starts leaves GitHub branch protection permanently pending.
 
 The Mermaid workflow is intentionally advisory. It checks generated cache structure without redraw because SVG output can vary by platform.
 
@@ -47,7 +47,7 @@ Important contract groups include:
 | Mermaid cached rendering/theme/overflow | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) |
 | OG images | [`social-card.spec.ts`](../../tests/playwright/social-card.spec.ts) |
 | PWA precache/offline behavior | [`serwist-precache.spec.ts`](../../tests/playwright/serwist-precache.spec.ts) |
-| Chiron request/byte budgets | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) |
+| Chiron request/byte budgets and rendered glyph selection | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) measures the homepage and every generated article against the manifest; this catches glyphs omitted from the hand-maintained static seeds (printable ASCII, shared UI text, dictionaries, and site metadata) or not discoverable from article Markdown. KaTeX output is excluded because its HTML and MathML font chains bypass Chiron, so its DOM presence does not create a Chiron request. |
 
 ## Change matrix
 

@@ -31,6 +31,17 @@ const SHARED_UI_TEXT = [
   '回首頁 →',
   '分享技術和生活',
   '聯絡信箱:',
+  // 元件寫死的靜態符號,不會出現在任何 markdown,必須明確列入 seed:
+  // HuxPager 的上下篇箭頭、返回頂部按鈕、SideCatalog 的展開/收合鈕。
+  // 判準是「這個字元會不會用 Chiron 字型鏈渲染」。KaTeX 產生的輸出字元(`×`、U+2212 等)
+  // 不算 —— `.katex-html` 與 MathML 都自訂 font-family(`KaTeX_Main` / `math`),
+  // Chiron 不在它們的鏈上,所以那些字元不會觸發任何 Chiron 子集下載。
+  // 另外 seed 一律進 core,而 `--full` 會對 core 做 shaping,所以只能列來源字型
+  // 真的有字形的字元(查法:`hb-info --list-unicodes <來源 TTF>`)。
+  '←',
+  '↑',
+  '−',
+  '+',
 ]
 
 async function markdownFiles(directory) {

@@ -8,8 +8,10 @@ import { fileURLToPath } from 'node:url'
 import {
   buildFontPlan,
   homepageFromGeneratedBlogs,
+  parseAssignmentEpoch,
   parseAssignments,
   parseCodepoints,
+  serializeAssignmentEpoch,
   serializeAssignments,
   serializeCodepoints,
 } from './site-font-plan.mjs'
@@ -50,9 +52,11 @@ export async function generateSiteFontArtifacts({
   core,
   buckets,
   assignmentBytes,
+  assignmentEpoch,
   assignmentOutput,
   runner = defaultRunner,
   coreOutput,
+  epochOutput,
   commitHook = async () => {},
 }) {
   for (const codePoint of [...core, ...[...buckets.values()].flatMap((values) => [...values])]) {
@@ -140,6 +144,7 @@ export async function generateSiteFontArtifacts({
           'min-artifact-bytes',
           'lowest-bucket-id',
         ],
+        assignmentEpoch,
         axes,
       },
       core: sorted(core).map(hex),
@@ -160,6 +165,8 @@ export async function generateSiteFontArtifacts({
       ? path.join(stagingRoot, 'supplemental-assignments.json')
       : undefined
     if (stagedAssignments) await fs.writeFile(stagedAssignments, assignmentBytes)
+    const stagedEpoch = epochOutput ? path.join(stagingRoot, 'assignment-epoch.txt') : undefined
+    if (stagedEpoch) await fs.writeFile(stagedEpoch, serializeAssignmentEpoch(assignmentEpoch))
 
     await fs.mkdir(path.dirname(outputFonts), { recursive: true })
     await fs.mkdir(path.dirname(outputCss), { recursive: true })
@@ -179,6 +186,9 @@ export async function generateSiteFontArtifacts({
               phase: 'during-assignment-write',
             },
           ]
+        : []),
+      ...(epochOutput
+        ? [{ staged: stagedEpoch, output: epochOutput, phase: 'during-epoch-write' }]
         : []),
     ].map((entry) => ({
       ...entry,
@@ -225,6 +235,7 @@ export async function generateSiteFontArtifacts({
 async function main() {
   const root = process.cwd()
   const rebuildCore = process.argv.includes('--rebuild-core')
+  const rebalance = process.argv.includes('--rebalance')
   const metadata = await loadSourceMetadata(root)
   const sourcePath = await ensureSourceFont(root)
   const corePath = path.join(root, 'font-data/chiron/core-codepoints.txt')
@@ -232,6 +243,10 @@ async function main() {
   const committedCore = parseCodepoints(await fs.readFile(corePath, 'utf8'))
   const committedAssignmentBytes = await fs.readFile(assignmentsPath)
   const committedAssignments = parseAssignments(committedAssignmentBytes.toString('utf8'))
+  const epochPath = path.join(root, 'font-data/chiron/assignment-epoch.txt')
+  const committedEpoch = parseAssignmentEpoch(await fs.readFile(epochPath, 'utf8'))
+  // 只有刻意重排才推進 epoch;普通更新沿用 committed 值。
+  const assignmentEpoch = rebalance ? committedEpoch + 1 : committedEpoch
   const blogs = JSON.parse(
     await fs.readFile(path.join(root, '.contentlayer/generated/Blog/_index.json'), 'utf8')
   )
@@ -259,6 +274,7 @@ async function main() {
     committedAssignments,
     artifactBytes,
     rebuildCore,
+    rebalance,
   })
   const assignmentBytes = Buffer.from(serializeAssignments(plan.assignments))
   const manifest = await generateSiteFontArtifacts({
@@ -269,11 +285,15 @@ async function main() {
     core: plan.core,
     buckets: plan.buckets,
     assignmentBytes,
+    assignmentEpoch,
     assignmentOutput: assignmentsPath,
     coreOutput: rebuildCore ? corePath : undefined,
+    epochOutput: rebalance ? epochPath : undefined,
   })
   const bytes = manifest.artifacts.reduce((sum, artifact) => sum + artifact.bytes, 0)
-  console.log(`Generated ${manifest.artifacts.length} Chiron WOFF2 artifacts (${bytes} bytes)`)
+  console.log(
+    `Generated ${manifest.artifacts.length} Chiron WOFF2 artifacts (${bytes} bytes, assignment epoch ${assignmentEpoch})`
+  )
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

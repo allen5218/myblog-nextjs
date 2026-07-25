@@ -330,7 +330,18 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   一起 commit,不可手改。
 - `yarn update:site-font` 會先 fresh build Contentlayer model,再更新目前 buckets,不會讀取
   過期的 `.contentlayer`;只有明確的 `--rebuild-core`
-  會把目前固定 UI、高頻與首頁字符單調加入 core。更新與 full check 需要 HarfBuzz 加
+  會把目前固定 UI、高頻與首頁字符單調加入 core。
+- `yarn update:site-font --rebalance` 是**刻意的一次性重排**:丟棄既有的
+  `codePoint -> bucket` 對應,依目前 corpus 重新推導,並把
+  `font-data/chiron/assignment-epoch.txt` 遞增 1。只在 `check:site-font` 因文章預算
+  失敗時使用 —— 它會改派既有 code point,讓所有讀者的字型快取失效。CI 的歷史檢查
+  只在 epoch 與 `origin/main` 相同時才比對;epoch 遞增時跳過並輸出
+  `assignment history check skipped` warning。若重排同時新增了 fixed UI seed 字元,
+  必須併用 `--rebuild-core`(seed 依規定必須落在 core)。
+- 元件寫死的符號與 KaTeX 的渲染輸出不會出現在任何 markdown,`check:site-font` 因此
+  看不到它們。這類字元必須明列在 `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT`
+  與 `MATH_OUTPUT_TEXT`;遺漏只有 `tests/playwright/site-font-loading.spec.ts` 的
+  production 量測(涵蓋全部文章)抓得到。更新與 full check 需要 HarfBuzz 加
   `woff2_compress`/`woff2_decompress`(`brew install harfbuzz woff2`)。GitHub required
   `check` job 會以 `origin/main` 的 assignment map 與 core 快照為歷史基準,完整檢查 glyph、
   cmap、variable axis、exact-byte budgets、既有 assignment 未被換桶,以及 core 未被縮減
@@ -361,7 +372,7 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 | `yarn check:og-font`    | 檢查 OG/社群卡片字體子集是否涵蓋目前所有卡片文字(§6);`yarn build` 前自動執行                                                                            |
 | `yarn update:og-font`   | 依目前內容重新下載並子集化 Chiron Sung HK OG 字體;需要 HarfBuzz CLI(§6)                                                                                 |
 | `yarn check:site-font`  | 驗證 committed 網站字型 schema、hash、corpus 與頁面 budget;加 `--full` 檢查 glyph/cmap/axis(§9)                                                         |
-| `yarn update:site-font` | 先 fresh build Contentlayer model,再產生 committed Chiron 網站字型 buckets;只有刻意單調擴張 core 時才加 `--rebuild-core`(§9)                                      |
+| `yarn update:site-font` | 先 fresh build Contentlayer model,再產生 committed Chiron 網站字型 buckets;只有刻意單調擴張 core 時才加 `--rebuild-core`,只有文章預算超標時才加 `--rebalance`(§9)                                      |
 | `yarn mermaid:render`   | 把文章裡的 Mermaid 圖表渲染成淺/深雙 SVG,commit 到 `public/mermaid/`(§2);`--check` 只重渲染比對、不寫檔,快取過期時警告;需要本機安裝 Playwright Chromium |
 | `yarn analyze`          | 帶 bundle analyzer 的 webpack build(正常 build 仍使用 Turbopack)                                                                                        |
 
