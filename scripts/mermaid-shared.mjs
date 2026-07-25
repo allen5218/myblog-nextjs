@@ -21,7 +21,7 @@ const ROOT = process.cwd()
 
 // 任何會影響輸出 SVG 的東西改變(mermaid 版本、主題、渲染邏輯)時 bump,
 // 強制快取失效。實際位元差異另由 `mermaid:render --check` 兜底。
-export const CACHE_VERSION = 1
+export const CACHE_VERSION = 2
 
 export const PUBLIC_MERMAID_DIR = path.join(ROOT, 'public', 'mermaid')
 export const MERMAID_URL_BASE = '/mermaid'
@@ -78,6 +78,12 @@ export function svgFileName(hash, variant) {
 
 export function normalizeSvg(svg) {
   let out = svg
+  // mermaid 把節點標籤裡的 `<br/>` 序列化成裸 `<br>` 寫進 foreignObject。HTML 合法,
+  // XML 不合法 —— 而 rehype-mermaid 是用 `<img src>` 引這些 SVG,瀏覽器對 img 載入的
+  // SVG 走嚴格 XML 解析,一個裸 `<br>` 就讓整份文件解析失敗:naturalWidth/Height 變 0、
+  // 圖塌成一條細線。沒有 console 錯誤、請求還是 200,`mermaid-check` 的 hash 比對也照樣
+  // 綠燈(它不解析輸出),所以只有真的把圖載進瀏覽器才看得出來(2026-07-25 踩過)。
+  out = out.replace(/<br\s*>/gi, '<br/>')
   // viewBox 的 origin(前兩個數字)在 timeline、gitGraph、sequence 等圖表型別
   // 常是非零甚至負值(例如 "100 -61 1190 592.2"),不能假設是 "0 0" 開頭 ——
   // 用來當寬高的是第 3、4 個數字(寬、高),與 origin 無關。

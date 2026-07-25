@@ -38,3 +38,46 @@ test('寬圖在手機寬度下可水平捲動,不被壓縮', async ({ page }) =>
     .evaluateAll((figures) => figures.some((f) => f.scrollWidth > f.clientWidth + 1))
   expect(overflowing).toBe(true)
 })
+
+// 2026-07-25:一張含多行標籤(`<br/>`)的圖上了 production 卻塌成一條細線。mermaid 把
+// `<br/>` 序列化成裸 `<br>`,而 `<img>` 載入的 SVG 走嚴格 XML 解析,一個裸 void element
+// 就讓整份文件解析失敗 —— 請求仍是 200、沒有 console 錯誤、`mermaid-check` 的 hash 比對
+// 也綠燈,唯一的外顯症狀就是 naturalWidth/Height 變 0。這裡直接盯那個症狀,不管成因。
+// 多行標籤只出現在 OpenWiki 那篇,所以兩個 fixture 都要跑:測試文涵蓋各種圖種,
+// OpenWiki 那篇涵蓋 `<br/>` 標籤。
+for (const [label, urlPath] of [
+  ['各圖種測試文', mermaidPath],
+  ['含多行標籤的文章', '/2026/07/25/openwiki-tame-agents-md/'],
+] as const) {
+  test(`${label}的每張 mermaid SVG 都有固有尺寸(擋 XML 解析失敗造成的靜默塌陷)`, async ({
+    page,
+  }) => {
+    await page.goto(urlPath)
+    await expect(page.locator('.mermaid-figure').first()).toBeVisible()
+
+    const broken = await page.locator('.mermaid-figure img').evaluateAll(async (nodes) => {
+      const images = nodes.filter(
+        (node): node is HTMLImageElement => getComputedStyle(node).display !== 'none'
+      )
+      // 圖多半在首屏外,loading="lazy" 會讓它們根本沒開始載入,量到的 0 會是假陽性。
+      images.forEach((image) => {
+        image.loading = 'eager'
+      })
+      await Promise.all(
+        images.map((image) =>
+          image.complete
+            ? Promise.resolve()
+            : new Promise((resolve) => {
+                image.addEventListener('load', resolve, { once: true })
+                image.addEventListener('error', resolve, { once: true })
+              })
+        )
+      )
+      return images
+        .filter((image) => image.naturalWidth === 0 || image.naturalHeight === 0)
+        .map((image) => image.getAttribute('src'))
+    })
+
+    expect(broken, `這些 SVG 沒有固有尺寸(很可能不是合法 XML):${broken.join(', ')}`).toEqual([])
+  })
+}

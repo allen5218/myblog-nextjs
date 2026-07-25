@@ -135,6 +135,10 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
   (`.github/workflows/mermaid-check.yml`,job 名 `mermaid`,非必過檢查)在 push/PR 時跑
   `yarn mermaid:render --check` —— 純結構比對(每個 fence 的內容 hash 是否都有對應
   committed SVG、有無孤兒檔),不重新渲染,藉此提醒作者「改了圖忘了 render + commit」。
+  節點標籤可用 `<br/>` 折行;因為圖是走 `<img src>` 載入,SVG 必須是**合法 XML**,所以
+  `normalizeSvg` 會把 mermaid 序列化出的裸 `<br>` 補成自閉合,`yarn mermaid:render` 也會用
+  瀏覽器的 `DOMParser` 驗每一張輸出,不合法就**直接讓指令失敗**(不合法的 SVG 不會塌成
+  程式碼區塊,而是變成沒有固有尺寸的細線 —— 請求仍是 200,沒有這道關卡就只能靠肉眼發現)。
 - **標題**:自動產生 slug 錨點 — hover 時在標題文字**後方**顯示純文字 `#`(AnchorJS 風格,
   照搬自 Jekyll 舊站;不是前置圖標)。
 - MDX 可以執行程式碼。`data/` 底下一律視為受信任的作者內容;沒有另行安全設計前,絕不

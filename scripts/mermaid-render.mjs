@@ -69,7 +69,21 @@ async function renderVariant(page, config, def, id) {
     },
     { config, def, id }
   )
-  return normalizeSvg(svg)
+  const normalized = normalizeSvg(svg)
+  // 產品端是用 `<img src>` 引這些 SVG,瀏覽器對此走**嚴格 XML 解析**:任何裸 void
+  // element(mermaid 標籤裡的 `<br/>` 會被序列化成 `<br>`)都讓整份文件解析失敗,
+  // 圖塌成沒有固有尺寸的細線。沒有 console 錯誤、請求 200、`mermaid-check` 的 hash
+  // 比對也綠燈,所以這裡直接借用同一顆瀏覽器的 DOMParser 當關卡,把靜默失敗變成
+  // render 當下就爆的錯誤(2026-07-25 有一張圖就是這樣上了 production)。
+  const parseError = await page.evaluate((markup) => {
+    const doc = new DOMParser().parseFromString(markup, 'image/svg+xml')
+    const error = doc.querySelector('parsererror')
+    return error ? error.textContent.replace(/\s+/g, ' ').trim().slice(0, 300) : null
+  }, normalized)
+  if (parseError) {
+    throw new Error(`${id} 產出的 SVG 不是合法 XML,瀏覽器會拒絕以 <img> 顯示:${parseError}`)
+  }
+  return normalized
 }
 
 // 回傳 Map<fileName, svgString>

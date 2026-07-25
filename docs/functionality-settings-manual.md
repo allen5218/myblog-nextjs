@@ -144,6 +144,12 @@ matches the severity of the consequence.
   required check) runs `yarn mermaid:render --check` on push/PR — a purely structural
   comparison (does every fence's content hash have matching committed SVGs; any orphans),
   NOT a re-render, to remind the author when a diagram changed but wasn't re-rendered + committed.
+  Node labels may use `<br/>` for line breaks; because the diagrams load via `<img src>`, the
+  SVG must be **valid XML**, so `normalizeSvg` self-closes the bare `<br>` mermaid serializes,
+  and `yarn mermaid:render` validates every output with the browser's `DOMParser` and **fails
+  the command** if one is malformed (a malformed SVG does not degrade to a code block — it
+  collapses to a zero-height sliver while still returning 200, so without this gate the only
+  symptom is visual).
 - **Headings**: get slug anchors — a plain `#` appended after the heading text, visible on hover
   (AnchorJS-style, ported from the Jekyll site; not a prepended icon).
 - MDX is code-capable. Treat everything under `data/` as trusted author content; never

@@ -58,6 +58,18 @@ describe('normalizeSvg', () => {
     expect(out).not.toContain('width="10"')
     expect(out).not.toContain('height="10"')
   })
+
+  // mermaid 把節點標籤裡的 `<br/>` 序列化成裸 `<br>`(HTML void element)寫進
+  // foreignObject。SVG 走 `<img src>` 載入時是嚴格 XML 解析,裸 `<br>` 讓整份文件
+  // 解析失敗 —— 瀏覽器不報錯、請求也是 200,圖只是變成沒有固有尺寸的一條細線。
+  it('把 foreignObject 裡的裸 <br> 補成自閉合,否則 <img> 的 XML 解析會整份失敗', () => {
+    const input =
+      '<svg id="m" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">' +
+      '<foreignObject><div>第一行<br>第二行</div></foreignObject></svg>'
+    const out = normalizeSvg(input)
+    expect(out).toContain('第一行<br/>第二行')
+    expect(out).not.toMatch(/<br(?!\/)[\s>]/)
+  })
 })
 
 describe('extractMermaidDefinitions', () => {
