@@ -116,6 +116,16 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - **mermaid fence 靜默退化成程式碼區塊**時(全都不報錯,是刻意的優雅降級),先照
   `openwiki/operations/runbook.md` 的四點排查(忘了 render / `.contentlayer` 快取卡住 /
   寫成 `mermaid:標題` / fence 不在 `data/blog`),**不要直接當渲染 bug 追**。
+- **產品端是用 `<img src>` 引 SVG,所以那些 SVG 必須是合法 XML。** `<img>` 載入的 SVG 走
+  **嚴格 XML 解析**,一個裸 void element 就讓整份文件解析失敗:圖塌成沒有固有尺寸的細線,
+  但**請求是 200、沒有 console 錯誤、`mermaid-check` 照樣綠燈**(它不解析輸出)。
+  2026-07-25 踩過:節點標籤寫 `<br/>` 做多行,mermaid 會把它序列化成裸 `<br>` 塞進
+  foreignObject,圖就這樣一路上了 production。`normalizeSvg` 現在會把裸 `<br>` 補成自閉合,
+  `mermaid-render.mjs` 也在 render 當下用同一顆瀏覽器的 `DOMParser` 擋(不合法就直接丟錯)。
+  **診斷「mermaid 顯示不了」時第一個看 `img.naturalWidth`** —— 0 就是 SVG 沒被瀏覽器接受,
+  不是 CSS 或路徑問題;它塌成細線而不是破圖,所以肉眼很容易誤判成「圖沒出來」。
+  回歸測試在 `tests/playwright/mermaid.spec.ts`(必須同時涵蓋各圖種測試文**和**含多行標籤
+  的文章 —— 前者沒有 `<br/>`,單靠它抓不到)。
 - **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
   原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
   ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**
