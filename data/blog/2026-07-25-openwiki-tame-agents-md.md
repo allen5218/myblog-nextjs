@@ -20,7 +20,7 @@ tags:
 > 越長越難維護的 `AGENTS.md`。後續會有觀念篇（LLM Wiki 為什麼不是 RAG）與橋接篇（把
 > codebase wiki 和個人知識庫接起來）。
 
-別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀 wiki」。<br />
+別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀 wiki」。
 有需要的說明才會載入。Cursor、Claude Code、Codex 都能吃這套約定。
 
 ## 一份只增不減的守則檔
@@ -32,7 +32,7 @@ tags:
 `CLAUDE.md`和`AGENTS.md` 基本上功能是相同的，但`AGENTS.md`是現在coding agent的通用標準，而`CLAUDE.md`是 Claude Code 才會使用的標準，同時維護兩套守則實在很麻煩，因此我讓`CLAUDE.md` 變成一個轉接檔，在裡面添加一行`@AGENTS.md`，這樣 Claude Code 會把`AGENTS.md`載入進來。
 
 最近我的部落格從 jekyll 遷移到了 Next.js，用 coding agent 開發時遇到的錯誤經驗、設計決策、功能簡介都會存到這個守則檔中，為了讓 AI 在每次除錯或
-實作得到新教訓時都能紀錄下來，不讓問題在下一個對話輪迴。<br />
+實作得到新教訓時都能紀錄下來，不讓問題在下一個對話輪迴，
 我在`AGENTS.md` 裡要求 AI 把踩到的坑寫回守則檔，讓知識沉澱下來並遞迴式改進。<br />
 代價是守則檔只增不減，太臃腫的守則檔反而會讓 AI 失焦，那麼有什麼方法能幫它瘦身呢？
 
@@ -217,7 +217,7 @@ OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE
 
 第一眼看到 −15 行，我還愣了一下：一番折騰後，守則檔幾乎沒瘦多少？!
 
-但這反而是對的。<br />
+但這反而是對的。
 導入一個新工具，通常只會讓守則檔更肥，因為工具本身又帶來新的坑、新的規矩要記（前面那些關於 symlink、workflow、`INSTRUCTIONS.md` 的提醒，全是導入 OpenWiki 之後新寫進 `AGENTS.md` 的）。<br />
 這次是一邊加這些新守則，一邊把描述機制的冗段壓成一行連結，一加一減打平，字元數最後還小掉了約 7%。
 
