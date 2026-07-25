@@ -47,6 +47,14 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `validateAssignmentHistory` 只在 epoch 未變時比對,epoch 遞增就跳過並留 warning。
   **不要**為了讓 CI 過而單獨手動 bump epoch —— 那會讓該次 PR 的歷史保護靜默失效。
   重排若新增了 fixed UI seed 字元,要同時加 `--rebuild-core`(seed 必須在 core)。
+- **動到字型 seed 或產物後,本機一定要跑 `yarn check:site-font --full`**。不帶 `--full` 會
+  略過 glyph shaping、cmap 與 axis 驗證,而 CI 的必過 `check` job 跑的正是 `--full`
+  —— 2026-07-25 就因此讓 `.notdef` 一路過關到 CI 才爆。
+- **seed 只能列來源字型真的有字形的字元**。seed 一律進 core,`--full` 會對 core 做 shaping,
+  字型沒有的字元會變成 `.notdef` 直接讓必過檢查失敗。實例:KaTeX 的數學角括號
+  `⟨` (U+27E8)、`⟩` (U+27E9) 不在 Chiron Sung HK 裡,必須讓它們走 fallback,不可 seed。
+  要確認某字元有沒有字形:`hb-info --list-unicodes <來源 TTF>`(來源快取在
+  `$TMPDIR/chiron-site-font/<sha256>.ttf`,由 `ensureSourceFont` 下載)。
 - **`check:site-font` 只讀 markdown,看不到「渲染才出現」的字元**。元件寫死的符號
   (HuxPager 的 `←`、返回頂部的 `↑`、SideCatalog 的 `−`/`+`)與 KaTeX 的輸出字元
   (`\times` → `×`、減號 → U+2212)都不在任何 markdown 裡,必須明列在

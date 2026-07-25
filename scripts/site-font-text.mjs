@@ -44,7 +44,10 @@ const SHARED_UI_TEXT = [
 // MathML 裡並觸發字型請求,所以必須進 core,否則單一文章會多請求一個 bucket。
 // 這裡列的是目前文章實際產生的輸出;新增數學文章時由
 // `tests/playwright/site-font-loading.spec.ts` 的 production 量測負責抓出遺漏。
-const MATH_OUTPUT_TEXT = ['×', '−', '⟨', '⟩', '∣', 'Σ', '≈', ' ']
+// **只能列來源字型真的有字形的字元**：seed 一律進 core，而 `--full` 檢查會對 core 做
+// shaping，字型沒有的字元會變成 `.notdef` 直接讓必過檢查失敗。KaTeX 的數學角括號
+// `⟨` (U+27E8) 與 `⟩` (U+27E9) 就不在 Chiron Sung HK 裡，刻意不列 —— 它們照舊走 fallback。
+const MATH_OUTPUT_TEXT = ['×', '−', '∣', 'Σ', '≈', ' ']
 
 async function markdownFiles(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true })
