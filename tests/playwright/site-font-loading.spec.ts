@@ -68,9 +68,25 @@ async function loadWithFontRequests(page: Page, path: string) {
   return [...requests]
 }
 
+// 數學文章會另外載入 KaTeX 自帶的字型。那是 Chiron 預算之外的獨立資源,但仍要把
+// 「允許的同源非 Chiron 字型」限定在它身上,才不會讓別的字型悄悄溜進本站資源。
+// 跨來源字型(留言區、影片嵌入等第三方 iframe)不在本測試範圍,由 CSP 管。
+const katexFontPath = /^\/_next\/static\/media\/KaTeX_/
+
+function chironRequests(fontRequests: string[], pageUrl: string) {
+  const origin = new URL(pageUrl).origin
+  const chiron: string[] = []
+  for (const url of fontRequests) {
+    const parsed = new URL(url)
+    if (parsed.origin !== origin) continue
+    if (parsed.pathname.startsWith(fontPath)) chiron.push(url)
+    else expect(parsed.pathname).toMatch(katexFontPath)
+  }
+  return chiron
+}
+
 function requestedArtifacts(fontRequests: string[]) {
   expect(fontRequests.length).toBeGreaterThan(0)
-  expect(fontRequests.every((url) => new URL(url).pathname.startsWith(fontPath))).toBe(true)
   const artifacts = fontRequests.map(artifactForUrl)
   expect(artifacts.every(Boolean)).toBe(true)
   return artifacts as FontArtifact[]
@@ -100,16 +116,16 @@ test('首頁只請求 schema-v2 core 並使用 immutable 同源快取', async ({
   expect(response.headers()['cache-control']).toBe('public, max-age=31536000, immutable')
 })
 
-for (const article of [
-  {
-    label: '代表文章',
-    path: '/2026/07/14/kamiina-botan-anime-review/',
-  },
-  {
-    label: '目前最差 cryosleep 文章',
-    path: '/2026/07/13/cryosleep-hodl-economy/',
-  },
-]) {
+// 每篇文章都要量。抽測代表文章會漏掉「渲染得出來、但 markdown 沒有」的字元
+// (HuxPager 的 `←`、KaTeX 的 `×`/`−` 等)——那類遺漏只會打中特定文章,
+// 而 check:site-font 的靜態模型只讀 markdown,永遠抓不到。
+const articles = (
+  JSON.parse(
+    readFileSync(join(process.cwd(), '.contentlayer/generated/Blog/_index.json'), 'utf8')
+  ) as { path: string }[]
+).map(({ path }) => ({ label: path, path: `/${path}/` }))
+
+for (const article of articles) {
   test(`${article.label} 依 DOM code point 選片且維持可變字重`, async ({ page }) => {
     const fontRequests = await loadWithFontRequests(page, article.path)
 
@@ -133,8 +149,9 @@ for (const article of [
     expect(families.map(({ weight }) => weight)).toEqual(['400', '550', '700'])
     expect(families.every(({ family }) => family.includes('Chiron Sung HK'))).toBe(true)
 
-    const artifacts = requestedArtifacts(fontRequests)
-    expect(fontRequests.length).toBeLessThanOrEqual(articleRequestBudget)
+    const chiron = chironRequests(fontRequests, page.url())
+    const artifacts = requestedArtifacts(chiron)
+    expect(chiron.length).toBeLessThanOrEqual(articleRequestBudget)
     expect(artifacts.reduce((bytes, artifact) => bytes + artifact.bytes, 0)).toBeLessThanOrEqual(
       articleBudget
     )

@@ -31,7 +31,20 @@ const SHARED_UI_TEXT = [
   '回首頁 →',
   '分享技術和生活',
   '聯絡信箱:',
+  // 元件寫死的靜態符號,不會出現在任何 markdown,必須明確列入 seed:
+  // HuxPager 的上下篇箭頭、返回頂部按鈕、SideCatalog 的展開/收合鈕。
+  '←',
+  '↑',
+  '−',
+  '+',
 ]
+
+// KaTeX 把 LaTeX 指令渲染成 markdown 原文沒有的輸出字元(`\times` → `×`、ASCII 減號
+// → U+2212 等),而 corpus 只讀 markdown,看不到這些字元。它們會出現在每個數學區塊的
+// MathML 裡並觸發字型請求,所以必須進 core,否則單一文章會多請求一個 bucket。
+// 這裡列的是目前文章實際產生的輸出;新增數學文章時由
+// `tests/playwright/site-font-loading.spec.ts` 的 production 量測負責抓出遺漏。
+const MATH_OUTPUT_TEXT = ['×', '−', '⟨', '⟩', '∣', 'Σ', '≈', ' ']
 
 async function markdownFiles(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true })
@@ -109,6 +122,7 @@ export async function collectSiteFontCorpus(root) {
     [
       PRINTABLE_ASCII,
       ...SHARED_UI_TEXT,
+      ...MATH_OUTPUT_TEXT,
       ...dictionaryValues.flat(),
       ...stringsIn(siteMetadata),
     ].join('\n'),
