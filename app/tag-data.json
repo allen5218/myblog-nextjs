@@ -8,9 +8,9 @@
   "前端": 1,
   "blog": 1,
   "slides": 2,
-  "ai": 2,
+  "ai": 3,
   "co-learning": 1,
-  "llm": 1,
+  "llm": 2,
   "openwebui": 1,
   "docker": 2,
   "cloudflare": 2,
@@ -32,5 +32,8 @@
   "security": 1,
   "動畫": 1,
   "百合": 1,
-  "心得": 1
+  "心得": 1,
+  "openwiki": 1,
+  "claude-code": 1,
+  "agentsmd": 1
 }
