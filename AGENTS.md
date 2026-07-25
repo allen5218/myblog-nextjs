@@ -51,16 +51,19 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   略過 glyph shaping、cmap 與 axis 驗證,而 CI 的必過 `check` job 跑的正是 `--full`
   —— 2026-07-25 就因此讓 `.notdef` 一路過關到 CI 才爆。
 - **seed 只能列來源字型真的有字形的字元**。seed 一律進 core,`--full` 會對 core 做 shaping,
-  字型沒有的字元會變成 `.notdef` 直接讓必過檢查失敗。實例:KaTeX 的數學角括號
-  `⟨` (U+27E8)、`⟩` (U+27E9) 不在 Chiron Sung HK 裡,必須讓它們走 fallback,不可 seed。
-  要確認某字元有沒有字形:`hb-info --list-unicodes <來源 TTF>`(來源快取在
-  `$TMPDIR/chiron-site-font/<sha256>.ttf`,由 `ensureSourceFont` 下載)。
+  字型沒有的字元會變成 `.notdef` 直接讓必過檢查失敗。要確認某字元有沒有字形:
+  `hb-info --list-unicodes <來源 TTF>`(來源快取在 `$TMPDIR/chiron-site-font/<sha256>.ttf`,
+  由 `ensureSourceFont` 下載)。
 - **`check:site-font` 只讀 markdown,看不到「渲染才出現」的字元**。元件寫死的符號
-  (HuxPager 的 `←`、返回頂部的 `↑`、SideCatalog 的 `−`/`+`)與 KaTeX 的輸出字元
-  (`\times` → `×`、減號 → U+2212)都不在任何 markdown 裡,必須明列在
-  `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT` / `MATH_OUTPUT_TEXT`。漏掉時靜態檢查
-  照樣綠燈,只有 `tests/playwright/site-font-loading.spec.ts` 的 production 量測抓得到
-  —— 該測試**必須涵蓋全部文章**,抽測代表文章會漏掉只打中特定頁面的遺漏。
+  (HuxPager 的 `←`、返回頂部的 `↑`、SideCatalog 的 `−`/`+`)不在任何 markdown 裡,
+  必須明列在 `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT`。漏掉時靜態檢查照樣綠燈,
+  只有 `tests/playwright/site-font-loading.spec.ts` 的 production 量測抓得到 —— 該測試
+  **必須涵蓋全部文章**,抽測代表文章會漏掉只打中特定頁面的遺漏。
+- **判斷「要不要 seed」看的是字型鏈,不是字元有沒有出現在 DOM。** 2026-07-25 實測:KaTeX 的
+  輸出字元(`\times` → `×`、減號 → U+2212、`≈` 等)雖然出現在 DOM,但 `.katex-html` 與
+  MathML 都自訂 `font-family`(`KaTeX_Main` / `math`),**Chiron 不在它們的字型鏈上**,
+  所以完全不會觸發 Chiron 子集下載,不需要也不該 seed。用瀏覽器的 `getComputedStyle`
+  確認實際 font-family,不要從「這個字元在頁面上」推論它會造成字型請求。
 - 乾淨 checkout(CI runner、新 clone)單獨跑 `tsc --noEmit` 或其他型別檢查前,**必須先跑
   `yarn contentlayer2 build`**,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
 - **擴充 i18n 時,語系間不變的視覺外殼要放在共同 layout**(現況:Hero 由 `app/(about)/`

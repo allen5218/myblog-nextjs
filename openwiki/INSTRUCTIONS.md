@@ -15,7 +15,8 @@ Chiron site font — facts that must not be misstated:
 - **The epoch gate means assignment history is not unconditionally protected.** `validateCoreHistory` always runs when a base core is supplied, but `validateAssignmentHistory` runs only while the committed epoch equals the base epoch. Advancing the epoch deliberately skips it and reports a warning. Do not describe the gate as preventing all silent reassignment.
 - **`--rebalance` reassigns every non-core code point**, and artifact filenames are content hashes, so all five supplemental URLs change and every returning reader re-pays the full supplemental cost. Do not describe the cache impact as limited to "affected" buckets.
 - **A rebalance that introduces new fixed-UI seed characters must also pass `--rebuild-core`**, because `validateFixedSeedCore` requires every seed character to be in core.
-- **The static font corpus is not Markdown-only.** `collectSiteFontCorpus` seeds printable ASCII, `SHARED_UI_TEXT`, `MATH_OUTPUT_TEXT`, the dictionaries, and `siteMetadata` in addition to article Markdown. What the production Playwright measurement catches is glyphs missing from those hand-maintained seed lists, not the absence of any seeding.
+- **The static font corpus is not Markdown-only.** `collectSiteFontCorpus` seeds printable ASCII, `SHARED_UI_TEXT`, the dictionaries, and `siteMetadata` in addition to article Markdown. What the production Playwright measurement catches is glyphs missing from that hand-maintained seed list, not the absence of any seeding.
+- **KaTeX output characters are not part of the font budget.** `.katex-html` and the MathML copy both set their own `font-family` (`KaTeX_Main` / `math`), so Chiron is not in their chain and those characters never trigger a Chiron subset download. Do not describe them as needing to be seeded, and do not treat presence in the DOM as evidence that a character costs a font request.
 
 Known issues to keep tracked in the backlog:
 
