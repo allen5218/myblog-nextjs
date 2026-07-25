@@ -273,7 +273,7 @@ export function buildFontPlan({
   committedAssignments = new Map(),
   artifactBytes = Array(BUCKET_COUNT).fill(0),
   rebuildCore,
-  rebalance,
+  rebalance = false,
 }) {
   const core = new Set(committedCore)
   const promoted = new Set()

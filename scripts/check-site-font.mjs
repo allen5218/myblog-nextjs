@@ -51,6 +51,7 @@ const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
  * @property {SiteFontCheckRunner} [runner]
  * @property {string} [baseAssignmentsPath]
  * @property {string} [baseCorePath]
+ * @property {string} [baseEpochPath]
  * @property {any[]} [budgetBlogs]
  */
 

@@ -398,6 +398,7 @@ describe('rebalanceAssignments', () => {
       committedCore: new Set(),
       committedAssignments: committed,
       artifactBytes: bytes,
+      rebuildCore: false,
     })
     // 增量放置不得移動既有 assignment。
     for (const codePoint of shared) expect(incremental.assignments.get(codePoint)).toBe(4)
@@ -407,6 +408,7 @@ describe('rebalanceAssignments', () => {
       committedCore: new Set(),
       committedAssignments: committed,
       artifactBytes: bytes,
+      rebuildCore: false,
       rebalance: true,
     })
     // 重排會重新推導:全文件共用的字元落到共用桶,各文件獨佔字元散到專屬桶。
