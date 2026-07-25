@@ -20,20 +20,23 @@ tags:
 > 越長越難維護的 `AGENTS.md`。後續會有觀念篇（LLM Wiki 為什麼不是 RAG）與橋接篇（把
 > codebase wiki 和個人知識庫接起來）。
 
-別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀 wiki」。有需要的說明才會載入。Cursor、Claude Code、Codex 都能吃這套約定。
+別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀 wiki」。<br />
+有需要的說明才會載入。Cursor、Claude Code、Codex 都能吃這套約定。
 
 ## 一份只增不減的守則檔
 
 如果有用過 Claude Code 或 Codex 這類 coding agent，大概會知道 `CLAUDE.md` /
-`AGENTS.md` 是什麼，這是一份放在倉庫裡、每次開對話就餵給 AI 的專案守則檔。有了它就能讓 AI 自動遵循專案規範來生成符合風格的程式碼。
+`AGENTS.md` 是什麼，這是一份放在倉庫裡、每次開對話就餵給 AI 的專案守則檔。<br />
+有了它就能讓 AI 自動遵循專案規範來生成符合風格的程式碼。
 
 `CLAUDE.md`和`AGENTS.md` 基本上功能是相同的，但`AGENTS.md`是現在coding agent的通用標準，而`CLAUDE.md`是 Claude Code 才會使用的標準，同時維護兩套守則實在很麻煩，因此我讓`CLAUDE.md` 變成一個轉接檔，在裡面添加一行`@AGENTS.md`，這樣 Claude Code 會把`AGENTS.md`載入進來。
 
 最近我的部落格從 jekyll 遷移到了 Next.js，用 coding agent 開發時遇到的錯誤經驗、設計決策、功能簡介都會存到這個守則檔中，為了讓 AI 在每次除錯或
-實作得到新教訓時都能紀錄下來，不讓問題在下一個對話輪迴。我在`AGENTS.md` 裡要求 AI 把踩到的坑寫回守則檔，讓知識沉澱
-下來並遞迴式改進。代價是守則檔只增不減，太臃腫的守則檔反而會讓 AI 失焦，那麼有什麼方法能幫它瘦身呢？
+實作得到新教訓時都能紀錄下來，不讓問題在下一個對話輪迴。<br />
+我在`AGENTS.md` 裡要求 AI 把踩到的坑寫回守則檔，讓知識沉澱下來並遞迴式改進。<br />
+代價是守則檔只增不減，太臃腫的守則檔反而會讓 AI 失焦，那麼有什麼方法能幫它瘦身呢？
 
-LangChain 近期開源的 OpenWiki 使用 Andrej Karpathy 提出的 LLM Wiki 架構，讓四散的內容被整理為結構化、可互聯的 wiki 頁面。
+LangChain 近期開源的 OpenWiki 使用 Andrej Karpathy 提出的 LLM Wiki 架構，讓四散的內容被整理為結構化、可互聯的 wiki 頁面。<br />
 OpenWiki 的 `code` 模式會讀你的倉庫，生成一座描述「這個專案怎麼運作」的 wiki 文件，並在守則檔中路由這些文件。
 
 
@@ -46,21 +49,30 @@ AGENTS.md:295 行 / 21,375 字元
 
 裡面什麼都有（以下這串名詞不需要看懂，只是想讓你感受它塞了多少種東西）：字型
 subsetting 的完整 pipeline、Contentlayer 的 build 時序、service worker 怎麼產、mermaid 的
-渲染架構、文章斷點的行寬數值、Git 工作流程、必過檢查、除錯守則。每一段都有用，但把它們
-全部塞進每一次對話的開場是不可持續的。
+渲染架構、文章斷點的行寬數值、Git 工作流程、必過檢查、除錯守則。<br />
+每一段都有用，但把它們全部塞進每一次對話的開場是不可持續的。
 
 ## OpenWiki 是什麼
 
-它是 LangChain 出的工具，你餵它一個資料來源，它就讓 LLM 自己生成、還定期維護一座人看得懂的 wiki。它有兩種模式：
+它是 LangChain 出的工具，你餵它一個資料來源，它就讓 LLM 自己生成、還定期維護一座人看得懂的 wiki。<br />
+下面這張圖分成上下兩層：上半是它採用的 LLM Wiki 架構，下半是它提供的兩種模式。
 
 ```mermaid
-graph TD
-    A["OpenWiki（LangChain 出品）"] --> B["code 模式：讀倉庫，生成文件 wiki（本篇主場）"]
-    A --> C["Brains 模式：讀個人知識來源（本篇不談）"]
+flowchart TB
+    subgraph ARCH["LLM Wiki 架構（Karpathy 提出）"]
+        direction LR
+        SRC["原始來源<br/>只讀不改，是唯一的事實依據"] --> GEN["LLM 讀完後整理"]
+        GEN --> PAGE["互相連結的 wiki 頁面<br/>寫進去時就整理好，之後按需查閱"]
+    end
+    ARCH --> OW["OpenWiki（LangChain）<br/>把這套架構做成 CLI，並定期重新生成"]
+    OW --> CODE["code 模式（本篇主場）"]
+    OW --> BRAIN["personal 模式（本篇不談）"]
+    CODE --> CODE_IO["來源：這個倉庫的原始碼與 git 歷史<br/>產出：openwiki/，講「這個專案怎麼運作」<br/>用途：coding agent 要改功能時查機制"]
+    BRAIN --> BRAIN_IO["來源：Gmail、Notion、X、Hacker News 等<br/>產出：家目錄下的個人 wiki，講「我最近在做什麼」<br/>用途：agent 要跨專案的個人脈絡時查"]
 ```
 
 - `code` 模式讀你的倉庫，生成一座描述「這個專案怎麼運作」的文件 wiki，還會在你的守則檔裡留一個指過去的入口（等一下就會看到）。這是本篇的主場。
-- `Brains` 模式讀的是你的個人知識來源（Gmail、Notion、git、Hacker News 等），收斂成一座個人 wiki。
+- `personal` 模式讀的是你的個人知識來源（Gmail、Notion、git、Hacker News 等），收斂成一座個人 wiki。LangChain 把整個產品叫 OpenWiki Brains，這兩種模式在官方說法裡就是 code brain 和 personal brain，指令上則寫成 `openwiki` 和 `openwiki personal`。
 
 至於背後那套「讓 LLM 自己維護 wiki」的想法，還有它跟 RAG / GraphRAG 的區別，會留到系列第 2 篇討論。
 
@@ -68,11 +80,15 @@ graph TD
 
 我一開始想得很單純：既然 OpenWiki 會生 wiki，那就讓它把肥大的 `AGENTS.md` 整個接手不就好了？
 
-真的跑下去才發現不對。OpenWiki 生出來的是「描述性」的文件，會告訴你「這個專案的路由怎麼運作」「字型 pipeline 分成哪幾步」，講的都是程式碼**怎麼運作**。
+真的跑下去才發現不對。<br />
+OpenWiki 生出來的是「描述性」的文件，會告訴你「這個專案的路由怎麼運作」「字型 pipeline 分成哪幾步」，講的都是程式碼**怎麼運作**。
 
-但 `AGENTS.md` 裡大半是另一種東西：**命令句**。「不要直接 push main」「傳非 ASCII 給 CLI 一律走 `--text-file`」「必過檢查不能有條件跳過」，這些是規定 agent 該怎麼做、哪裡別踩雷。
+但 `AGENTS.md` 裡大半是另一種東西：**命令句**。<br />
+「不要直接 push main」「傳非 ASCII 給 CLI 一律走 `--text-file`」「必過檢查不能有條件跳過」，這些是規定 agent 該怎麼做、哪裡別踩雷。
 
-差別出現在這裡。描述性文件會跟著程式碼變，交給 AI 自動維護剛剛好；命令句卻是我一次次踩坑換來的判斷，得一直擺在 AI 眼前，我還會不斷改它。要是把這些命令也交給一個會定期重寫的工具去管，等於讓機器蓋掉我累積的經驗，本末倒置。
+差別出現在這裡。<br />
+描述性文件會跟著程式碼變，交給 AI 自動維護剛剛好；命令句卻是我一次次踩坑換來的判斷，得一直擺在 AI 眼前，我還會不斷改它。<br />
+要是把這些命令也交給一個會定期重寫的工具去管，等於讓機器蓋掉我累積的經驗，本末倒置。
 
 所以該想清楚的是：這份大檔裡，哪些該搬去 wiki、哪些不應該動？
 
@@ -96,7 +112,9 @@ graph TD
 
 ### 自己手寫的守則會不會被改？
 
-把原來自己管裡的守則檔，交給一個「會自動改檔」的工具，最怕的就是：它哪天會不會把我寫的規則也蓋掉？答案是不會。OpenWiki 在 `AGENTS.md` 和 `CLAUDE.md` 裡，只維護一塊屬於它自己的標記區，長這樣：
+把原來自己管裡的守則檔，交給一個「會自動改檔」的工具，最怕的就是：它哪天會不會把我寫的規則也蓋掉？<br />
+答案是不會。<br />
+OpenWiki 在 `AGENTS.md` 和 `CLAUDE.md` 裡，只維護一塊屬於它自己的標記區，長這樣：
 
 ```markdown
 <!-- OPENWIKI:START -->
@@ -109,7 +127,9 @@ This repository uses OpenWiki for recurring code documentation. Start with
 <!-- OPENWIKI:END -->
 ```
 
-第一次跑 `--init`（初始化那次的指令）時，它把這塊加進守則檔。之後每次 `--update`（後續更新用的指令），只重寫 `START` 和 `END` 中間那段，你手寫的部分一個字都不會動。也就是說，「LLM 自動維護的 wiki 入口」和「自己手寫、agent 自己記下的守則」可以住在同一個檔裡，各過各的。
+第一次跑 `--init`（初始化那次的指令）時，它把這塊加進守則檔。<br />
+之後每次 `--update`（後續更新用的指令），只重寫 `START` 和 `END` 中間那段，你手寫的部分一個字都不會動。<br />
+也就是說，「LLM 自動維護的 wiki 入口」和「自己手寫、agent 自己記下的守則」可以住在同一個檔裡，各過各的。
 
 ## 實際跑一次 `openwiki --init`，它產出了什麼
 
@@ -133,7 +153,8 @@ This repository uses OpenWiki for recurring code documentation. Start with
 
 拆完之後，`AGENTS.md` 只留下不會變的那句命令，外加一行指到 wiki 的連結：
 
-這裡其實是兩件事：`AGENTS.md` 這十幾行被我壓成一行連結；而連過去那份完整的 `openwiki/operations/runbook.md`，是 OpenWiki 自己讀原始碼寫出來的，不是把這十幾行剪貼過去。`AGENTS.md` 只留「必須遵守的規則」，架構細節需要時再去 wiki 翻。
+這裡其實是兩件事：`AGENTS.md` 這十幾行被我壓成一行連結；而連過去那份完整的 `openwiki/operations/runbook.md`，是 OpenWiki 自己讀原始碼寫出來的，不是把這十幾行剪貼過去。<br />
+`AGENTS.md` 只留「必須遵守的規則」，架構細節需要時再去 wiki 翻。
 
 OpenWiki 生成的整座 wiki 長這樣：
 
@@ -151,9 +172,12 @@ openwiki/
 
 ### CLAUDE.md 改用 symlink
 
-前面 `--init` 時做的第 2 件事：它往 `AGENTS.md` 和 `CLAUDE.md` 兩個檔都塞了一塊 `OPENWIKI:START/END`。這在我的 repo 會出事，因為 `CLAUDE.md` 本來只是寫著一句 `@AGENTS.md` 的轉接檔。
+前面 `--init` 時做的第 2 件事：它往 `AGENTS.md` 和 `CLAUDE.md` 兩個檔都塞了一塊 `OPENWIKI:START/END`。<br />
+這在我的 repo 會出事，因為 `CLAUDE.md` 本來只是寫著一句 `@AGENTS.md` 的轉接檔。
 
-OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE.md` 裡那句 `@AGENTS.md` 是什麼意思。於是 `--init` 跑完，`CLAUDE.md` 同時扛了兩份 OPENWIKI：一份是它自己被塞進去的，另一份是它 import 進來的 `AGENTS.md`（裡面也被塞了一塊）。結果 Claude Code 一載入 `CLAUDE.md`，就把同一段 OPENWIKI 的描述載入上下文兩次，雖然說 OpenWiki 是按需載入，但可能導致黑箱的行為是不能被允許的。
+OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE.md` 裡那句 `@AGENTS.md` 是什麼意思。<br />
+於是 `--init` 跑完，`CLAUDE.md` 同時扛了兩份 OPENWIKI：一份是它自己被塞進去的，另一份是它 import 進來的 `AGENTS.md`（裡面也被塞了一塊）。<br />
+結果 Claude Code 一載入 `CLAUDE.md`，就把同一段 OPENWIKI 的描述載入上下文兩次，雖然說 OpenWiki 是按需載入，但可能導致黑箱的行為是不能被允許的。
 
 怎麼把 `CLAUDE.md` 留著，又不讓 Claude Code 讀到重複那段。做法是把它從轉接檔改成一條指向 `AGENTS.md` 的符號連結：
 
@@ -166,7 +190,8 @@ OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE
 
 ### GitHub Actions 被我擋在版本庫外
 
-`--init` 產的第 3 樣東西，是排程 workflow `openwiki-update.yml`，它想定期自動開 PR 幫你更新 wiki。但它有兩個問題：一是每次執行都無條件把這支檔覆寫掉（你改了也是白改）；二是它靠 GitHub Actions 開 PR，得在 github 中打開「Allow Actions to create and approve pull requests」，這是這個專案刻意不開的權限。
+`--init` 產的第 3 樣東西，是排程 workflow `openwiki-update.yml`，它想定期自動開 PR 幫你更新 wiki。<br />
+但它有兩個問題：一是每次執行都無條件把這支檔覆寫掉（你改了也是白改）；二是它靠 GitHub Actions 開 PR，得在 github 中打開「Allow Actions to create and approve pull requests」，這是這個專案刻意不開的權限。
 
 所以我乾脆把它擋在版本庫外：
 
@@ -177,7 +202,9 @@ OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE
 /.github/workflows/openwiki-update.yml
 ```
 
-本機隨它去重寫，但永遠不入庫。要更新 wiki，我自己在本機跑 `openwiki --update`，產物照樣走一般 PR 流程。也因為這樣，OpenWiki 不會在 CI 或 `main` 上自己動起來。
+本機隨它去重寫，但永遠不入庫。<br />
+要更新 wiki，我自己在本機跑 `openwiki --update`，產物照樣走一般 PR 流程。<br />
+也因為這樣，OpenWiki 不會在 CI 或 `main` 上自己動起來。
 
 ### 只少了 15 行，為什麼還是值得做
 
@@ -190,9 +217,12 @@ OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE
 
 第一眼看到 −15 行，我還愣了一下：一番折騰後，守則檔幾乎沒瘦多少？!
 
-但這反而是對的。導入一個新工具，通常只會讓守則檔更肥，因為工具本身又帶來新的坑、新的規矩要記（前面那些關於 symlink、workflow、`INSTRUCTIONS.md` 的提醒，全是導入 OpenWiki 之後新寫進 `AGENTS.md` 的）。這次是一邊加這些新守則，一邊把描述機制的冗段壓成一行連結，一加一減打平，字元數最後還小掉了約 7%。
+但這反而是對的。<br />
+導入一個新工具，通常只會讓守則檔更肥，因為工具本身又帶來新的坑、新的規矩要記（前面那些關於 symlink、workflow、`INSTRUCTIONS.md` 的提醒，全是導入 OpenWiki 之後新寫進 `AGENTS.md` 的）。<br />
+這次是一邊加這些新守則，一邊把描述機制的冗段壓成一行連結，一加一減打平，字元數最後還小掉了約 7%。
 
-再把那 375 行的帳算清楚：`AGENTS.md` 統共才 295 行、也只掉了 15 行，怎麼可能吐得出 375 行。這是兩回事：我在守則檔裡做的，只是把不必全部載入的機制描述壓成一行連結，一加一減之後整份檔淨掉約 1,500 字元；那 375 行，是 OpenWiki 另外讀原始碼、自己寫出來的 wiki，比原來的描述更詳細，如果不做 wiki ， agent 要改功能時都要讀一次完整代碼才能了解機制，現在不用每次都浪費 token 看完，這樣看下來是很划算的！
+再把那 375 行的帳算清楚：`AGENTS.md` 統共才 295 行、也只掉了 15 行，怎麼可能吐得出 375 行。<br />
+這是兩回事：我在守則檔裡做的，只是把不必全部載入的機制描述壓成一行連結，一加一減之後整份檔淨掉約 1,500 字元；那 375 行，是 OpenWiki 另外讀原始碼、自己寫出來的 wiki，比原來的描述更詳細，如果不做 wiki ， agent 要改功能時都要讀一次完整代碼才能了解機制，現在不用每次都浪費 token 看完，這樣看下來是很划算的！
 
 ## 如果你也想開始實作，有幾點需要注意
 
@@ -203,13 +233,15 @@ OpenWiki 是把標記區塊當「純文字」硬寫進去的，它不管 `CLAUDE
 
 ### OpenWiki 使用 Codex 額度
 
-跑 OpenWiki 需要 LLM，預設是走 API，按 token 計費，生成和更新都要花錢。這樣 coding agent 訂閱是一份錢，文件生成又是一份錢，而且還要再管一套 Key 很麻煩。
+跑 OpenWiki 需要 LLM，預設是走 API，按 token 計費，生成和更新都要花錢。<br />
+這樣 coding agent 訂閱是一份錢，文件生成又是一份錢，而且還要再管一套 Key 很麻煩。
 
 如果你也有一樣的煩惱，可以設 `OPENWIKI_PROVIDER=openai-chatgpt`，改用「Sign in with ChatGPT」授權（會開瀏覽器到 auth.openai.com 登入，token 存在 `~/.openwiki/.env`）。
 
 這樣跑 OpenWiki 就不會有 API 帳單，而是用 ChatGPT 帳號的 Codex 額度，跟 Codex CLI、Codex APP 是同一個額度池，所以不能把它當成無限量的 CI 後端在跑。
 
-雖然會消耗 Codex 的額度，但實際上讀取文件也不會真的消耗很多額度，況且就算不用 OpenWiki 你大概還是要讓 AI 定期更新專案守則，那本來就會消耗額度所以也沒什麼影響了。不過如果你參與的是團隊協作的專案，需要用 OpenWiki 的 GitHub Actions，那麼就不適合用 OAuth 的方式。
+雖然會消耗 Codex 的額度，但實際上讀取文件也不會真的消耗很多額度，況且就算不用 OpenWiki 你大概還是要讓 AI 定期更新專案守則，那本來就會消耗額度所以也沒什麼影響了。<br />
+不過如果你參與的是團隊協作的專案，需要用 OpenWiki 的 GitHub Actions，那麼就不適合用 OAuth 的方式。
 
 ## 該進 wiki、做成 skill，還是留在守則？
 
