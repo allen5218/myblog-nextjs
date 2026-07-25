@@ -336,8 +336,10 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   `font-data/chiron/assignment-epoch.txt` 遞增 1。只在 `check:site-font` 因文章預算
   失敗時使用 —— 它會改派既有 code point,讓所有讀者的字型快取失效。CI 的歷史檢查
   只在 epoch 與 `origin/main` 相同時才比對;epoch 遞增時跳過並輸出
-  `assignment history check skipped` warning。若重排同時新增了 fixed UI seed 字元,
-  必須併用 `--rebuild-core`(seed 依規定必須落在 core)。
+  `assignment history check skipped` warning,但**改由要求分派逐字等於確定性重排的
+  產物**把關,所以推進 epoch 不等於取得任意改派的通行證。缺 `--base-epoch` 時一律
+  退回比對(fail-closed),不會因為漏傳旗標而靜默跳過。若重排同時新增了 fixed UI
+  seed 字元,必須併用 `--rebuild-core`(seed 依規定必須落在 core)。
 - 元件寫死的符號與 KaTeX 的渲染輸出不會出現在任何 markdown,`check:site-font` 因此
   看不到它們。這類字元必須明列在 `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT`
   與 `MATH_OUTPUT_TEXT`;遺漏只有 `tests/playwright/site-font-loading.spec.ts` 的

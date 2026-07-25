@@ -13,6 +13,7 @@ import {
   validateCoreHistory,
   validateFixedSeedCore,
   validatePageBudgets,
+  validateRebalancedAssignments,
 } from '../../scripts/check-site-font.mjs'
 import { renderSiteFontCss } from '../../scripts/site-font-css.mjs'
 import { collectSiteFontCorpus } from '../../scripts/site-font-text.mjs'
@@ -133,6 +134,23 @@ async function fixture() {
   return { root, manifest }
 }
 
+// 兩份文件各有專屬字元、外加一個兩份都用到的跨文件字元。
+function rebalanceCorpus() {
+  return {
+    fixedSeed: new Set<number>(),
+    documents: new Map([
+      ['a', new Set([0x4e00, 0x4e02])],
+      ['b', new Set([0x4e01, 0x4e02])],
+    ]),
+    occurrences: new Map([
+      [0x4e00, new Set(['a'])],
+      [0x4e01, new Set(['b'])],
+      [0x4e02, new Set(['a', 'b'])],
+    ]),
+    excluded: new Map(),
+  }
+}
+
 async function writeManifest(root: string, manifest: unknown) {
   await fs.writeFile(
     path.join(root, 'public/static/fonts/chiron/manifest.json'),
@@ -197,6 +215,76 @@ describe('site font checks', () => {
     await fs.writeFile(baseEpochPath, '0\n')
     const result = await checkSiteFont({ root, baseAssignmentsPath: basePath, baseEpochPath })
     expect(result.warnings).toContain('assignment history check skipped: epoch 0 -> 1')
+  })
+
+  it('缺少 base epoch 時仍比對歷史 assignment', async () => {
+    const { root } = await fixture()
+    // main 的 epoch 一旦推進過就永遠 >0,initial rollout 已結束。此時漏傳 --base-epoch
+    // 不能被當成「base 是 0」而放行改派 —— 那會讓唯一的歷史保護靜默失效。
+    await fs.writeFile(path.join(root, 'font-data/chiron/assignment-epoch.txt'), '1\n')
+    const manifestPath = path.join(root, 'public/static/fonts/chiron/manifest.json')
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'))
+    manifest.policy.assignmentEpoch = 1
+    await writeManifest(root, manifest)
+    const basePath = path.join(root, 'base-assignments.json')
+    await fs.writeFile(
+      basePath,
+      `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: { '9FFF': 1 } }, null, 2)}\n`
+    )
+    await expect(checkSiteFont({ root, baseAssignmentsPath: basePath })).rejects.toThrow(
+      /historical assignment U\+9FFF was removed/i
+    )
+  })
+
+  it('epoch 遞增時接受確定性重排產物', () => {
+    expect(() =>
+      validateRebalancedAssignments({
+        corpus: rebalanceCorpus(),
+        core: new Set(),
+        // 跨文件字元進共同桶 0,各文件專屬字元進該群的桶。
+        assignments: new Map([
+          [0x4e00, 1],
+          [0x4e01, 2],
+          [0x4e02, 0],
+        ]),
+      })
+    ).not.toThrow()
+  })
+
+  it('epoch 遞增時擋下不是重排產物的分派', () => {
+    expect(() =>
+      validateRebalancedAssignments({
+        corpus: rebalanceCorpus(),
+        core: new Set(),
+        // U+4E01 被塞進別的桶:epoch 遞增不該變成「隨意改派」的萬用通行證。
+        assignments: new Map([
+          [0x4e00, 1],
+          [0x4e01, 1],
+          [0x4e02, 0],
+        ]),
+      })
+    ).toThrow(/U\+4E01/i)
+  })
+
+  it('epoch 遞增時 checkSiteFont 仍會擋下不是重排產物的分派', async () => {
+    const { root } = await fixture()
+    // 新增一份帶有非 core 字元的文件:確定性重排會產出一個分派,而 committed 是空的。
+    await fs.writeFile(path.join(root, 'data/blog/extra.md'), '中')
+    await fs.writeFile(path.join(root, 'font-data/chiron/assignment-epoch.txt'), '1\n')
+    const manifestPath = path.join(root, 'public/static/fonts/chiron/manifest.json')
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'))
+    manifest.policy.assignmentEpoch = 1
+    await writeManifest(root, manifest)
+    const basePath = path.join(root, 'base-assignments.json')
+    await fs.writeFile(
+      basePath,
+      `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: {} }, null, 2)}\n`
+    )
+    const baseEpochPath = path.join(root, 'base-epoch.txt')
+    await fs.writeFile(baseEpochPath, '0\n')
+    await expect(
+      checkSiteFont({ root, baseAssignmentsPath: basePath, baseEpochPath })
+    ).rejects.toThrow(/deterministic rebalance produces 1/i)
   })
 
   it('manifest 的 assignmentEpoch 與 committed epoch 不符時失敗', async () => {
