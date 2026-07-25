@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   checkSiteFont,
   validateCanonicalSiteFontCss,
+  resolveAssignmentHistoryMode,
   validateAssignmentHistory,
   validateCoreHistory,
   validateFixedSeedCore,
@@ -85,6 +86,7 @@ async function fixture() {
     path.join(root, 'font-data/chiron/supplemental-assignments.json'),
     assignmentBytes
   )
+  await fs.writeFile(path.join(root, 'font-data/chiron/assignment-epoch.txt'), '0\n')
   const core = Buffer.from('wOF2-core')
   const artifacts = [
     {
@@ -110,6 +112,7 @@ async function fixture() {
         'min-artifact-bytes',
         'lowest-bucket-id',
       ],
+      assignmentEpoch: 0,
       axes: source.axes,
     },
     core: codePoints,
@@ -157,6 +160,52 @@ describe('site font checks', () => {
         core: new Set([0x4e01]),
       })
     ).not.toThrow()
+  })
+
+  it('epoch 相同時比對歷史 assignment', () => {
+    expect(resolveAssignmentHistoryMode({ epoch: 3, baseEpoch: 3 })).toBe('compare')
+  })
+
+  it('epoch 遞增時跳過歷史比對', () => {
+    expect(resolveAssignmentHistoryMode({ epoch: 4, baseEpoch: 3 })).toBe('skip')
+  })
+
+  it('epoch 倒退時失敗', () => {
+    expect(() => resolveAssignmentHistoryMode({ epoch: 2, baseEpoch: 3 })).toThrow(
+      /assignment epoch regressed/i
+    )
+  })
+
+  it('epoch 遞增時放行被改派的既有 assignment 並留下 warning', async () => {
+    const { root } = await fixture()
+    const basePath = path.join(root, 'base-assignments.json')
+    await fs.writeFile(
+      basePath,
+      `${JSON.stringify({ schemaVersion: 2, bucketCount: 5, assignments: { '9FFF': 1 } }, null, 2)}\n`
+    )
+    // epoch 相同 → 歷史比對生效,少了 U+9FFF 就該失敗。
+    await expect(checkSiteFont({ root, baseAssignmentsPath: basePath })).rejects.toThrow(
+      /historical assignment U\+9FFF was removed/i
+    )
+    // epoch 遞增 → 跳過比對,並回報 warning。
+    await fs.writeFile(path.join(root, 'font-data/chiron/assignment-epoch.txt'), '1\n')
+    const manifestPath = path.join(root, 'public/static/fonts/chiron/manifest.json')
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'))
+    manifest.policy.assignmentEpoch = 1
+    await writeManifest(root, manifest)
+    const baseEpochPath = path.join(root, 'base-epoch.txt')
+    await fs.writeFile(baseEpochPath, '0\n')
+    const result = await checkSiteFont({ root, baseAssignmentsPath: basePath, baseEpochPath })
+    expect(result.warnings).toContain('assignment history check skipped: epoch 0 -> 1')
+  })
+
+  it('manifest 的 assignmentEpoch 與 committed epoch 不符時失敗', async () => {
+    const { root, manifest } = await fixture()
+    await writeManifest(root, {
+      ...manifest,
+      policy: { ...manifest.policy, assignmentEpoch: 9 },
+    })
+    await expect(checkSiteFont({ root })).rejects.toThrow(/assignment epoch/i)
   })
 
   it('rejects historical core removal while allowing monotonic growth', () => {

@@ -11,6 +11,7 @@ import { renderSiteFontCss } from './site-font-css.mjs'
 import {
   buildFontPlan,
   homepageFromGeneratedBlogs,
+  parseAssignmentEpoch,
   parseAssignments,
   parseCodepoints,
 } from './site-font-plan.mjs'
@@ -112,6 +113,12 @@ export function validateAssignmentHistory({ baseAssignments, assignments, core }
   }
 }
 
+// epoch 是「刻意重排」的顯式標記:只有它被推進時才放行改派既有 assignment。
+export function resolveAssignmentHistoryMode({ epoch, baseEpoch }) {
+  requireCondition(epoch >= baseEpoch, `assignment epoch regressed from ${baseEpoch} to ${epoch}`)
+  return epoch === baseEpoch ? 'compare' : 'skip'
+}
+
 export function validateFixedSeedCore({ fixedSeed, core }) {
   for (const codePoint of fixedSeed) {
     requireCondition(core.has(codePoint), `fixed UI seed U+${hex(codePoint)} must be in core`)
@@ -161,6 +168,10 @@ function validateManifestSchema(manifest) {
     'manifest core policy is invalid'
   )
   requireCondition(manifest.policy?.bucketCount === 5, 'manifest bucket count must be 5')
+  requireCondition(
+    Number.isInteger(manifest.policy?.assignmentEpoch) && manifest.policy.assignmentEpoch >= 0,
+    'manifest assignment epoch is invalid'
+  )
   requireCondition(
     manifest.policy?.assignment === 'committed-cooccurrence-v2',
     'manifest assignment policy is invalid'
@@ -227,6 +238,7 @@ export async function checkSiteFont({
   runner = defaultRunner,
   baseAssignmentsPath,
   baseCorePath,
+  baseEpochPath,
   budgetBlogs,
 } = {}) {
   root ??= process.cwd()
@@ -239,6 +251,7 @@ export async function checkSiteFont({
   }
   validateManifestSchema(manifest)
 
+  const warnings = []
   const metadata = await loadSourceMetadata(root)
   requireCondition(
     manifest.sourceSha256 === metadata.sha256,
@@ -296,9 +309,28 @@ export async function checkSiteFont({
     )
     requireCondition(!core.has(codePoint), `core/assignment overlap at U+${hex(codePoint)}`)
   }
+  const epochPath = path.join(root, 'font-data/chiron/assignment-epoch.txt')
+  let epoch
+  try {
+    epoch = parseAssignmentEpoch(await fs.readFile(epochPath, 'utf8'))
+  } catch (error) {
+    throw new Error(`Chiron site font assignment epoch is missing or invalid: ${error.message}`)
+  }
+  requireCondition(
+    manifest.policy.assignmentEpoch === epoch,
+    `manifest assignment epoch ${manifest.policy.assignmentEpoch} disagrees with committed epoch ${epoch}`
+  )
   if (baseAssignmentsPath) {
-    const baseAssignments = parseAssignments(await fs.readFile(baseAssignmentsPath, 'utf8'))
-    validateAssignmentHistory({ baseAssignments, assignments, core })
+    // base epoch 在 origin/main 尚未有此檔時視為 0(initial rollout)。
+    const baseEpoch = baseEpochPath
+      ? parseAssignmentEpoch(await fs.readFile(baseEpochPath, 'utf8'))
+      : 0
+    if (resolveAssignmentHistoryMode({ epoch, baseEpoch }) === 'compare') {
+      const baseAssignments = parseAssignments(await fs.readFile(baseAssignmentsPath, 'utf8'))
+      validateAssignmentHistory({ baseAssignments, assignments, core })
+    } else {
+      warnings.push(`assignment history check skipped: epoch ${baseEpoch} -> ${epoch}`)
+    }
   }
   if (baseCorePath) {
     const baseCore = parseCodepoints(await fs.readFile(baseCorePath, 'utf8'))
@@ -395,7 +427,6 @@ export async function checkSiteFont({
   }
 
   const coreArtifact = manifest.artifacts.find(({ role }) => role === 'core')
-  const warnings = []
   if (coreArtifact.bytes > WARNING_BYTES) {
     warnings.push(
       `core is ${coreArtifact.bytes} bytes, ${coreArtifact.bytes - WARNING_BYTES} bytes above the ${WARNING_BYTES}-byte warning threshold`
@@ -481,11 +512,13 @@ export async function checkSiteFont({
 async function main() {
   const baseArgument = process.argv.find((argument) => argument.startsWith('--base-assignments='))
   const baseCoreArgument = process.argv.find((argument) => argument.startsWith('--base-core='))
+  const baseEpochArgument = process.argv.find((argument) => argument.startsWith('--base-epoch='))
   const result = await checkSiteFont({
     root: process.cwd(),
     full: process.argv.includes('--full'),
     baseAssignmentsPath: baseArgument?.slice('--base-assignments='.length),
     baseCorePath: baseCoreArgument?.slice('--base-core='.length),
+    baseEpochPath: baseEpochArgument?.slice('--base-epoch='.length),
   })
   for (const warning of result.warnings) console.warn(`WARNING: ${warning}`)
   if (result.skipped.length)
