@@ -47,7 +47,7 @@ Important contract groups include:
 | Mermaid cached rendering/theme/overflow | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) |
 | OG images | [`social-card.spec.ts`](../../tests/playwright/social-card.spec.ts) |
 | PWA precache/offline behavior | [`serwist-precache.spec.ts`](../../tests/playwright/serwist-precache.spec.ts) |
-| Chiron request/byte budgets and rendered glyph selection | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) measures the homepage and every generated article against the manifest; this catches glyphs omitted from the hand-maintained static seeds, which already include printable ASCII, shared UI text, KaTeX output, dictionaries, and site metadata as well as article Markdown. |
+| Chiron request/byte budgets and rendered glyph selection | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) measures the homepage and every generated article against the manifest; this catches glyphs omitted from the hand-maintained static seeds (printable ASCII, shared UI text, dictionaries, and site metadata) or not discoverable from article Markdown. KaTeX output is excluded because its HTML and MathML font chains bypass Chiron, so its DOM presence does not create a Chiron request. |
 
 ## Change matrix
 
