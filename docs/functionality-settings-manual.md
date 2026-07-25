@@ -383,7 +383,10 @@ authored social image anywhere in the repo.
   `font-data/chiron/assignment-epoch.txt` by one. Use it only when `check:site-font` fails on the
   article budget — it reassigns existing code points and invalidates every reader's font cache. CI
   compares assignment history only while the epoch matches `origin/main`; advancing it skips the
-  comparison and emits an `assignment history check skipped` warning. Pair it with `--rebuild-core`
+  comparison and emits an `assignment history check skipped` warning, but the gate then **requires
+  the assignments to equal the deterministic rebalance output code point for code point**, so
+  advancing the epoch is not a blanket licence to reassign. A missing `--base-epoch` falls back to
+  comparing (fail-closed) instead of silently skipping. Pair it with `--rebuild-core`
   whenever the rebalance also introduces new fixed UI seed characters, which must live in the core.
 - Characters hard-coded in components and glyphs produced by KaTeX never appear in any markdown, so
   `check:site-font` cannot see them. They must be listed explicitly in `SHARED_UI_TEXT` and

@@ -44,8 +44,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - **`yarn update:site-font --rebalance` 是刻意的一次性重排**,會改派既有 code point、
   遞增 `font-data/chiron/assignment-epoch.txt`,並讓所有讀者的字型快取失效。只在
   `check:site-font` 因文章預算失敗、且確認不是單純 corpus 過期時才用。CI 的
-  `validateAssignmentHistory` 只在 epoch 未變時比對,epoch 遞增就跳過並留 warning。
-  **不要**為了讓 CI 過而單獨手動 bump epoch —— 那會讓該次 PR 的歷史保護靜默失效。
+  `validateAssignmentHistory` 只在 epoch 未變時比對;epoch 遞增時改由
+  `validateRebalancedAssignments` 要求分派**逐字等於確定性重排的產物**(重算約 1 秒),
+  所以單獨手動 bump epoch 現在會直接失敗,不再是讓歷史保護靜默失效的後門。漏傳
+  `--base-epoch` 也一律退回比對(fail-closed),不會因為少一個旗標就跳過。
   重排若新增了 fixed UI seed 字元,要同時加 `--rebuild-core`(seed 必須在 core)。
 - **動到字型 seed 或產物後,本機一定要跑 `yarn check:site-font --full`**。不帶 `--full` 會
   略過 glyph shaping、cmap 與 axis 驗證,而 CI 的必過 `check` job 跑的正是 `--full`

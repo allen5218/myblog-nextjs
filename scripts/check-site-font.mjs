@@ -14,6 +14,7 @@ import {
   parseAssignmentEpoch,
   parseAssignments,
   parseCodepoints,
+  rebalanceAssignments,
 } from './site-font-plan.mjs'
 import { loadSourceMetadata } from './site-font-source.mjs'
 import { classifySiteFontCodePoint, collectSiteFontCorpus } from './site-font-text.mjs'
@@ -118,6 +119,22 @@ export function validateAssignmentHistory({ baseAssignments, assignments, core }
 export function resolveAssignmentHistoryMode({ epoch, baseEpoch }) {
   requireCondition(epoch >= baseEpoch, `assignment epoch regressed from ${baseEpoch} to ${epoch}`)
   return epoch === baseEpoch ? 'compare' : 'skip'
+}
+
+// epoch 遞增會關掉歷史比對,所以改由這裡把關:分派必須逐字等於確定性重排的產物。
+// 少了它,推進 epoch 就等於取得「任意改派」的萬用通行證,而那正是歷史比對要防的事。
+export function validateRebalancedAssignments({ corpus, core, assignments }) {
+  const expected = rebalanceAssignments({ corpus, core, committedAssignments: assignments })
+  requireCondition(
+    expected.size === assignments.size,
+    `rebalanced assignments hold ${assignments.size} code points but the deterministic rebalance produces ${expected.size}`
+  )
+  for (const [codePoint, bucket] of expected) {
+    requireCondition(
+      assignments.get(codePoint) === bucket,
+      `assignment U+${hex(codePoint)} is not the deterministic rebalance output: expected bucket ${bucket}, found ${assignments.get(codePoint)}`
+    )
+  }
 }
 
 export function validateFixedSeedCore({ fixedSeed, core }) {
@@ -321,12 +338,15 @@ export async function checkSiteFont({
     manifest.policy.assignmentEpoch === epoch,
     `manifest assignment epoch ${manifest.policy.assignmentEpoch} disagrees with committed epoch ${epoch}`
   )
+  let historyMode
   if (baseAssignmentsPath) {
-    // base epoch 在 origin/main 尚未有此檔時視為 0(initial rollout)。
+    // 缺 base epoch 時退回「與現行 epoch 相同」→ compare。initial rollout(兩邊都是 0)
+    // 語意不變,但 main 推進 epoch 之後,漏傳 --base-epoch 不會再靜默關掉歷史比對。
     const baseEpoch = baseEpochPath
       ? parseAssignmentEpoch(await fs.readFile(baseEpochPath, 'utf8'))
-      : 0
-    if (resolveAssignmentHistoryMode({ epoch, baseEpoch }) === 'compare') {
+      : epoch
+    historyMode = resolveAssignmentHistoryMode({ epoch, baseEpoch })
+    if (historyMode === 'compare') {
       const baseAssignments = parseAssignments(await fs.readFile(baseAssignmentsPath, 'utf8'))
       validateAssignmentHistory({ baseAssignments, assignments, core })
     } else {
@@ -340,6 +360,9 @@ export async function checkSiteFont({
 
   const collectedCorpus = await collectSiteFontCorpus(root)
   validateFixedSeedCore({ fixedSeed: collectedCorpus.fixedSeed, core })
+  if (historyMode === 'skip') {
+    validateRebalancedAssignments({ corpus: collectedCorpus, core, assignments })
+  }
   const blogs = budgetBlogs ?? (await loadBudgetBlogs(root))
   requireCondition(
     Array.isArray(blogs) && blogs.length > 0,
