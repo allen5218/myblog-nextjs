@@ -41,6 +41,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `requests = 1 + 碰到的桶數`)。所以**碰幾個桶**遠比用了幾個字重要:實測過一篇文章
   只為了 33 個既有字元就多付 4 個桶、256KB。診斷預算超標時**先看每頁碰桶數**,
   不要先看 bucket 大小 —— 「某個 bucket 太胖」通常是症狀不是根因。
+- **往既有文章加字前先量碰桶數,出界就改用詞,不要動 `--rebalance`。** `check:site-font`
+  讀的是整份原始 markdown、**不剝 code fence**,所以連 mermaid 標籤裡的中文都算進該頁預算。
+  查法:比對 `font-data/chiron/supplemental-assignments.json`(key 是大寫 hex code point、
+  value 是 bucket 編號)與 `font-data/chiron/core-codepoints.txt`,確認新字都落在該頁已經
+  碰到的桶或 core 裡。2026-07-25 實測:OpenWiki 那篇本來就卡在 3 requests / 532,448 bytes
+  (上限 3 / 550,000),補一張 mermaid 圖只因為 `貌`(未分派)和 `忙`(bucket 2)兩個字就變成
+  4 requests / 601,968 bytes;換掉那兩個詞後 footprint 一個 byte 都沒變,零產物重生成。
 - **`yarn update:site-font --rebalance` 是刻意的一次性重排**,會改派既有 code point、
   遞增 `font-data/chiron/assignment-epoch.txt`,並讓所有讀者的字型快取失效。只在
   `check:site-font` 因文章預算失敗、且確認不是單純 corpus 過期時才用。CI 的
