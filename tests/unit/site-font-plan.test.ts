@@ -431,6 +431,96 @@ describe('rebalanceAssignments', () => {
     }
   })
 
+  // 爬山接受某個移動後,同一輪稍後的候選被拒絕時若還原成「本輪開始前」的分群,
+  // 輸出就會和內部評分/驗證所依據的分群脫鉤 —— 安全檢查可能驗到另一組分群。
+  // 用暴力解當基準:小 corpus 下輸出必須真的達到最佳值。
+  test('輸出的分群必須就是內部評分的那一組(以暴力最佳解驗證)', () => {
+    const optimum = (
+      docs: string[],
+      pagesOf: Map<number, number[]>,
+      groupCount: number,
+      bucketCount: number
+    ) => {
+      const groupOf = Array(docs.length).fill(0)
+      const worstFor = () => {
+        const sizes = Array(bucketCount).fill(0)
+        const touched = Array.from({ length: docs.length }, () => new Set<number>())
+        for (const [, pages] of pagesOf) {
+          const first = groupOf[pages[0]]
+          const bucket = pages.some((page) => groupOf[page] !== first) ? 0 : first + 1
+          sizes[bucket] += 1
+          for (const page of pages) touched[page].add(bucket)
+        }
+        let worst = 0
+        for (const buckets of touched) {
+          let cost = 0
+          for (const bucket of buckets) cost += sizes[bucket]
+          worst = Math.max(worst, cost)
+        }
+        return worst
+      }
+      let best = Infinity
+      const walk = (index: number) => {
+        if (index === docs.length) {
+          best = Math.min(best, worstFor())
+          return
+        }
+        for (let group = 0; group < groupCount; group += 1) {
+          groupOf[index] = group
+          walk(index + 1)
+        }
+      }
+      walk(0)
+      return best
+    }
+
+    // 這組共用關係實測會讓爬山在同一輪內「先接受某個移動、再拒絕下一個候選」。
+    const names = ['d0', 'd1', 'd2', 'd3']
+    const spec: Array<[number, string[]]> = [
+      [0x4e00, ['d3']],
+      [0x4e01, ['d3']],
+      [0x4e02, ['d0', 'd1', 'd3']],
+      [0x4e03, ['d0', 'd2']],
+      [0x4e04, ['d0']],
+      [0x4e05, ['d3']],
+      [0x4e06, ['d0', 'd2']],
+      [0x4e07, ['d1', 'd3']],
+      [0x4e08, ['d1', 'd2']],
+      [0x4e09, ['d0', 'd1', 'd3']],
+      [0x4e0a, ['d0', 'd1', 'd2']],
+      [0x4e0b, ['d2']],
+      [0x4e0c, ['d0', 'd1', 'd3']],
+      [0x4e0d, ['d0']],
+      [0x4e0e, ['d0']],
+      [0x4e0f, ['d0', 'd1', 'd2', 'd3']],
+      [0x4e10, ['d0', 'd1', 'd2']],
+      [0x4e11, ['d1', 'd3']],
+    ]
+    const docs = new Map<string, Set<number>>(names.map((name) => [name, new Set<number>()]))
+    const pagesOf = new Map<number, number[]>()
+    for (const [codePoint, owners] of spec) {
+      for (const owner of owners) docs.get(owner)!.add(codePoint)
+      pagesOf.set(
+        codePoint,
+        owners.map((owner) => names.indexOf(owner))
+      )
+    }
+    const localCorpus = corpusWith({ documents: docs })
+
+    const assignments = rebalanceAssignments({ corpus: localCorpus, core: new Set<number>() })
+    const sizes = Array(5).fill(0)
+    for (const bucket of assignments.values()) sizes[bucket] += 1
+    let emitted = 0
+    for (const codePoints of docs.values()) {
+      const touched = new Set([...codePoints].map((codePoint) => assignments.get(codePoint)!))
+      let cost = 0
+      for (const bucket of touched) cost += sizes[bucket]
+      emitted = Math.max(emitted, cost)
+    }
+
+    expect(emitted).toBe(optimum(names, pagesOf, 4, 5))
+  })
+
   test('bucket 數不足以滿足約束時大聲失敗,而不是回傳超標的 plan', () => {
     // 12 份文件,每份都獨佔一批字元且兩兩不共用 → 每份至少要自己的桶。
     const crowded = corpusWith({

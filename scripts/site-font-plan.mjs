@@ -233,17 +233,20 @@ export function rebalanceAssignments({
       improved = false
       for (let page = 0; page < documentCount; page += 1) {
         const original = groupOf[page]
+        // 掃完所有候選後才落定。還原成 original 而非「目前已接受的那一個」會讓
+        // groupOf 與 current 脫鉤 —— 評分與約束驗證就會用到不是最終輸出的那組分群。
+        let accepted = original
         for (let group = 0; group < groupCount; group += 1) {
           if (group === original) continue
           groupOf[page] = group
           const candidate = evaluate(groupOf)
           if (candidate.worst < current.worst) {
             current = candidate
+            accepted = group
             improved = true
-          } else {
-            groupOf[page] = original
           }
         }
+        groupOf[page] = accepted
       }
     }
     // 嚴格小於才取代 → 平手時保留較早的 restart,結果與重啟次數無關。

@@ -20,7 +20,7 @@ tags:
 > 越長越難維護的 `AGENTS.md`。後續會有觀念篇（LLM Wiki 為什麼不是 RAG）與橋接篇（把
 > codebase wiki 和個人知識庫接起來）。
 
-別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀XX wiki」。有需要的說明才會載入。Cursor、Claude Code、Codex 都能吃這套約定。
+別再把幾百頁倉庫說明塞進 AGENTS.md 了，而是生成一套 openwiki/，在 Agent 守則檔掛一句「讀 wiki」。有需要的說明才會載入。Cursor、Claude Code、Codex 都能吃這套約定。
 
 ## 一份只增不減的守則檔
 
