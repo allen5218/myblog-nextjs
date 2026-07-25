@@ -23,6 +23,7 @@ const input = (root: string) => ({
   sourcePath: path.join(root, 'source.ttf'),
   sourceSha256: 'source-sha',
   axes: { wght: { min: 200, max: 900 } },
+  assignmentEpoch: 0,
   core: new Set([0x20, 0x41, 0x4e00]),
   assignmentBytes: Buffer.from('{"schemaVersion":2}\n'),
   buckets: new Map([
@@ -113,6 +114,7 @@ describe('site font generation', () => {
         'min-artifact-bytes',
         'lowest-bucket-id',
       ],
+      assignmentEpoch: 0,
       axes: { wght: { min: 200, max: 900 } },
     })
     expect(manifest.buckets).toHaveLength(5)

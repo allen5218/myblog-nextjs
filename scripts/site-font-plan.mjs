@@ -273,6 +273,7 @@ export function buildFontPlan({
   committedAssignments = new Map(),
   artifactBytes = Array(BUCKET_COUNT).fill(0),
   rebuildCore,
+  rebalance,
 }) {
   const core = new Set(committedCore)
   const promoted = new Set()
@@ -290,12 +291,14 @@ export function buildFontPlan({
   const retainedAssignments = new Map(
     [...committedAssignments].filter(([codePoint]) => !core.has(codePoint))
   )
-  const assignments = placeNewAssignments({
-    corpus,
-    core,
-    committedAssignments: retainedAssignments,
-    artifactBytes,
-  })
+  const assignments = rebalance
+    ? rebalanceAssignments({ corpus, core, committedAssignments: retainedAssignments })
+    : placeNewAssignments({
+        corpus,
+        core,
+        committedAssignments: retainedAssignments,
+        artifactBytes,
+      })
   const newlyAssigned = new Set(
     [...assignments.keys()].filter((codePoint) => !committedAssignments.has(codePoint))
   )

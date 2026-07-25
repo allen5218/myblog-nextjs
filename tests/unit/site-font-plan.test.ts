@@ -387,6 +387,48 @@ describe('rebalanceAssignments', () => {
     expect(assignments.get(0x9fff)).toBeLessThan(5)
   })
 
+  test('buildFontPlan 帶 rebalance 時改用重排結果,不帶時維持既有 assignment', () => {
+    const committed = new Map([
+      [0x4e00, 4],
+      [0x4e01, 4],
+      [0x4e02, 4],
+    ])
+    const incremental = buildFontPlan({
+      corpus,
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+    })
+    // 增量放置不得移動既有 assignment。
+    for (const codePoint of shared) expect(incremental.assignments.get(codePoint)).toBe(4)
+
+    const rebalanced = buildFontPlan({
+      corpus,
+      committedCore: new Set(),
+      committedAssignments: committed,
+      artifactBytes: bytes,
+      rebalance: true,
+    })
+    // 重排會重新推導:全文件共用的字元落到共用桶,各文件獨佔字元散到專屬桶。
+    for (const codePoint of shared) expect(rebalanced.assignments.get(codePoint)).toBe(0)
+    const privateBuckets = [...documents.values()].map(
+      (codePoints) =>
+        new Set(
+          [...codePoints]
+            .filter((codePoint) => !shared.includes(codePoint))
+            .map((codePoint) => rebalanced.assignments.get(codePoint))
+        )
+    )
+    expect(privateBuckets.every((buckets) => buckets.size === 1)).toBe(true)
+    expect(new Set(privateBuckets.map((buckets) => [...buckets][0])).size).toBeGreaterThan(1)
+    for (const codePoints of documents.values()) {
+      const touched = new Set(
+        [...codePoints].map((codePoint) => rebalanced.assignments.get(codePoint))
+      )
+      expect(touched.size).toBeLessThanOrEqual(2)
+    }
+  })
+
   test('bucket 數不足以滿足約束時大聲失敗,而不是回傳超標的 plan', () => {
     // 12 份文件,每份都獨佔一批字元且兩兩不共用 → 每份至少要自己的桶。
     const crowded = corpusWith({
