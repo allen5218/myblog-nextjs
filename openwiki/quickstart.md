@@ -65,3 +65,5 @@ Recent commits show the active maintenance themes: restoring Hux article widths 
 ## Backlog
 
 - **Newsletter endpoint** — [`app/api/newsletter/route.ts`](../app/api/newsletter/route.ts): intentionally deferred because it is a small isolated endpoint; document it in depth if its provider/configuration becomes active or changes.
+- **Mermaid image dimensions** — [`scripts/mermaid-render.mjs`](../scripts/mermaid-render.mjs), [`lib/rehype-mermaid.mjs`](../lib/rehype-mermaid.mjs): persist the renderer’s computed viewBox dimensions in the manifest, emit explicit `width`/`height` on rendered images to prevent CLS, and remove `loading="lazy"` from the hidden theme variant so a slow theme switch does not briefly blank the diagram.
+- **Mermaid render failure granularity** — [`scripts/mermaid-render.mjs`](../scripts/mermaid-render.mjs): one invalid diagram currently aborts the whole fail-loud render before any cache output is written; retain that no-corruption guarantee if adding per-diagram diagnostics or recovery.

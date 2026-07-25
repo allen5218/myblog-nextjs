@@ -47,7 +47,7 @@ Important contract groups include:
 | Mermaid cached rendering/theme/overflow | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) |
 | OG images | [`social-card.spec.ts`](../../tests/playwright/social-card.spec.ts) |
 | PWA precache/offline behavior | [`serwist-precache.spec.ts`](../../tests/playwright/serwist-precache.spec.ts) |
-| Chiron request/byte budgets | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) |
+| Chiron request/byte budgets and rendered glyph selection | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) measures the homepage and every generated article against the manifest; this catches UI and KaTeX glyphs that the Markdown-only static corpus cannot see. |
 
 ## Change matrix
 
