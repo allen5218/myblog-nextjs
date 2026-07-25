@@ -26,7 +26,7 @@ Vitest is node-only and includes only `tests/unit/**/*.test.ts` ([`vitest.config
 | Content/Mermaid transform | [`rehype-mermaid.test.ts`](../../tests/unit/rehype-mermaid.test.ts) covers hash/cache lookup and fallback behavior. |
 | Social cards | font loading and card rendering paths. |
 | Pagination | URL/page-count semantics. |
-| Font pipeline | source metadata, code-point planning, generation, command parsing, validation policy, and rollback/failure behavior in `site-font-*.test.ts`. |
+| Font pipeline | source metadata, code-point planning, generation, command parsing, validation policy, and rollback/failure behavior in `site-font-*.test.ts`; epoch-advance checks also require the exact deterministic rebalance output, and a missing base epoch remains history-protected. |
 
 Add unit coverage when changing a pure policy, parser/transform, cache key, or transactional generation invariant. In particular, security allowlists and font assignment behavior must not rely only on end-to-end coverage.
 
