@@ -145,6 +145,127 @@ export function placeNewAssignments({ corpus, core, committedAssignments, artifa
   return assignments
 }
 
+const REBALANCE_RESTARTS = 256
+const REBALANCE_SEED = 20260725
+const SHARED_BUCKET = 0
+
+function seededRandom(seed) {
+  let state = seed % 2147483647
+  if (state <= 0) state += 2147483646
+  return () => {
+    state = (state * 16807) % 2147483647
+    return (state - 1) / 2147483646
+  }
+}
+
+// 幾乎每一對文件都共用字元,所以各文件的「桶集合」必須兩兩相交。2-子集族兩兩相交
+// 只有兩種形狀:全部含同一個共同桶,或三個桶的三角。這裡採共同桶(sunflower):
+// bucket 0 收所有跨群字元,其餘每個 bucket 專屬一群文件。這讓決策變數從「每個字元
+// 選一個桶」(196 維、約束隱晦)降為「每份文件選一群」(16 維、≤2 桶由結構保證)。
+function rebalanceModel({ corpus, core, committedAssignments }) {
+  const documents = [...corpus.documents.keys()]
+  const documentIndex = new Map(documents.map((name, index) => [name, index]))
+  const candidates = new Set(
+    [...supportedCorpus(corpus)].filter((codePoint) => !core.has(codePoint))
+  )
+  for (const codePoint of committedAssignments.keys()) {
+    if (!core.has(codePoint)) candidates.add(codePoint)
+  }
+  const entries = sortedCodePoints(candidates).map((codePoint) => ({
+    codePoint,
+    pages: [...(corpus.occurrences.get(codePoint) ?? [])]
+      .map((name) => documentIndex.get(name))
+      .filter((index) => index !== undefined)
+      .sort((left, right) => left - right),
+  }))
+  return { entries, documentCount: documents.length }
+}
+
+// 字元只出現在同一群的文件裡 → 該群專屬桶;跨群或無文件 → 共同桶。
+function bucketForEntry(entry, groupOf) {
+  if (entry.pages.length === 0) return SHARED_BUCKET
+  const group = groupOf[entry.pages[0]]
+  for (const page of entry.pages) {
+    if (groupOf[page] !== group) return SHARED_BUCKET
+  }
+  return group + 1
+}
+
+function evaluateGrouping({ entries, documentCount, bucketCount, groupOf }) {
+  const bucketSizes = Array(bucketCount).fill(0)
+  const documentBuckets = Array.from({ length: documentCount }, () => new Set())
+  for (const entry of entries) {
+    const bucket = bucketForEntry(entry, groupOf)
+    bucketSizes[bucket] += 1
+    for (const page of entry.pages) documentBuckets[page].add(bucket)
+  }
+  let worst = 0
+  for (const touched of documentBuckets) {
+    let cost = 0
+    for (const bucket of touched) cost += bucketSizes[bucket]
+    if (cost > worst) worst = cost
+  }
+  return { worst, bucketSizes, documentBuckets }
+}
+
+export function rebalanceAssignments({
+  corpus,
+  core,
+  committedAssignments = new Map(),
+  bucketCount = BUCKET_COUNT,
+  maxBucketsPerDocument = 2,
+}) {
+  const { entries, documentCount } = rebalanceModel({ corpus, core, committedAssignments })
+  const groupCount = bucketCount - 1
+  const evaluate = (groupOf) => evaluateGrouping({ entries, documentCount, bucketCount, groupOf })
+
+  let best = null
+  for (let restart = 0; restart < REBALANCE_RESTARTS; restart += 1) {
+    const random = seededRandom(REBALANCE_SEED + restart)
+    // restart 0 用確定性的輪流分群當基準,其餘用固定 seed 的隨機起點。
+    const groupOf = Array.from({ length: documentCount }, (_, index) =>
+      restart === 0 ? index % groupCount : Math.floor(random() * groupCount)
+    )
+    let current = evaluate(groupOf)
+    // 爬山:固定的掃描順序,只在嚴格改善時才接受,確保完全確定性。
+    let improved = true
+    while (improved) {
+      improved = false
+      for (let page = 0; page < documentCount; page += 1) {
+        const original = groupOf[page]
+        for (let group = 0; group < groupCount; group += 1) {
+          if (group === original) continue
+          groupOf[page] = group
+          const candidate = evaluate(groupOf)
+          if (candidate.worst < current.worst) {
+            current = candidate
+            improved = true
+          } else {
+            groupOf[page] = original
+          }
+        }
+      }
+    }
+    // 嚴格小於才取代 → 平手時保留較早的 restart,結果與重啟次數無關。
+    if (!best || current.worst < best.result.worst)
+      best = { result: current, groupOf: [...groupOf] }
+  }
+
+  for (const touched of best.result.documentBuckets) {
+    if (touched.size > maxBucketsPerDocument) {
+      throw new Error(
+        `Chiron rebalance could not keep every document within ${maxBucketsPerDocument} buckets (needed ${touched.size})`
+      )
+    }
+  }
+
+  const assignments = new Map()
+  for (const entry of entries) {
+    assignments.set(entry.codePoint, bucketForEntry(entry, best.groupOf))
+  }
+  return assignments
+}
+
 export function buildFontPlan({
   corpus,
   homepage = new Set(),

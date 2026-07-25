@@ -9,6 +9,7 @@ import {
   parseAssignments,
   parseCodepoints,
   placeNewAssignments,
+  rebalanceAssignments,
   serializeAssignmentEpoch,
   serializeAssignments,
   serializeCodepoints,
@@ -327,6 +328,75 @@ describe('compressUnicodeRanges', () => {
   test('sorts and compresses adjacent code points', () => {
     expect(compressUnicodeRanges(new Set([0x41, 0x42, 0x44]))).toBe('U+0041-0042,U+0044')
     expect(compressUnicodeRanges(new Set())).toBe('')
+  })
+})
+
+describe('rebalanceAssignments', () => {
+  // 五份文件各自獨佔一批字元,外加一批被全部文件共用的字元。
+  const shared = [0x4e00, 0x4e01, 0x4e02]
+  const documents = new Map<string, Set<number>>(
+    Array.from({ length: 5 }, (_, index) => [
+      `doc-${index}`,
+      new Set([...shared, 0x5000 + index * 2, 0x5001 + index * 2]),
+    ])
+  )
+  const corpus = corpusWith({ documents })
+  const core = new Set<number>()
+
+  test('每份文件碰到的桶數不超過上限', () => {
+    const assignments = rebalanceAssignments({ corpus, core })
+    for (const codePoints of documents.values()) {
+      const touched = new Set([...codePoints].map((codePoint) => assignments.get(codePoint)))
+      expect(touched.size).toBeLessThanOrEqual(2)
+    }
+  })
+
+  test('相同輸入必得完全相同輸出', () => {
+    const first = rebalanceAssignments({ corpus, core })
+    const second = rebalanceAssignments({ corpus, core })
+    expect(serializeAssignments(first)).toBe(serializeAssignments(second))
+  })
+
+  test('同一文件簽名的字元必定同桶', () => {
+    const assignments = rebalanceAssignments({ corpus, core })
+    for (const codePoint of shared) {
+      expect(assignments.get(codePoint)).toBe(assignments.get(shared[0]))
+    }
+  })
+
+  test('覆蓋所有 non-core 字元,且不含 core 字元', () => {
+    const withCore = new Set([0x4e00])
+    const assignments = rebalanceAssignments({ corpus, core: withCore })
+    expect(assignments.has(0x4e00)).toBe(false)
+    expect(assignments.has(0x4e01)).toBe(true)
+    for (const codePoints of documents.values()) {
+      for (const codePoint of codePoints) {
+        if (!withCore.has(codePoint)) expect(assignments.has(codePoint)).toBe(true)
+      }
+    }
+  })
+
+  test('保留已離開 corpus 的歷史 assignment,不讓它們消失', () => {
+    const assignments = rebalanceAssignments({
+      corpus,
+      core,
+      committedAssignments: new Map([[0x9fff, 3]]),
+    })
+    expect(assignments.has(0x9fff)).toBe(true)
+    expect(assignments.get(0x9fff)).toBeGreaterThanOrEqual(0)
+    expect(assignments.get(0x9fff)).toBeLessThan(5)
+  })
+
+  test('bucket 數不足以滿足約束時大聲失敗,而不是回傳超標的 plan', () => {
+    // 12 份文件,每份都獨佔一批字元且兩兩不共用 → 每份至少要自己的桶。
+    const crowded = corpusWith({
+      documents: new Map(
+        Array.from({ length: 12 }, (_, index) => [`doc-${index}`, new Set([0x6000 + index])])
+      ),
+    })
+    expect(() =>
+      rebalanceAssignments({ corpus: crowded, core: new Set(), maxBucketsPerDocument: 0 })
+    ).toThrow(/could not keep every document within/)
   })
 })
 
