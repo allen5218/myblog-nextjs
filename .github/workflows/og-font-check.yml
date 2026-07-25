@@ -58,11 +58,20 @@ jobs:
             # Initial rollout: main does not have a committed core yet.
             echo "core-path=" >> "$GITHUB_OUTPUT"
           fi
+          base_epoch="$RUNNER_TEMP/chiron-assignment-epoch.base.txt"
+          if git cat-file -e origin/main:font-data/chiron/assignment-epoch.txt; then
+            git show origin/main:font-data/chiron/assignment-epoch.txt > "$base_epoch"
+            echo "epoch-path=$base_epoch" >> "$GITHUB_OUTPUT"
+          else
+            # Initial rollout: main does not have a committed epoch yet.
+            echo "epoch-path=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check Chiron site font
         shell: bash
         env:
           BASE_ASSIGNMENTS: ${{ steps.chiron-base.outputs.path }}
           BASE_CORE: ${{ steps.chiron-base.outputs.core-path }}
+          BASE_EPOCH: ${{ steps.chiron-base.outputs.epoch-path }}
         run: |
           args=(--full)
           if [[ -n "$BASE_ASSIGNMENTS" ]]; then
@@ -70,5 +79,8 @@ jobs:
           fi
           if [[ -n "$BASE_CORE" ]]; then
             args+=("--base-core=$BASE_CORE")
+          fi
+          if [[ -n "$BASE_EPOCH" ]]; then
+            args+=("--base-epoch=$BASE_EPOCH")
           fi
           yarn check:site-font "${args[@]}"
