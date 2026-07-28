@@ -7,6 +7,7 @@ author:     "Allen"
 headerImg:  "https://img.allenspace.de/llm-wiki-engraving-concept-blue-riso.883zouxiev.webp"
 headerMask: 0.6
 catalog: true
+series:     "AI 自維護的知識庫"
 tags:
     - LLM
     - AI

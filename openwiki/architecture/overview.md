@@ -21,6 +21,7 @@ The full-width shell is intentional. Do not restore the upstream starter’s max
 | `/:year/:month/:day/:slug/` | Canonical legacy-style post route. It statically generates posts, selects a content layout, emits post metadata/JSON-LD, and calculates adjacent posts ([`app/[year]/[month]/[day]/[slug]/page.tsx`](../../app/%5Byear%5D/%5Bmonth%5D/%5Bday%5D/%5Bslug%5D/page.tsx)). |
 | `/blog/...` | Compatibility lookup and permanent redirect to a canonical legacy URL ([`app/blog/[...slug]/page.tsx`](../../app/blog/%5B...slug%5D/page.tsx)). |
 | `/tags/`, `/archive/` | Contentlayer-derived discovery pages. Tag list pagination follows its own first-page semantics. Tag sublists are `noindex` to avoid duplicate listing combinations. |
+| `/series/`, `/series/:series/` | Static Contentlayer-derived collection index and detail pages. Only visible, non-draft posts with valid, collision-free normalized series names participate; detail pages are pre-enumerated and unknown slugs 404. Entries are in oldest-to-newest reading order, and sitemap `lastModified` uses the latest date or `lastmod` among a collection’s members. See [`lib/series.ts`](../../lib/series.ts) and [`app/sitemap.ts`](../../app/sitemap.ts). |
 | `/about/`, `/en/about/` | The only localized content surface. A route-group layout keeps the shared hero mounted while language content changes. |
 | metadata endpoints | `manifest`, `robots`, `sitemap`, root/per-post Open Graph images, and a generic social card are App Router metadata/route handlers. |
 | offline/service worker | `/offline/`, [`app/sw.ts`](../../app/sw.ts), and [`app/serwist/[path]/route.ts`](../../app/serwist/%5Bpath%5D/route.ts) implement PWA behavior. |
@@ -36,8 +37,9 @@ The full-width shell is intentional. Do not restore the upstream starter’s max
 The Hux port is organized around reusable layout components:
 
 - [`layouts/HuxListLayout.tsx`](../../layouts/HuxListLayout.tsx) renders the home/tag listing surfaces with hero, cards, pager, and sidebar.
-- [`layouts/PostLayout.tsx`](../../layouts/PostLayout.tsx) renders hero metadata, article body, mobile TOC, desktop catalog, adjacent-post pager, and lazily loaded comments.
-- [`components/hux/HuxHero.tsx`](../../components/hux/HuxHero.tsx) is the shared hero primitive for posts and hubs. It supports image, a sanitized gradient-like CSS background, mask opacity, and allowlisted presentation iframe modes.
+- [`layouts/PostLayout.tsx`](../../layouts/PostLayout.tsx) renders hero metadata, article body, mobile TOC, desktop catalog, adjacent-post pager, and lazily loaded comments. The post layouts put an eligible series link after the article and before the pager; the hero places it after update/date metadata.
+- [`components/hux/HuxHero.tsx`](../../components/hux/HuxHero.tsx) is the shared hero primitive for posts and hubs. It supports image, a sanitized gradient-like CSS background, mask opacity, allowlisted presentation iframe modes, and the post-level series link.
+- [`components/hux/SeriesIndex.tsx`](../../components/hux/SeriesIndex.tsx), [`components/hux/SeriesPostList.tsx`](../../components/hux/SeriesPostList.tsx), and [`components/hux/PostSeriesLink.tsx`](../../components/hux/PostSeriesLink.tsx) render the collection index, ordered parts, and consistent article entry points; [`components/Header.tsx`](../../components/Header.tsx) makes Series a primary route.
 - [`components/hux/SideCatalog.tsx`](../../components/hux/SideCatalog.tsx) tracks desktop headings; [`components/hux/ArticleToc.tsx`](../../components/hux/ArticleToc.tsx) provides the native mobile equivalent.
 - [`css/tailwind.css`](../../css/tailwind.css) contains the responsive Hux geometry and is a high-risk behavior file, not merely styling.
 

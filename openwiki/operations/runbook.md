@@ -71,7 +71,7 @@ The normal production target is Vercel deployment of `main` (per [`AGENTS.md`](.
 - `ci.yml` is the baseline required status: Contentlayer generation, non-mutating lint, typecheck, unit tests.
 - `og-font-check.yml` is the other required status. It intentionally has **no paths filter**: a skipped required workflow never reports a result, leaving a PR pending forever.
 - The font gate fetches assignment, core, and epoch base artifacts from `origin/main` (`--base-assignments`, `--base-core`, `--base-epoch`); core history is always checked when available. An epoch advance skips direct assignment-history comparison only after the checker verifies the exact deterministic rebalance result.
-- The generated OpenWiki workflow is deliberately git-ignored. It opens pull requests from Actions, which would require the repository-wide "Allow Actions to create and approve pull requests" setting this project intentionally declines. Refresh the wiki by running `openwiki --update` locally, then open a normal pull request.
+- The generated OpenWiki workflow is deliberately git-ignored. It opens pull requests from Actions, which would require the repository-wide "Allow Actions to create and approve pull requests" setting this project intentionally declines. After source changes are committed and the worktree is clean, refresh the wiki locally with `openwiki code --update --print`; review the generated update and include it in the normal pull request.
 
 ## Failure triage
 

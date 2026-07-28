@@ -11,6 +11,12 @@ const PRINTABLE_ASCII = Array.from({ length: 95 }, (_, index) =>
 const SHARED_UI_TEXT = [
   "Allen's Blog",
   'Archive',
+  'Series',
+  'Series:',
+  'Collections of related posts.',
+  'Part',
+  'post',
+  'posts',
   'Tags',
   'About',
   'Search',

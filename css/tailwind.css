@@ -184,6 +184,7 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
   --hux-quote-bg: rgb(245, 245, 245);
+  --series-interactive: #00677d;
 }
 
 .dark {
@@ -193,6 +194,7 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(224, 224, 224);
   --hux-border: rgb(68, 68, 68);
   --hux-quote-bg: rgb(58, 58, 58);
+  --series-interactive: #66c7e0;
 }
 
 body {
@@ -396,6 +398,30 @@ body {
 .intro-header-post .tags {
   margin-top: 0;
   padding-bottom: 8px;
+}
+
+.intro-header-post .series-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 16px;
+  padding-bottom: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.intro-header-post .series-meta a {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.intro-header-post .series-meta a:hover,
+.intro-header-post .series-meta a:focus {
+  color: #66c7e0;
 }
 
 .site-heading h1 {
@@ -746,6 +772,85 @@ body {
   font-style: italic;
 }
 
+.series-index-item,
+.series-post-item {
+  border-bottom: 1px solid var(--hux-border);
+}
+
+.series-index-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+}
+
+.series-index-link {
+  color: var(--hux-link);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.series-index-link:hover,
+.series-index-link:focus {
+  color: var(--series-interactive);
+}
+
+.series-post-count,
+.series-part-label {
+  color: #666;
+  font-size: 13px;
+}
+
+.dark .series-post-count,
+.dark .series-part-label {
+  color: #b3b3b3;
+}
+
+.series-post-list {
+  padding: 0;
+  list-style: none;
+}
+
+.series-post-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px 0;
+}
+
+.series-part-label {
+  padding-top: 20px;
+  font-weight: 700;
+}
+
+.series-post-list .post-preview {
+  padding: 0;
+  border: 0;
+}
+
+.series-post-list .post-preview a:hover,
+.series-post-list .post-preview a:focus {
+  color: var(--series-interactive);
+}
+
+@media (max-width: 480px) {
+  .series-index-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .series-post-item {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .series-part-label {
+    padding-top: 0;
+  }
+}
+
 .post-shell {
   display: block;
   width: min(1170px, 100vw);
@@ -766,6 +871,50 @@ body {
 
 .post-container .prose :where(p) {
   margin: 25px 0;
+}
+
+.post-series-link-top {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+.dark .post-series-link-top:not(.series-meta) {
+  color: #b3b3b3;
+}
+
+.post-series-link-top a,
+.post-series-link-bottom a {
+  color: var(--hux-link);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.post-series-link-bottom {
+  margin-top: 32px;
+  border: 1px solid var(--hux-border);
+  border-left: 4px solid #0085a1;
+  background: var(--hux-quote-bg);
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 14px 16px;
+}
+
+.dark .post-series-link-bottom {
+  color: #b3b3b3;
+}
+
+.post-series-link-top a:hover,
+.post-series-link-top a:focus,
+.post-series-link-bottom a:hover,
+.post-series-link-bottom a:focus {
+  color: var(--series-interactive);
+}
+
+.post-series-link-bottom + .pager {
+  margin-top: 20px;
 }
 
 .post-container .prose :where(h1, h2, h3, h4, h5, h6) {

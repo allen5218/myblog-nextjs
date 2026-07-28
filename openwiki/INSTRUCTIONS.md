@@ -5,6 +5,27 @@ Hard constraints:
 - **Document only durable repository properties.** Never record transient run-time or working-tree state: which files happen to be modified, staged, or untracked during a documentation run, the status of the OpenWiki setup itself, or anything that becomes false once the run is committed. Such state is not a repository invariant and must never appear in an invariants list.
 - **Do not restate `AGENTS.md` at length.** It is the human-maintained source of truth for rules, environment pitfalls, and the reasoning behind them. Link to it, and focus this wiki on what is derived from source code: structure, contracts, test coverage, and change impact.
 - **Prefer facts verifiable from code, config, and tests** over prose summaries. Cite concrete file paths so a reader can check every claim.
+- **Use the repository's exact OpenWiki refresh procedure.** After source changes are committed
+  and the worktree is clean, the local refresh command is
+  `openwiki code --update --print`; generated updates are reviewed and included in the normal PR.
+  Do not shorten this to `openwiki --update`, and do not claim that the ignored generated
+  `.github/workflows/openwiki-update.yml` is the repository's supported refresh path.
+- **Map behavior to the tests that actually cover it.** Do not attribute mobile hamburger
+  navigation to the Series spec: `tests/playwright/series.spec.ts` covers desktop Series order,
+  while `tests/playwright/kbar-touch.spec.ts` covers the mobile hamburger order. When one
+  behavior spans specs, cite every relevant spec rather than collapsing the mapping.
+- **Historical decisions must use stable evidence.** Never describe an older behavior change as
+  being in “current HEAD”; HEAD changes after every commit. Cite the durable commit hash, source,
+  or test that establishes the claim.
+
+Required corrections for existing generated pages:
+
+- In `openwiki/operations/runbook.md`, the local refresh instruction must use the exact command
+  `openwiki code --update --print` after source changes are committed. Replace any existing
+  `openwiki --update` wording; do not leave both forms.
+- In `openwiki/workflows/content-and-publishing.md`, the reading-width history must not say
+  “current HEAD restored reading widths.” Attribute the restoration to stable commit `cae7df1`
+  and the article-width browser tests instead.
 
 - **Keep these page paths stable.** `AGENTS.md` links directly to `openwiki/quickstart.md`, `openwiki/architecture/overview.md`, and `openwiki/operations/runbook.md`, and relies on them covering the build/command sequence, the Chiron font pipeline and its required CLIs, the article width breakpoints, and the Mermaid troubleshooting checklist. Do not rename, merge, or drop these pages, and do not move that material elsewhere — the rules file deliberately delegates it here instead of duplicating it.
 

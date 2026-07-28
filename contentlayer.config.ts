@@ -29,6 +29,7 @@ import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 import prettier from 'prettier'
 import { legacyPathFromDateAndSlug, stripPostDatePrefix } from './lib/legacy-url'
 import { isResponsiveIframeSrc } from './lib/iframe'
+import { collectSeries } from './lib/series'
 
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
@@ -247,6 +248,7 @@ export const Blog = defineDocumentType(() => ({
     title: { type: 'string', required: true },
     date: { type: 'date', required: true },
     tags: { type: 'list', of: { type: 'string' }, default: [] },
+    series: { type: 'string' },
     update: { type: 'date' },
     draft: { type: 'boolean' },
     subtitle: { type: 'string' },
@@ -362,6 +364,7 @@ export default makeSource({
   },
   onSuccess: async (importData) => {
     const { allBlogs } = await importData()
+    collectSeries(allBlogs)
     createTagCount(allBlogs)
     createSearchIndex(allBlogs)
   },

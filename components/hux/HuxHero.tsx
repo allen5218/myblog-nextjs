@@ -1,5 +1,7 @@
 import siteMetadata from '@/data/siteMetadata'
 import Link from '@/components/Link'
+import PostSeriesLink from '@/components/hux/PostSeriesLink'
+import type { SeriesPost } from '@/lib/series'
 import { formatHuxDate } from '../../lib/hux-date'
 import { resolveHeroIframeSrc } from '@/lib/iframe'
 
@@ -11,6 +13,7 @@ type HuxHeroProps = {
   date?: string
   update?: string
   tags?: string[]
+  seriesPost?: SeriesPost
   headerImg?: string
   headerBgCss?: string
   headerMask?: number | string
@@ -31,6 +34,7 @@ export default function HuxHero({
   date,
   update,
   tags,
+  seriesPost,
   headerImg,
   headerBgCss,
   headerMask,
@@ -101,6 +105,9 @@ export default function HuxHero({
               <span className="meta">
                 Posted by {author || siteMetadata.author} on {formatHuxDate(date)}
               </span>
+            )}
+            {seriesPost && (
+              <PostSeriesLink className="series-meta" placement="top" post={seriesPost} />
             )}
           </div>
         )}
