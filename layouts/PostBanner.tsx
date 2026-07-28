@@ -9,6 +9,7 @@ import PageTitle from '@/components/PageTitle'
 import SectionContainer from '@/components/SectionContainer'
 import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
+import PostSeriesLink from '@/components/hux/PostSeriesLink'
 
 interface LayoutProps {
   content: CoreContent<Blog>
@@ -38,8 +39,10 @@ export default function PostMinimal({ content, next, prev, children }: LayoutPro
             <div className="relative pt-10">
               <PageTitle>{title}</PageTitle>
             </div>
+            <PostSeriesLink placement="top" post={content} />
           </div>
           <div className="prose dark:prose-invert max-w-none py-4">{children}</div>
+          <PostSeriesLink placement="bottom" post={content} />
           {siteMetadata.comments && (
             <div className="pt-6 pb-6 text-center text-gray-700 dark:text-gray-300" id="comment">
               <Comments slug={`/${path}/`} />

@@ -2,12 +2,18 @@ import { slug } from 'github-slugger'
 
 export type SeriesPost = {
   date: string
+  lastmod?: string
   path: string
   title: string
   subtitle?: string
   series?: string
   listed?: boolean
   draft?: boolean
+}
+
+export type SeriesIdentity = {
+  name: string
+  slug: string
 }
 
 export type SeriesGroup<T extends SeriesPost = SeriesPost> = {
@@ -20,8 +26,37 @@ export function seriesSlug(name: string): string {
   return slug(name.trim())
 }
 
+export function seriesIdentity(name?: string): SeriesIdentity | undefined {
+  const normalizedName = name?.trim()
+  if (!normalizedName) return
+
+  const normalizedSlug = seriesSlug(normalizedName)
+  if (!normalizedSlug) return
+
+  return { name: normalizedName, slug: normalizedSlug }
+}
+
 export function seriesHref(name: string): string {
-  return `/series/${seriesSlug(name)}/`
+  const identity = seriesIdentity(name)
+  if (!identity) {
+    throw new Error(`Series name "${name}" must normalize to a non-empty slug`)
+  }
+  return `/series/${identity.slug}/`
+}
+
+export function seriesIdentityForPost(post: SeriesPost): SeriesIdentity | undefined {
+  if (post.listed === false || post.draft === true) return
+  return seriesIdentity(post.series)
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+export function latestSeriesLastModified(posts: SeriesPost[]): string | undefined {
+  return posts
+    .map((post) => post.lastmod || post.date)
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0]
 }
 
 export function collectSeries<T extends SeriesPost>(posts: T[]): SeriesGroup<T>[] {
@@ -29,9 +64,15 @@ export function collectSeries<T extends SeriesPost>(posts: T[]): SeriesGroup<T>[
 
   for (const post of posts) {
     const name = post.series?.trim()
-    if (!name || post.listed === false || post.draft === true) continue
+    if (!name) continue
 
-    const seriesSlugValue = seriesSlug(name)
+    const identity = seriesIdentity(name)
+    if (!identity) {
+      throw new Error(`Series name "${name}" must normalize to a non-empty slug`)
+    }
+    if (!seriesIdentityForPost(post)) continue
+
+    const seriesSlugValue = identity.slug
     const existing = groups.get(seriesSlugValue)
     if (existing && existing.name !== name) {
       throw new Error(
@@ -50,10 +91,10 @@ export function collectSeries<T extends SeriesPost>(posts: T[]): SeriesGroup<T>[
     .map((group) => ({
       ...group,
       posts: [...group.posts].sort(
-        (left, right) => left.date.localeCompare(right.date) || left.path.localeCompare(right.path)
+        (left, right) => compareText(left.date, right.date) || compareText(left.path, right.path)
       ),
     }))
-    .sort((left, right) => left.name.localeCompare(right.name))
+    .sort((left, right) => compareText(left.name, right.name))
 }
 
 export function findSeriesBySlug<T extends SeriesPost>(

@@ -5,6 +5,25 @@ const seriesPath = '/series/ai-自維護的知識庫/'
 const encodedSeriesPath = encodeURI(seriesPath)
 const articleTitle = '讓 OpenWiki 接手 AGENTS.md：守則檔不再無止盡膨脹'
 
+function relativeLuminance(color: string) {
+  const channels = color
+    .match(/\d+(?:\.\d+)?/g)
+    ?.slice(0, 3)
+    .map(Number)
+  if (!channels || channels.length !== 3) throw new Error(`Unsupported color: ${color}`)
+  return channels
+    .map((channel) => channel / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
+}
+
+function contrastRatio(foreground: string, background: string) {
+  const [lighter, darker] = [relativeLuminance(foreground), relativeLuminance(background)].sort(
+    (left, right) => right - left
+  )
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 test('Series index links to the statically generated collection', async ({ page }) => {
   await page.goto('/series/')
   await expect(page.locator('.site-heading h1')).toHaveText('Series')
@@ -44,11 +63,17 @@ test('series posts link to their collection above and below the article', async 
     'href',
     seriesPath
   )
-  const headingOrder = await page.locator('.post-heading').evaluate((heading) =>
-    [...heading.children].map((child) =>
-      child.classList.contains('meta') ? 'meta' : child.className || child.tagName
+  const headingOrder = await page
+    .locator('.post-heading')
+    .evaluate((heading) =>
+      [...heading.children].map((child) =>
+        child.classList.contains('meta')
+          ? 'meta'
+          : child.classList.contains('series-meta')
+            ? 'series-meta'
+            : child.className || child.tagName
+      )
     )
-  )
   expect(headingOrder.indexOf('H1')).toBeLessThan(headingOrder.indexOf('series-meta'))
   expect(headingOrder.lastIndexOf('meta')).toBe(headingOrder.indexOf('series-meta') - 1)
 
@@ -76,14 +101,48 @@ test('posts without a series omit both article-level collection links', async ({
   await expect(page.locator('.post-container .post-series-link')).toHaveCount(0)
 })
 
+test('new Series secondary labels meet WCAG AA in light and dark themes', async ({ page }) => {
+  for (const theme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: theme as 'light' | 'dark' })
+    await page.goto('/series/')
+    if (theme === 'dark') {
+      await page.locator('html').evaluate((element) => element.classList.add('dark'))
+    } else {
+      await page.locator('html').evaluate((element) => element.classList.remove('dark'))
+    }
+
+    for (const locator of [
+      page.locator('.series-post-count'),
+      page.locator('.series-part-label'),
+    ]) {
+      if ((await locator.count()) === 0) {
+        await page.goto(encodedSeriesPath)
+      }
+      const colors = await locator.first().evaluate((element) => {
+        const style = getComputedStyle(element)
+        const background = getComputedStyle(document.body)
+        return { foreground: style.color, background: background.backgroundColor }
+      })
+      expect(contrastRatio(colors.foreground, colors.background)).toBeGreaterThanOrEqual(4.5)
+    }
+
+    await page.goto('/2026/07/25/openwiki-tame-agents-md/')
+    const bottomColors = await page
+      .locator('.post-series-link-bottom > span')
+      .evaluate((element) => {
+        const style = getComputedStyle(element)
+        const parentStyle = getComputedStyle(element.parentElement!)
+        return { foreground: style.color, background: parentStyle.backgroundColor }
+      })
+    expect(contrastRatio(bottomColors.foreground, bottomColors.background)).toBeGreaterThanOrEqual(
+      4.5
+    )
+  }
+})
+
 test('desktop primary navigation keeps the exact Series order', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
 
-  await expect(page.locator('.navbar-links > a')).toHaveText([
-    'Home',
-    'About',
-    'Series',
-    'Archive',
-  ])
+  await expect(page.locator('.navbar-links > a')).toHaveText(['Home', 'About', 'Series', 'Archive'])
 })

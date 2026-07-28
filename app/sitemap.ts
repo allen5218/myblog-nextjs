@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next'
 import { allBlogs } from 'contentlayer/generated'
 import siteMetadata from '@/data/siteMetadata'
 import { localizedUrl } from '@/lib/i18n'
-import { collectSeries, seriesHref } from '@/lib/series'
+import { collectSeries, latestSeriesLastModified, seriesHref } from '@/lib/series'
 
 export const dynamic = 'force-static'
 
@@ -33,14 +33,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: pageUrl('series'),
       lastModified: latestSeriesPostDate,
     },
-    ...seriesGroups.map((group) => {
-      const newestPost = group.posts.at(-1)
-
-      return {
-        url: encodeURI(pageUrl(seriesHref(group.name).slice(1))),
-        lastModified: newestPost?.lastmod || newestPost?.date,
-      }
-    }),
+    ...seriesGroups.map((group) => ({
+      url: encodeURI(pageUrl(seriesHref(group.name).slice(1))),
+      lastModified: latestSeriesLastModified(group.posts),
+    })),
   ]
 
   // 不收 /blog/(已永久導向 /)與 /pageN/(從首頁 pager 直接可達,且無獨立內容價值);

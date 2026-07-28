@@ -64,8 +64,10 @@ series: "AI 自維護的知識庫"
 
 同名系列會出現在 `/series/` 索引與 `/series/[series]/` 閱讀頁。系列內順序直接由文章
 `date` 推導,由舊到新標示為 Part 1、Part 2……;**沒有也不需要手動排序欄位**。設定
-`series` 的文章會在 Hero 的 Updated/Posted 日期資訊下方顯示系列連結,並在正文結束、全站原有
-上一篇／下一篇 pager 之前再顯示一次。這不會改變全站依日期排列的文章 pager。
+`series` 的文章在三種支援版型都會於頁首與正文結束處各顯示一次系列連結;
+`PostLayout` 的頁首連結位於 Hero 的 Updated/Posted 日期資訊下方,正文連結則在全站原有
+上一篇／下一篇 pager 之前。這不會改變全站依日期排列的文章 pager。系列名稱不能只含空白,
+也必須能產生非空白網址 slug(例如不能只寫標點或 emoji);不合法值會讓 build 失敗。
 
 啟用目錄時,文章以 `##` 建立主章節,再依序使用 `###`、`####`。第一個 `##` 前的子標題
 不會出現在目錄;不要使用 `#####`／`######`,否則手機與桌面目錄會不一致。
@@ -240,8 +242,9 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 - `sitemap.xml` — 首頁、`/archive/`、`/tags/`、`/series/`、每個具體 Series 頁、兩個
   about 頁(含語言 alternates)、已列出的非草稿文章。**不收會轉址的網址**(如
   `/blog/`),也不收 `/pageN/` 與各標籤頁(前者從首頁 pager 直接可達,後者刻意
-  noindex)。首頁/封存/標籤索引的 `lastmod` 取自**最新文章的日期**,不要改成
-  `new Date()` —— 那會讓每次部署都對爬蟲謊稱內容變動過。
+  noindex)。首頁/封存/標籤索引的 `lastmod` 取自**最新文章的日期**,各系列頁則取該系列
+  所有成員中最新的 `lastmod`;不要改成 `new Date()` —— 那會讓每次部署都對爬蟲謊稱
+  內容變動過。
 - `robots.ts` — 標準 allow-all 加 sitemap 指標。
 - 文章頁輸出 JSON-LD `BlogPosting` 結構化資料與 OpenGraph/Twitter meta。
 

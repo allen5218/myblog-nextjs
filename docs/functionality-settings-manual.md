@@ -67,9 +67,12 @@ series: "AI 自維護的知識庫"
 
 Named series appear in the `/series/` index and at `/series/[series]/`. Posts are ordered
 oldest to newest directly from their `date` and labeled Part 1, Part 2, …; there is **no
-manual ordering field**. A post with `series` links to its collection twice: below the Hero
-Updated/Posted date metadata, then again after the article body and before the existing
-site-wide previous/next pager. Series membership does not change that chronological pager.
+manual ordering field**. All three supported layouts link a post with `series` to its
+collection in the header and after the article body. In `PostLayout`, the header link sits
+below the Hero Updated/Posted metadata and the body link sits before the existing site-wide
+previous/next pager. Series membership does not change that chronological pager. A series
+name cannot be blank and must produce a non-empty URL slug (so punctuation-only or emoji-only
+values are invalid); invalid values fail the build.
 
 When the catalog is enabled, start article sections with `##`, then use `###` and `####` in
 order. Child headings before the first `##` are omitted. Do not use `#####` or `######`,
@@ -273,8 +276,9 @@ everything else (including real years such as `/2025/`).
   about pages (with language alternates), and listed non-draft posts. **Redirecting URLs are
   never listed** (e.g. `/blog/`), nor are `/pageN/` and per-tag pages (the former is linked
   straight from the home pager, the latter is deliberately noindex). `lastmod` for
-  home/archive/tag-index is the **newest post's date** — do not switch it back to
-  `new Date()`, which tells crawlers these pages changed on every deploy.
+  home/archive/tag-index is the **newest post's date**, while each Series page uses the latest
+  `lastmod` across all of its members — do not switch either back to `new Date()`, which tells
+  crawlers these pages changed on every deploy.
 - `robots.ts` — standard allow-all with sitemap pointer.
 - Post pages emit JSON-LD `BlogPosting` structured data and OpenGraph/Twitter meta.
 
