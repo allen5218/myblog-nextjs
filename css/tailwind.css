@@ -912,6 +912,16 @@ body {
   flex: 1;
 }
 
+@media (max-width: 767.98px) {
+  .post-shell:not(.about-shell) > .post-container > .pager > li {
+    flex: 0 0 calc((100% - 16px) / 2);
+  }
+
+  .post-shell:not(.about-shell) > .post-container > .pager > .next {
+    margin-left: auto;
+  }
+}
+
 .pager .next {
   text-align: right;
 }
