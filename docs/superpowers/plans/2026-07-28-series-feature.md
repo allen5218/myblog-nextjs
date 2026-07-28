@@ -19,7 +19,7 @@
 - Different display names that normalize to the same slug are a build-blocking error, not silently merged.
 - `/series/[series]/` is statically generated with `generateStaticParams`; `dynamicParams = false`; unknown series return 404.
 - Desktop and mobile navigation order is exactly `Home`, `About`, `Series`, `Archive`; mobile remains inside the hamburger menu.
-- A series post shows a separate `Series: <linked name>` row between its tags and title, and another series link after the prose but before the existing global chronological pager.
+- A series post shows a separate `Series: <linked name>` row after the final Updated/Posted date metadata line at the bottom of the Hero, and another series link after the prose but before the existing global chronological pager.
 - Existing Archive tag filtering, legacy `/tags/` routes, global previous/next post semantics, RSS feeds, comments, and non-series articles remain unchanged.
 - Keep the implementation server-rendered except for existing client navigation components; Series pages must not require a new client-side filter.
 - Preserve unrelated changes and never stage `next-env.d.ts`.
@@ -303,7 +303,7 @@ git commit -m "feat: add static series pages"
 Before editing production UI, add tests that:
 
 - load `/2026/07/25/openwiki-tame-agents-md/`
-- assert a `.post-heading .series-meta` row is between `.post-heading .tags` and the `<h1>`
+- assert a `.post-heading .series-meta` row follows the final `.meta` Updated/Posted line at the bottom of the Hero
 - assert that row contains exact visible label `Series:` and a link named `AI 自維護的知識庫` to `/series/ai-自維護的知識庫/`
 - assert a `.post-series-link` after `.prose` and before `.pager` contains the same target
 - load `/2026/07/14/kamiina-botan-anime-review/` and assert neither Series element exists
@@ -325,7 +325,7 @@ Expected: FAIL because Series article UI and navigation are absent.
 
 `SeriesLink` accepts `{ series: string; className?: string }`, renders visible `Series:` plus a `Link` whose text is the series display name, and builds its target only with `seriesHref(series)`.
 
-In `HuxHero`, accept optional `series` and render the top row after `.tags` and before `<h1>`.
+In `HuxHero`, accept optional `series` and render the top row after the final `.meta` Updated/Posted line.
 
 In `PostLayout`, pass `series` into `HuxHero`, then render the bottom `SeriesLink` immediately after `.prose` and before `HuxPager`. Do not alter global `next` / `prev`.
 
@@ -386,6 +386,73 @@ Stage only the Task 3 files and commit:
 
 ```bash
 git commit -m "feat: surface series navigation"
+```
+
+---
+
+### Task 4: Align Hero Series placement with the supplied visual reference
+
+**User clarification:** The screenshots supplied after Task 3 show the Series row in the red-box area below all Updated/Posted metadata, not between Tags and the article title. This clarification supersedes the earlier placement text.
+
+**Files:**
+- Modify: `components/hux/HuxHero.tsx`
+- Modify: `css/tailwind.css`
+- Modify: `tests/playwright/series.spec.ts`
+- Modify: `docs/functionality-settings-manual.zh-TW.md`
+- Modify: `docs/functionality-settings-manual.md`
+
+**Interfaces:**
+- Keeps `SeriesLink` and `seriesHref` unchanged.
+- Keeps the article-bottom `.post-series-link` unchanged.
+- Produces the final Hero contract: title/subtitle/date metadata render normally, then `.series-meta` appears after the last `.meta` line.
+
+- [ ] **Step 1: Change the production regression test first**
+
+Replace the old Tags/Series/title ordering assertion with literal DOM-order assertions that:
+
+```ts
+const headingOrder = await page.locator('.post-heading').evaluate((heading) =>
+  [...heading.children].map((child) => child.classList.contains('meta') ? 'meta' : child.className || child.tagName)
+)
+expect(headingOrder.indexOf('H1')).toBeLessThan(headingOrder.indexOf('series-meta'))
+expect(headingOrder.lastIndexOf('meta')).toBe(headingOrder.indexOf('series-meta') - 1)
+```
+
+Keep the exact `Series:` copy/href assertion and the article-bottom ordering assertion.
+
+- [ ] **Step 2: Verify RED against the current production build**
+
+Run the focused Series Playwright file against the committed Task 3 production build.
+
+Expected: the Hero ordering assertion fails because `.series-meta` currently precedes `<h1>` and the date metadata.
+
+- [ ] **Step 3: Move only the Hero Series row**
+
+In `HuxHero`, remove the row from between Tags and `<h1>`, then render the same conditional `SeriesLink` after the `update` and `date` metadata spans. Do not change the link component, copy, href, bottom callout, tags, title, subtitle, or date logic.
+
+Adjust `.series-meta` margin/line-height only as needed to occupy the reference's lower Hero metadata area. Keep it left-aligned with the post heading and visually distinct from tag pills.
+
+- [ ] **Step 4: Correct both manuals**
+
+Change only the placement wording so both manuals say the Hero Series link appears below the Updated/Posted metadata. Keep all other Series authoring and routing documentation intact.
+
+- [ ] **Step 5: Verify GREEN and commit**
+
+Run:
+
+```bash
+yarn playwright test tests/playwright/series.spec.ts
+yarn contentlayer2 build
+yarn tsc --noEmit
+yarn lint
+```
+
+Expected: focused Series tests pass and all static checks exit 0.
+
+Stage only the five Task 4 files, excluding `next-env.d.ts`, and commit:
+
+```bash
+git commit -m "fix: align series metadata with article footer"
 ```
 
 ---
