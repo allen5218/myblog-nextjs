@@ -8,6 +8,8 @@ const mathPath = '/2021/04/30/typora-latex-mathjax/'
 const learningPath = '/2026/04/26/learning-how-to-learn/'
 const blockquotePath = '/2025/08/16/blockquote-test/'
 const kamiinaPath = '/2026/07/14/kamiina-botan-anime-review/'
+const newestPostPath = '/2026/07/25/openwiki-tame-agents-md/'
+const oldestPostPath = '/2021/04/30/typora-latex-mathjax/'
 const validAiUrl = `https://blog.allenspace.de${validAiPath}`
 const validAiUrlWithoutSlash = validAiUrl.replace(/\/$/, '')
 
@@ -296,6 +298,66 @@ test('mobile keynote is compact and light pager borders match the classic theme'
   const pagerLink = page.locator('.pager a').first()
   await expect(pagerLink).toBeVisible()
   await expect(pagerLink).toHaveCSS('border-color', 'rgb(221, 221, 221)')
+})
+
+test('mobile article pagers reserve boundary slots for every article position', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  for (const { path, items } of [
+    { path: kamiinaPath, items: ['previous', 'next'] },
+    { path: newestPostPath, items: ['previous'] },
+    { path: oldestPostPath, items: ['next'] },
+  ]) {
+    await page.goto(path)
+
+    const pager = page.locator('.post-container > .pager')
+    const pagerItems = pager.locator(':scope > li')
+    await expect(pagerItems).toHaveCount(items.length)
+    expect(
+      await pagerItems.evaluateAll((elements) => elements.map((element) => element.className))
+    ).toEqual(items)
+
+    const geometry = await pager.evaluate((pager, itemClasses) => {
+      const pagerRect = pager.getBoundingClientRect()
+      const items = itemClasses.map((itemClass) => {
+        const item = pager.querySelector<HTMLElement>(`.${itemClass}`)
+        if (!item) throw new Error(`Missing .${itemClass} pager item`)
+
+        const itemRect = item.getBoundingClientRect()
+        const linkRect = item.querySelector('a')!.getBoundingClientRect()
+        return {
+          itemClass,
+          left: itemRect.left,
+          right: itemRect.right,
+          width: itemRect.width,
+          linkLeft: linkRect.left,
+          linkRight: linkRect.right,
+        }
+      })
+
+      return {
+        pagerLeft: pagerRect.left,
+        pagerRight: pagerRect.right,
+        pagerWidth: pagerRect.width,
+        items,
+      }
+    }, items)
+
+    expect(geometry.pagerWidth).toBe(360)
+    for (const item of geometry.items) {
+      expect(item.width).toBe(172)
+      expect(item.linkLeft).toBeGreaterThanOrEqual(item.left)
+      expect(item.linkRight).toBeLessThanOrEqual(item.right)
+    }
+
+    const previous = geometry.items.find((item) => item.itemClass === 'previous')
+    if (previous) expect(previous.left).toBe(geometry.pagerLeft)
+
+    const next = geometry.items.find((item) => item.itemClass === 'next')
+    if (next) expect(next.right).toBe(geometry.pagerRight)
+  }
 })
 
 test('service worker keeps the cross-origin post hero image available', async ({ page }) => {
