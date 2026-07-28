@@ -33,6 +33,8 @@ conventions.
 - **Legacy-compatible URLs** — posts keep the Jekyll-era `/YYYY/MM/DD/slug/` permalinks
   (driven by front matter `date`), preserving SEO, feeds, inbound links, and giscus
   comment threads.
+- **Series reading paths** — optional `series` front matter groups related posts into
+  oldest-to-newest collection pages with links at both ends of each article.
 - **Bilingual about page** — `/about/` (繁體中文) and `/en/about/`, dictionary-driven,
   with permanent redirects from the old `?lang=` URLs.
 - **Dynamic social cards** — every page gets an auto-generated 1200×630 `og:image`/Twitter

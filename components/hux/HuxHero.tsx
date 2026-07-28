@@ -1,5 +1,6 @@
 import siteMetadata from '@/data/siteMetadata'
 import Link from '@/components/Link'
+import SeriesLink from '@/components/hux/SeriesLink'
 import { formatHuxDate } from '../../lib/hux-date'
 import { resolveHeroIframeSrc } from '@/lib/iframe'
 
@@ -11,6 +12,7 @@ type HuxHeroProps = {
   date?: string
   update?: string
   tags?: string[]
+  series?: string
   headerImg?: string
   headerBgCss?: string
   headerMask?: number | string
@@ -31,6 +33,7 @@ export default function HuxHero({
   date,
   update,
   tags,
+  series,
   headerImg,
   headerBgCss,
   headerMask,
@@ -94,6 +97,7 @@ export default function HuxHero({
                 ))}
               </div>
             )}
+            {series && <SeriesLink className="series-meta" series={series} />}
             <h1>{title}</h1>
             {subtitle && <h2 className="subheading">{subtitle}</h2>}
             {update && <span className="meta">Updated on {formatHuxDate(update)}</span>}

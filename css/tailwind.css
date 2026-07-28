@@ -398,6 +398,29 @@ body {
   padding-bottom: 8px;
 }
 
+.intro-header-post .series-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-bottom: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.intro-header-post .series-meta a {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.intro-header-post .series-meta a:hover,
+.intro-header-post .series-meta a:focus {
+  color: #66c7e0;
+}
+
 .site-heading h1 {
   margin: 0;
   color: #fff;
@@ -834,6 +857,33 @@ body {
 
 .post-container .prose :where(p) {
   margin: 25px 0;
+}
+
+.post-shell:not(.about-shell) > .post-container > .post-series-link {
+  margin-top: 32px;
+  border: 1px solid var(--hux-border);
+  border-left: 4px solid #0085a1;
+  background: var(--hux-quote-bg);
+  color: var(--hux-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 14px 16px;
+}
+
+.post-shell:not(.about-shell) > .post-container > .post-series-link a {
+  color: var(--hux-link);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.post-shell:not(.about-shell) > .post-container > .post-series-link a:hover,
+.post-shell:not(.about-shell) > .post-container > .post-series-link a:focus {
+  color: #0085a1;
+}
+
+.post-shell:not(.about-shell) > .post-container > .post-series-link + .pager {
+  margin-top: 20px;
 }
 
 .post-container .prose :where(h1, h2, h3, h4, h5, h6) {

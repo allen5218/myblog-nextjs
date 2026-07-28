@@ -16,6 +16,13 @@ async function openKbarViaHamburger(page) {
   await page.getByLabel('Toggle navigation').tap()
   const menu = page.getByRole('menu')
   await expect(menu.getByRole('menuitem', { name: 'Tags' })).toHaveCount(0)
+  await expect(menu.getByRole('menuitem')).toHaveText([
+    'Home',
+    'About',
+    'Series',
+    'Archive',
+    'Search',
+  ])
   await menu.getByRole('menuitem', { name: 'Search' }).tap()
   await expect(page.locator('input[aria-controls="kbar-listbox"]')).toBeVisible()
   // 漢堡選單必須已關閉,否則 kbar 的第一次 tap 會被它的 outside-click 吃掉

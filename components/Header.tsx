@@ -10,6 +10,7 @@ import MobileNavMenu from './MobileNavMenu'
 const huxNavLinks = [
   { href: '/', title: 'Home' },
   { href: '/about', title: 'About' },
+  { href: '/series', title: 'Series' },
   { href: '/archive', title: 'Archive' },
 ]
 
@@ -56,7 +57,7 @@ const Header = () => {
           {siteMetadata.headerTitle}
         </Link>
 
-        {/* 桌面版:維持舊站 Hux 橫排(Dark / Home / About / Archive / search) */}
+        {/* 桌面版:維持舊站 Hux 橫排(Dark / Home / About / Series / Archive / search) */}
         <div className="navbar-links">
           <div className="navbar-tools navbar-theme-tool">
             <ThemeSwitch />

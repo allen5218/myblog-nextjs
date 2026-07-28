@@ -33,3 +33,58 @@ test('sitemap contains the Series index and concrete collection URL', async ({ r
     `<loc>https://blog.allenspace.de/series/${encodeURI('ai-自維護的知識庫')}/</loc>`
   )
 })
+
+test('series posts link to their collection above and below the article', async ({ page }) => {
+  await page.goto('/2026/07/25/openwiki-tame-agents-md/')
+
+  const heading = page.locator('.post-heading')
+  const headingSeries = heading.locator('.series-meta')
+  await expect(headingSeries.getByText('Series:', { exact: true })).toBeVisible()
+  await expect(headingSeries.getByRole('link', { name: seriesName })).toHaveAttribute(
+    'href',
+    seriesPath
+  )
+  expect(
+    await heading.evaluate((element) => {
+      const tags = element.querySelector('.tags')
+      const series = element.querySelector('.series-meta')
+      const title = element.querySelector('h1')
+      return tags?.nextElementSibling === series && series?.nextElementSibling === title
+    })
+  ).toBe(true)
+
+  const postContainer = page.locator('.post-container')
+  const bottomSeries = postContainer.locator('.post-series-link')
+  await expect(bottomSeries.getByText('Series:', { exact: true })).toBeVisible()
+  await expect(bottomSeries.getByRole('link', { name: seriesName })).toHaveAttribute(
+    'href',
+    seriesPath
+  )
+  expect(
+    await postContainer.evaluate((element) => {
+      const prose = element.querySelector('.prose')
+      const series = element.querySelector('.post-series-link')
+      const pager = element.querySelector('.pager')
+      return prose?.nextElementSibling === series && series?.nextElementSibling === pager
+    })
+  ).toBe(true)
+})
+
+test('posts without a series omit both article-level collection links', async ({ page }) => {
+  await page.goto('/2026/07/14/kamiina-botan-anime-review/')
+
+  await expect(page.locator('.post-heading .series-meta')).toHaveCount(0)
+  await expect(page.locator('.post-container .post-series-link')).toHaveCount(0)
+})
+
+test('desktop primary navigation keeps the exact Series order', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+
+  await expect(page.locator('.navbar-links > a')).toHaveText([
+    'Home',
+    'About',
+    'Series',
+    'Archive',
+  ])
+})

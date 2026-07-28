@@ -32,6 +32,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `title`        | string      | ✅   | 顯示/SEO/搜尋/feed 標題與結構化資料 headline。                                                                                    |
 | `date`         | date        | ✅   | 發佈日期;決定 `/YYYY/MM/DD/` 網址前綴。                                                                                           |
 | `tags`         | string list |      | 標籤頁、archive 篩選、feed、文章頁首。標籤頁使用 slug 化名稱。                                                                    |
+| `series`       | string      |      | 選填的文章系列名稱;同名文章會收錄到同一個 Series 閱讀頁。                                                                         |
 | `update`       | date        |      | 顯示為更新日期;同時作為 sitemap/SEO 的 `lastmod`。                                                                                |
 | `draft`        | boolean     |      | 草稿在 production build 排除於列表、sitemap、RSS 與標籤計數。                                                                     |
 | `subtitle`     | string      |      | 顯示副標;也是 SEO/feed 的 `summary` 後備值。                                                                                      |
@@ -52,6 +53,19 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 
 以下欄位自動計算(不要手動設定):閱讀時間、目錄、摘要預覽(取內文約 200 字)、JSON-LD
 結構化資料。
+
+### 文章系列(Series)
+
+要把文章加入系列,在 front matter 寫一個字串:
+
+```yaml
+series: "AI 自維護的知識庫"
+```
+
+同名系列會出現在 `/series/` 索引與 `/series/[series]/` 閱讀頁。系列內順序直接由文章
+`date` 推導,由舊到新標示為 Part 1、Part 2……;**沒有也不需要手動排序欄位**。設定
+`series` 的文章會在 Hero 的 tags 下方、標題上方顯示系列連結,並在正文結束、全站原有
+上一篇／下一篇 pager 之前再顯示一次。這不會改變全站依日期排列的文章 pager。
 
 啟用目錄時,文章以 `##` 建立主章節,再依序使用 `###`、`####`。第一個 `##` 前的子標題
 不會出現在目錄;不要使用 `#####`／`######`,否則手機與桌面目錄會不一致。
@@ -162,7 +176,9 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 
 ### 導覽、側欄、作者
 
-- **手機漢堡選單連結**:`data/headerNavLinks.ts`(Home / Archive / About;不顯示 Tags)。
+- **桌面主導覽**:`components/Header.tsx`(Home / About / Series / Archive)。
+- **手機漢堡選單連結**:`data/headerNavLinks.ts`(Home / About / Series / Archive,
+  後接 Search;不顯示 Tags)。
 - **友站清單**(側欄 FRIENDS 區):寫死在 `components/hux/HuxSidebar.tsx` 頂部的
   `friends` 陣列。
 - **側欄 Featured Tags**:由標籤計數自動產生。
@@ -187,6 +203,8 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `/blog/`、`/blog/page/N/` | 舊網址,308 永久導向 `/` 或 `/pageN/`                 |
 | `/archive/`               | Archive 時間軸,含標籤篩選                            |
 | `/tags/`、`/tags/[tag]/`  | 標籤索引與各標籤列表(noindex;第 2 頁起才有 `page/N`) |
+| `/series/`                | Series 索引                                           |
+| `/series/[series]/`       | 單一系列閱讀頁,依日期由舊到新排列                    |
 | `/about/`、`/en/about/`   | 中英文 about 頁                                      |
 | `/offline/`               | PWA 離線後備頁                                       |
 | `/api/newsletter`         | 未設定供應商時停用(404)                              |
@@ -219,10 +237,11 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 
 - `feed.xml` — 主 RSS(已列出、非草稿文章),由 `scripts/rss.mjs` 在 postbuild 產生。
   各標籤 feed 在 `/tags/<tag>/feed.xml`(標籤沒有已列出文章時跳過)。
-- `sitemap.xml` — 首頁、`/archive/`、`/tags/`、兩個 about 頁(含語言 alternates)、已列出的
-  非草稿文章。**不收會轉址的網址**(如 `/blog/`),也不收 `/pageN/` 與各標籤頁(前者從
-  首頁 pager 直接可達,後者刻意 noindex)。首頁/封存/標籤索引的 `lastmod` 取自**最新
-  文章的日期**,不要改成 `new Date()` —— 那會讓每次部署都對爬蟲謊稱內容變動過。
+- `sitemap.xml` — 首頁、`/archive/`、`/tags/`、`/series/`、每個具體 Series 頁、兩個
+  about 頁(含語言 alternates)、已列出的非草稿文章。**不收會轉址的網址**(如
+  `/blog/`),也不收 `/pageN/` 與各標籤頁(前者從首頁 pager 直接可達,後者刻意
+  noindex)。首頁/封存/標籤索引的 `lastmod` 取自**最新文章的日期**,不要改成
+  `new Date()` —— 那會讓每次部署都對爬蟲謊稱內容變動過。
 - `robots.ts` — 標準 allow-all 加 sitemap 指標。
 - 文章頁輸出 JSON-LD `BlogPosting` 結構化資料與 OpenGraph/Twitter meta。
 
