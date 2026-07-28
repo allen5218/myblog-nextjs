@@ -312,33 +312,38 @@ test('mobile article pagers reserve boundary slots for every article position', 
   ]) {
     await page.goto(path)
 
-    const geometry = await page
-      .locator('.post-container > .pager')
-      .evaluate((pager, itemClasses) => {
-        const pagerRect = pager.getBoundingClientRect()
-        const items = itemClasses.map((itemClass) => {
-          const item = pager.querySelector<HTMLElement>(`.${itemClass}`)
-          if (!item) throw new Error(`Missing .${itemClass} pager item`)
+    const pager = page.locator('.post-container > .pager')
+    const pagerItems = pager.locator(':scope > li')
+    await expect(pagerItems).toHaveCount(items.length)
+    expect(
+      await pagerItems.evaluateAll((elements) => elements.map((element) => element.className))
+    ).toEqual(items)
 
-          const itemRect = item.getBoundingClientRect()
-          const linkRect = item.querySelector('a')!.getBoundingClientRect()
-          return {
-            itemClass,
-            left: itemRect.left,
-            right: itemRect.right,
-            width: itemRect.width,
-            linkLeft: linkRect.left,
-            linkRight: linkRect.right,
-          }
-        })
+    const geometry = await pager.evaluate((pager, itemClasses) => {
+      const pagerRect = pager.getBoundingClientRect()
+      const items = itemClasses.map((itemClass) => {
+        const item = pager.querySelector<HTMLElement>(`.${itemClass}`)
+        if (!item) throw new Error(`Missing .${itemClass} pager item`)
 
+        const itemRect = item.getBoundingClientRect()
+        const linkRect = item.querySelector('a')!.getBoundingClientRect()
         return {
-          pagerLeft: pagerRect.left,
-          pagerRight: pagerRect.right,
-          pagerWidth: pagerRect.width,
-          items,
+          itemClass,
+          left: itemRect.left,
+          right: itemRect.right,
+          width: itemRect.width,
+          linkLeft: linkRect.left,
+          linkRight: linkRect.right,
         }
-      }, items)
+      })
+
+      return {
+        pagerLeft: pagerRect.left,
+        pagerRight: pagerRect.right,
+        pagerWidth: pagerRect.width,
+        items,
+      }
+    }, items)
 
     expect(geometry.pagerWidth).toBe(360)
     for (const item of geometry.items) {
