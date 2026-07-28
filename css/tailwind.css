@@ -746,6 +746,74 @@ body {
   font-style: italic;
 }
 
+.series-index-item,
+.series-post-item {
+  border-bottom: 1px solid var(--hux-border);
+}
+
+.series-index-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+}
+
+.series-index-link {
+  color: var(--hux-link);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.series-index-link:hover {
+  color: #0085a1;
+}
+
+.series-post-count,
+.series-part-label {
+  color: var(--hux-muted);
+  font-size: 13px;
+}
+
+.series-post-list {
+  padding: 0;
+  list-style: none;
+}
+
+.series-post-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px 0;
+}
+
+.series-part-label {
+  padding-top: 20px;
+  font-weight: 700;
+}
+
+.series-post-list .post-preview {
+  padding: 0;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .series-index-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .series-post-item {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .series-part-label {
+    padding-top: 0;
+  }
+}
+
 .post-shell {
   display: block;
   width: min(1170px, 100vw);

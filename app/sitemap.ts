@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { allBlogs } from 'contentlayer/generated'
 import siteMetadata from '@/data/siteMetadata'
 import { localizedUrl } from '@/lib/i18n'
+import { collectSeries, seriesHref } from '@/lib/series'
 
 export const dynamic = 'force-static'
 
@@ -21,6 +22,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const latestPostDate = blogRoutes
     .map((route) => route.lastModified)
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0]
+
+  const seriesGroups = collectSeries(allBlogs)
+  const latestSeriesPostDate = seriesGroups
+    .flatMap((group) => group.posts)
+    .map((post) => post.lastmod || post.date)
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0]
+  const seriesRoutes = [
+    {
+      url: pageUrl('series'),
+      lastModified: latestSeriesPostDate,
+    },
+    ...seriesGroups.map((group) => {
+      const newestPost = group.posts.at(-1)
+
+      return {
+        url: encodeURI(pageUrl(seriesHref(group.name).slice(1))),
+        lastModified: newestPost?.lastmod || newestPost?.date,
+      }
+    }),
+  ]
 
   // 不收 /blog/(已永久導向 /)與 /pageN/(從首頁 pager 直接可達,且無獨立內容價值);
   // 單一標籤頁刻意 noindex,見 app/tags/[tag]/page.tsx。
@@ -49,5 +70,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ]
 
-  return [...routes, ...localizedRoutes, ...blogRoutes]
+  return [...routes, ...localizedRoutes, ...seriesRoutes, ...blogRoutes]
 }
