@@ -69,7 +69,8 @@ Named series appear in the `/series/` index and at `/series/[series]/`. Posts ar
 oldest to newest directly from their `date` and labeled Part 1, Part 2, …; there is **no
 manual ordering field**. All three supported layouts link a post with `series` to its
 collection in the header and after the article body. In `PostLayout`, the header link sits
-below the Hero Updated/Posted metadata and the body link sits before the existing site-wide
+immediately below the Hero Updated/Posted metadata in the sentence
+`Part of the [series name] series`; the body link sits before the existing site-wide
 previous/next pager. Series membership does not change that chronological pager. A series
 name cannot be blank and must produce a non-empty URL slug (so punctuation-only or emoji-only
 values are invalid). Hidden and draft posts do not participate. Distinct names may not collapse

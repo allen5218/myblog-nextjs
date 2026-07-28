@@ -14,5 +14,11 @@ export default function PostSeriesLink({ post, placement, className }: PostSerie
   const classes = ['post-series-link', `post-series-link-${placement}`, className]
     .filter(Boolean)
     .join(' ')
-  return <SeriesLink className={classes} series={identity.name} />
+  return (
+    <SeriesLink
+      className={classes}
+      series={identity.name}
+      variant={placement === 'top' ? 'sentence' : 'label'}
+    />
+  )
 }

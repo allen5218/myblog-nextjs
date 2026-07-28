@@ -13,7 +13,10 @@ Hard constraints:
 - **Map behavior to the tests that actually cover it.** Do not attribute mobile hamburger
   navigation to the Series spec: `tests/playwright/series.spec.ts` covers desktop Series order,
   while `tests/playwright/kbar-touch.spec.ts` covers the mobile hamburger order. When one
-  behavior spans specs, cite every relevant spec rather than collapsing the mapping.
+  behavior spans specs, cite every relevant spec rather than collapsing the mapping. Verify each
+  claimed contract against the test's actual assertions: in particular, the post-body `Series:`
+  label is asserted by `tests/playwright/series.spec.ts`, not
+  `tests/unit/series-rendering.test.ts`.
 - **Historical decisions must use stable evidence.** Never describe an older behavior change as
   being in “current HEAD”; HEAD changes after every commit. Cite the durable commit hash, source,
   or test that establishes the claim.

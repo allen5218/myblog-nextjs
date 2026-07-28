@@ -87,7 +87,7 @@ test('series posts link to their collection above and below the article', async 
 
   const heading = page.locator('.post-heading')
   const headingSeries = heading.locator('.series-meta')
-  await expect(headingSeries.getByText('Series:', { exact: true })).toBeVisible()
+  await expect(headingSeries).toHaveText(`Part of the ${seriesName} series`)
   await expect(headingSeries.getByRole('link', { name: seriesName })).toHaveAttribute(
     'href',
     seriesPath
@@ -111,21 +111,27 @@ test('series posts link to their collection above and below the article', async 
   ]) {
     await page.setViewportSize(viewport)
     const heroTypography = await heading.evaluate((element) => {
-      const posted = getComputedStyle(element.querySelector('.meta')!)
-      const seriesLabel = getComputedStyle(element.querySelector('.series-meta > span')!)
+      const postedElement = element.querySelector('.meta')!
+      const seriesElement = element.querySelector('.series-meta')!
+      const posted = getComputedStyle(postedElement)
+      const series = getComputedStyle(seriesElement)
+      const postedBounds = postedElement.getBoundingClientRect()
+      const seriesBounds = seriesElement.getBoundingClientRect()
       return {
         posted: {
           fontSize: posted.fontSize,
           fontStyle: posted.fontStyle,
         },
-        seriesLabel: {
-          fontSize: seriesLabel.fontSize,
-          fontStyle: seriesLabel.fontStyle,
+        series: {
+          fontSize: series.fontSize,
+          fontStyle: series.fontStyle,
         },
+        metadataGap: seriesBounds.top - postedBounds.bottom,
       }
     })
-    expect(heroTypography.seriesLabel).toEqual(heroTypography.posted)
-    expect(heroTypography.seriesLabel.fontStyle).toBe('italic')
+    expect(heroTypography.series).toEqual(heroTypography.posted)
+    expect(heroTypography.series.fontStyle).toBe('italic')
+    expect(Math.abs(heroTypography.metadataGap)).toBeLessThanOrEqual(0.5)
   }
 
   const postContainer = page.locator('.post-container')
