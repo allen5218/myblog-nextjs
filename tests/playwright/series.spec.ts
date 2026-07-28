@@ -44,14 +44,13 @@ test('series posts link to their collection above and below the article', async 
     'href',
     seriesPath
   )
-  expect(
-    await heading.evaluate((element) => {
-      const tags = element.querySelector('.tags')
-      const series = element.querySelector('.series-meta')
-      const title = element.querySelector('h1')
-      return tags?.nextElementSibling === series && series?.nextElementSibling === title
-    })
-  ).toBe(true)
+  const headingOrder = await page.locator('.post-heading').evaluate((heading) =>
+    [...heading.children].map((child) =>
+      child.classList.contains('meta') ? 'meta' : child.className || child.tagName
+    )
+  )
+  expect(headingOrder.indexOf('H1')).toBeLessThan(headingOrder.indexOf('series-meta'))
+  expect(headingOrder.lastIndexOf('meta')).toBe(headingOrder.indexOf('series-meta') - 1)
 
   const postContainer = page.locator('.post-container')
   const bottomSeries = postContainer.locator('.post-series-link')

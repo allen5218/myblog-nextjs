@@ -402,6 +402,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  margin-top: 16px;
   padding-bottom: 8px;
   color: rgba(255, 255, 255, 0.85);
   font-size: 13px;

@@ -97,7 +97,6 @@ export default function HuxHero({
                 ))}
               </div>
             )}
-            {series && <SeriesLink className="series-meta" series={series} />}
             <h1>{title}</h1>
             {subtitle && <h2 className="subheading">{subtitle}</h2>}
             {update && <span className="meta">Updated on {formatHuxDate(update)}</span>}
@@ -106,6 +105,7 @@ export default function HuxHero({
                 Posted by {author || siteMetadata.author} on {formatHuxDate(date)}
               </span>
             )}
+            {series && <SeriesLink className="series-meta" series={series} />}
           </div>
         )}
       </div>

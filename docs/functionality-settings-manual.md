@@ -68,7 +68,7 @@ series: "AI 自維護的知識庫"
 Named series appear in the `/series/` index and at `/series/[series]/`. Posts are ordered
 oldest to newest directly from their `date` and labeled Part 1, Part 2, …; there is **no
 manual ordering field**. A post with `series` links to its collection twice: below the Hero
-tags and above the title, then again after the article body and before the existing
+Updated/Posted date metadata, then again after the article body and before the existing
 site-wide previous/next pager. Series membership does not change that chronological pager.
 
 When the catalog is enabled, start article sections with `##`, then use `###` and `####` in
