@@ -247,6 +247,7 @@ export const Blog = defineDocumentType(() => ({
     title: { type: 'string', required: true },
     date: { type: 'date', required: true },
     tags: { type: 'list', of: { type: 'string' }, default: [] },
+    series: { type: 'string' },
     update: { type: 'date' },
     draft: { type: 'boolean' },
     subtitle: { type: 'string' },
