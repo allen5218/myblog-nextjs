@@ -34,7 +34,9 @@ conventions.
   (driven by front matter `date`), preserving SEO, feeds, inbound links, and giscus
   comment threads.
 - **Series reading paths** — optional `series` front matter groups related posts into
-  oldest-to-newest collection pages with links at both ends of each article.
+  statically generated oldest-to-newest collection pages. Series is available from the
+  desktop navigation and mobile hamburger menu; eligible posts link to the collection
+  below their header metadata and again after the article body.
 - **Bilingual about page** — `/about/` (繁體中文) and `/en/about/`, dictionary-driven,
   with permanent redirects from the old `?lang=` URLs.
 - **Dynamic social cards** — every page gets an auto-generated 1200×630 `og:image`/Twitter
@@ -46,8 +48,9 @@ conventions.
   client-side theme switching, and horizontal scroll on mobile instead of compression.
 - **Hardened by default** — strict CSP (no `unsafe-eval` in production), iframe host
   allowlist, scoped dependency resolutions, security headers.
-- **Verified** — Vitest unit tests plus a Playwright parity suite that pins the legacy-URL,
-  i18n, KaTeX, and Hux-visual-shell contracts.
+- **Verified** — Vitest unit tests plus a production-backed Playwright parity suite that
+  pins legacy URLs, Series routing and accessible interaction states, i18n, KaTeX, and
+  Hux visual-shell contracts.
 
 ## Quick Start
 
@@ -60,7 +63,7 @@ yarn dev          # http://localhost:3000
 | ------------------ | ---------------------------------- |
 | `yarn dev`         | Contentlayer watcher + dev server  |
 | `yarn start`       | Same flow as `yarn dev`            |
-| `yarn build`       | Contentlayer + production build + RSS/tag feeds |
+| `yarn build`       | Font checks + Contentlayer + production build + RSS/tag feeds |
 | `yarn serve`       | Serve the production build         |
 | `yarn lint`        | ESLint + Prettier (`--fix`)        |
 | `yarn test:unit`   | Vitest unit tests                  |
@@ -90,6 +93,10 @@ headlessly and fold any wiki updates into the same PR (the worktree must be clea
 it regenerates everything; it skips automatically when nothing meaningful changed). It is a
 paid model call and never runs automatically in CI or on `main`.
 
+`openwiki/INSTRUCTIONS.md` is the only OpenWiki file maintained by hand. If generated pages
+misstate a durable repository contract, add the source-grounded constraint there and regenerate;
+do not patch generated pages directly.
+
 進階用法(其他 provider、CI 整合、旗標)見 / For advanced usage (other providers, CI
 integration, flags) see the [OpenWiki repo](https://github.com/langchain-ai/openwiki).
 
@@ -103,7 +110,7 @@ dictionaries/         about-page i18n (zh-TW / en)
 app/                  App Router routes (incl. sw.ts, manifest.ts)
 components/hux/       Hux visual components (hero, sidebar, catalog, …)
 layouts/              post/list layouts
-lib/                  pagination, iframe allowlist, social-card generation
+lib/                  pagination, Series grouping, iframe allowlist, social-card generation
 scripts/              postbuild feeds + OG/site-font subsetting and validation tools
 docs/                 manuals and maintenance docs
 openwiki/             agent-facing codebase wiki (generated; see AGENTS.md)

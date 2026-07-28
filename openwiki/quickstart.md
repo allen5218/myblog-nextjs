@@ -1,6 +1,6 @@
 # Allen’s Blog — engineering quickstart
 
-This is a personal technical/life blog at `blog.allenspace.de`: a Next.js App Router migration of a Jekyll/Hux site. The project deliberately preserves legacy post URLs and Giscus discussion mapping while retaining the Hux visual language. Content is compiled from Markdown/MDX by Contentlayer; the application produces static-friendly pages, search/tag artifacts, feeds, metadata, and a PWA service worker.
+This is a personal technical/life blog at `blog.allenspace.de`: a Next.js App Router migration of a Jekyll/Hux site. The project deliberately preserves legacy post URLs and Giscus discussion mapping while retaining the Hux visual language. Content is compiled from Markdown/MDX by Contentlayer; the application produces static-friendly pages, search/tag/series discovery artifacts, feeds, metadata, and a PWA service worker.
 
 ## Start here
 
@@ -42,8 +42,8 @@ The human-facing comprehensive reference is the [English functionality and setti
 
 | Need | Start with |
 | --- | --- |
-| Write/change a post | `data/blog/`, [`contentlayer.config.ts`](../contentlayer.config.ts), [publishing guide](workflows/content-and-publishing.md) |
-| Change pages or route behavior | `app/`, [`lib/pagination.ts`](../lib/pagination.ts), [`lib/legacy-url.ts`](../lib/legacy-url.ts) |
+| Write/change a post | `data/blog/`, [`contentlayer.config.ts`](../contentlayer.config.ts), [`lib/series.ts`](../lib/series.ts) for series membership, [publishing guide](workflows/content-and-publishing.md) |
+| Change pages or route behavior | `app/`, [`lib/pagination.ts`](../lib/pagination.ts), [`lib/legacy-url.ts`](../lib/legacy-url.ts), [`lib/series.ts`](../lib/series.ts) for collections |
 | Change the visual shell | `layouts/`, `components/hux/`, [`css/tailwind.css`](../css/tailwind.css) |
 | Change site-wide config/integrations | [`data/siteMetadata.js`](../data/siteMetadata.js), [`next.config.mjs`](../next.config.mjs) |
 | Change generated fonts/diagrams | `font-data/chiron/`, `scripts/site-font-*.mjs`, `scripts/mermaid-*.mjs`; read the runbook first |

@@ -68,6 +68,8 @@ series: "AI 自維護的知識庫"
 `PostLayout` 的頁首連結位於 Hero 的 Updated/Posted 日期資訊下方,正文連結則在全站原有
 上一篇／下一篇 pager 之前。這不會改變全站依日期排列的文章 pager。系列名稱不能只含空白,
 也必須能產生非空白網址 slug(例如不能只寫標點或 emoji);不合法值會讓 build 失敗。
+隱藏文章與草稿不參與系列；不同系列名稱也不能正規化成同一個 slug。名稱不合法或發生
+碰撞時,Contentlayer 會直接失敗,不會產生含糊或無法抵達的路由。
 
 啟用目錄時,文章以 `##` 建立主章節,再依序使用 `###`、`####`。第一個 `##` 前的子標題
 不會出現在目錄;不要使用 `#####`／`######`,否則手機與桌面目錄會不一致。
@@ -401,7 +403,7 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 | `yarn update:og-font`   | 依目前內容重新下載並子集化 Chiron Sung HK OG 字體;需要 HarfBuzz CLI(§6)                                                                                 |
 | `yarn check:site-font`  | 驗證 committed 網站字型 schema、hash、corpus 與頁面 budget;加 `--full` 檢查 glyph/cmap/axis(§9)                                                         |
 | `yarn update:site-font` | 先 fresh build Contentlayer model,再產生 committed Chiron 網站字型 buckets;只有刻意單調擴張 core 時才加 `--rebuild-core`,只有文章預算超標時才加 `--rebalance`(§9)                                      |
-| `yarn mermaid:render`   | 把文章裡的 Mermaid 圖表渲染成淺/深雙 SVG,commit 到 `public/mermaid/`(§2);`--check` 只重渲染比對、不寫檔,快取過期時警告;需要本機安裝 Playwright Chromium |
+| `yarn mermaid:render`   | 把文章裡的 Mermaid 圖表渲染成淺/深雙 SVG,commit 到 `public/mermaid/`(§2);`--check` 只比對 fence hash 與 committed 檔案、不做渲染;一般渲染需安裝 Playwright Chromium |
 | `yarn analyze`          | 帶 bundle analyzer 的 webpack build(正常 build 仍使用 Turbopack)                                                                                        |
 
 操作注意:
@@ -453,28 +455,34 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   惡意主機拒絕)。
 - `tests/unit/pagination.test.ts` — 8 個測試,釘住分頁網址契約(第 1 頁沒有獨立網址、
   `/pageN/` 從 2 起算、不接受 `page1` 與前導零)。
-- `tests/unit/social-card.test.ts` — 10 個測試,涵蓋社群卡片背景選擇邏輯(`headerImg` >
+- `tests/unit/social-card.test.ts` — 涵蓋社群卡片背景選擇邏輯(`headerImg` >
   `headerBgCss` 漸層 > 品牌後備)、遠端網址原樣保留、漸層/圖片轉 PNG data URL、摘要後備
   (`subtitle` > preview),以及文章/一般頁社群卡片網址產生器。
 - `tests/unit/social-card-font.test.ts` — 1 個測試,確認 Chiron Sung HK 一般/粗體字體
   buffer 能正確載入給 `ImageResponse` 使用。
 - `tests/unit/og-font-text.test.ts` — 3 個測試,釘住 OG 字體文字蒐集的涵蓋範圍(文章 +
   字典 + 固定 UI 文案,排除 emoji),以及僅限 Vercel 才能跳過缺少 `hb-shape` 的政策。
-- `tests/playwright/blog-parity.spec.ts` — 10 個端到端契約:legacy 網址行為、隱藏文章排除、
+- `tests/unit/series.test.ts` 與 `tests/unit/series-rendering.test.ts` — 系列 identity、
+  無效 slug／碰撞拒絕、可見性、確定性閱讀順序、全成員 `lastmod`、共用連結資格與三種
+  文章版型的整合點。
+- `tests/playwright/blog-parity.spec.ts` — 端到端契約:legacy 網址行為、隱藏文章排除、
   KBar 搜尋(青色 active 結果 + legacy 導航)、KaTeX 無 MathJax、i18n about 路由、
   Hux 視覺外殼 parity、文章 hero/導覽幾何、blockquote 長字串換行、MDX 增強器
   (響應式媒體 + Medium Zoom)、手機版 keynote/pager 尺寸與配色、service worker 的跨網域
   hero 圖。
-- `tests/playwright/pagination.spec.ts` — 10 個契約:所有文章列表(首頁、分頁、標籤頁)
+- `tests/playwright/pagination.spec.ts` — 驗證所有文章列表(首頁、分頁、標籤頁)
   不預取文章內頁 RSC、點擊時才抓(帶 positive control,偵測器失效會先被抓到)、
   「Older Posts」一次點擊抵達真正不同的一頁、舊 `/blog/*` 轉址、sitemap 的內容與
   `lastmod` 誠實性。
+- `tests/playwright/series.spec.ts` — 靜態索引／詳細頁、未知系列 404、sitemap、文章連結
+  與位置、排除規則、桌機導覽順序,以及明暗主題下的預設、hover、鍵盤 focus 對比。手機
+  漢堡選單順序由 `tests/playwright/kbar-touch.spec.ts` 覆蓋。
 - `tests/unit/site-font-*.test.ts` — 網站字型管線的單元測試群(corpus 蒐集、分桶計畫、
   canonical CSS、交易式產物更新、checker 的 schema/歷史/budget 驗證與 CLI 轉交),
   含證明各檢查欄位被破壞時會失敗的 mutation tests。
-- `tests/playwright/site-font-loading.spec.ts` — 4 個契約:首頁只請求 core 且帶 immutable
-  快取 header、兩篇代表文章依 DOM code point 選片並維持可變字重、SW install 只預抓
-  core 不碰 supplemental buckets。
+- `tests/playwright/site-font-loading.spec.ts` — 首頁只請求 core 且帶 immutable 快取
+  header；**每一篇文章**都依 rendered DOM code point 驗證選片、request/byte budget 與
+  可變字重；SW install 只預抓 core,不碰 supplemental buckets。
 - `tests/playwright/serwist-precache.spec.ts` — 2 個契約:precache 內容恰為離線後備頁
   與其呈現依賴,以及清空 HTTP cache 後離線導航仍得到與線上一致(樣式 + hydration)的
   後備頁。
@@ -482,8 +490,8 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   配色、手機版滿版出血,以及返回頂部按鈕的形狀、位置與明暗 hover 配色。
 - `tests/playwright/social-card.spec.ts` — 4 個契約,涵蓋首頁、漸層背景文章、header 圖片
   文章,以及品牌化的 hub/分頁社群卡片。
-- 出貨前的完整驗證慣例:`yarn tsc --noEmit && yarn lint && yarn build && yarn test:unit
-&& yarn test:parity`。
+- 乾淨 checkout 出貨前的完整驗證慣例:`yarn contentlayer2 build && yarn tsc --noEmit
+&& yarn lint && yarn build && yarn test:unit && yarn test:parity`。
 - `faq/` 目錄保留三份上游 starter 指南(自訂 MDX 元件、KBar 客製、Docker 部署)作為參考。
 
 ## 12. 授權

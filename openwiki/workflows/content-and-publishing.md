@@ -14,6 +14,7 @@ Blog posts are Markdown/MDX files under `data/blog/`; author profiles are MDX un
 | `hidden` | Sets computed `listed: false`; excludes the post from listing/search/tag count surfaces. |
 | `update`, `subtitle`, `images`, `canonicalUrl` | Feed/metadata/preview support; `update` becomes `lastmod` when available. |
 | `headerImg`, `headerBgCss`, `headerMask` | Hux hero and social-card presentation. |
+| `series` | Optional collection name. Visible, non-draft posts with the same normalized name form an oldest-to-newest static reading path; the post links to it in the hero and after its body. Blank/missing values are ignored. Nonblank values must normalize to a non-empty `github-slugger` slug and distinct names may not collapse to the same slug, or Contentlayer generation fails. |
 | `catalog` | Defaults to visible; set false to suppress desktop/mobile article navigation. |
 | `bibliography`, `mathjax`, `mermaid`, `iframe` | Content capability/configuration fields. |
 
@@ -25,7 +26,7 @@ The schema also computes reading time, table-of-contents headings, summary/previ
 
 - remark plugins for front matter extraction, GFM, code titles, math, image JSX conversion, GitHub-style alerts, and responsive iframe normalization;
 - rehype plugins for **Mermaid before Prism**, heading IDs/anchors, KaTeX, citations sourced from `data/`, Prism highlighting, and minification;
-- post-success generation of `app/tag-data.json` and `public/search.json` (when local KBar search is selected).
+- post-success validation of the full series collection set, then generation of `app/tag-data.json` and `public/search.json` (when local KBar search is selected).
 
 Mermaid must precede Prism: Prism rewrites code markup, after which the Mermaid plugin cannot recognize the original fence and silently falls back to a normal code block. Responsive iframes are only wrapped when their source passes the allowlist in [`lib/iframe.ts`](../../lib/iframe.ts).
 
@@ -46,7 +47,7 @@ Mermaid must precede Prism: Prism rewrites code markup, after which the Mermaid 
 | `app/tag-data.json` | Contentlayer `onSuccess` | tags from listed posts; drafts additionally excluded in production |
 | `public/search.json` | Contentlayer `onSuccess` | listed posts |
 | `feed.xml`, `tags/<tag>/feed.xml` | [`scripts/rss.mjs`](../../scripts/rss.mjs) after Next build | only non-draft, listed posts; fields are XML-escaped |
-| sitemap | [`app/sitemap.ts`](../../app/sitemap.ts) | canonical posts and core hubs; not pagination combinations |
+| sitemap | [`app/sitemap.ts`](../../app/sitemap.ts) | canonical posts, core hubs, and series index/detail pages; not pagination combinations. A collection’s `lastModified` is its latest member `lastmod` or date. |
 | post Open Graph PNG | post `opengraph-image` route + shared social-card renderer | derived from post metadata/header configuration |
 
 `yarn build` is intentionally sequenced as font checks → Contentlayer → site-font validation → Next build → RSS. It is not equivalent to calling `next build` directly.
@@ -61,10 +62,11 @@ The current homepage is the first paginated list. `/blog` and legacy list pagina
 
 - **Schema or content transform:** [`contentlayer.config.ts`](../../contentlayer.config.ts), then unit tests that cover the transform.
 - **Post route/rendering:** [`app/[year]/[month]/[day]/[slug]/page.tsx`](../../app/%5Byear%5D/%5Bmonth%5D/%5Bday%5D/%5Bslug%5D/page.tsx), [`layouts/PostLayout.tsx`](../../layouts/PostLayout.tsx).
+- **Series membership or collection route:** [`lib/series.ts`](../../lib/series.ts), [`app/series/`](../../app/series), post layouts, [`app/sitemap.ts`](../../app/sitemap.ts), and the series unit/Playwright specs.
 - **Pagination:** [`lib/pagination.ts`](../../lib/pagination.ts), home/tag pages, and [`tests/playwright/pagination.spec.ts`](../../tests/playwright/pagination.spec.ts).
 - **RSS:** [`scripts/rss.mjs`](../../scripts/rss.mjs) and legacy-path tests.
 - **Search/tag behavior:** schema success hooks, `app/tag-data.json`, and `data/siteMetadata.js` search configuration.
 
 ## What recent history explains
 
-The migration prioritizes observable legacy parity rather than a generic starter-blog design. Recent UI work added a mobile TOC and hardened hash/catalog navigation; current HEAD restored reading widths at middle breakpoints after the large-screen grid approach regressed tablets. The related browser tests are the best specification when changing content presentation.
+The migration prioritizes observable legacy parity rather than a generic starter-blog design. Recent UI work added a mobile TOC and hardened hash/catalog navigation; commit `cae7df1` restored reading widths at middle breakpoints after the large-screen grid approach regressed tablets. [`tests/playwright/article-width.spec.ts`](../../tests/playwright/article-width.spec.ts) is the browser specification for that restoration; the related browser tests are the best specification when changing content presentation.

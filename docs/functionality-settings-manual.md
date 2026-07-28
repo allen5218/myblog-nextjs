@@ -72,7 +72,9 @@ collection in the header and after the article body. In `PostLayout`, the header
 below the Hero Updated/Posted metadata and the body link sits before the existing site-wide
 previous/next pager. Series membership does not change that chronological pager. A series
 name cannot be blank and must produce a non-empty URL slug (so punctuation-only or emoji-only
-values are invalid); invalid values fail the build.
+values are invalid). Hidden and draft posts do not participate. Distinct names may not collapse
+to the same slug; invalid names or collisions fail Contentlayer generation instead of producing
+ambiguous or broken routes.
 
 When the catalog is enabled, start article sections with `##`, then use `###` and `####` in
 order. Child headings before the first `##` are omitted. Do not use `#####` or `######`,
@@ -454,7 +456,7 @@ authored social image anywhere in the repo.
 | `yarn update:og-font`   | Re-download and re-subset the Chiron Sung HK OG font for current content; requires the HarfBuzz CLI (§6)                                                                                                         |
 | `yarn check:site-font`  | Verify committed site-font schema, hashes, corpus and page budgets; add `--full` for glyph/cmap/axis checks (§9)                                                                                                 |
 | `yarn update:site-font` | Freshly build the Contentlayer model, then regenerate committed Chiron site-font buckets; add `--rebuild-core` only for an intentional monotonic core expansion, and `--rebalance` only when the article budget fails (§9)                                           |
-| `yarn mermaid:render`   | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` re-renders and warns without writing if the committed cache is stale; requires Playwright Chromium locally |
+| `yarn mermaid:render`   | Render Mermaid diagrams in posts to committed light/dark SVGs under `public/mermaid/` (§2); `--check` only compares fence hashes with committed files and warns without rendering; normal rendering requires Playwright Chromium locally |
 | `yarn analyze`          | Webpack build with bundle analyzer (normal builds stay on Turbopack)                                                                                                                                             |
 
 Operational caveats:
@@ -512,7 +514,7 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   subdomain matching, malicious-host rejection).
 - `tests/unit/pagination.test.ts` — 8 tests pinning the pagination URL contract (page 1 has
   no URL of its own; `/pageN/` starts at 2; no `page1` or leading zeros).
-- `tests/unit/social-card.test.ts` — 10 tests covering social-card background selection
+- `tests/unit/social-card.test.ts` — tests covering social-card background selection
   (`headerImg` > `headerBgCss` gradient > brand fallback), remote-URL passthrough, gradient/
   image rasterization to PNG data URLs, summary fallback (`subtitle` > preview), and the
   post/page social-card URL builders.
@@ -521,23 +523,30 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
 - `tests/unit/og-font-text.test.ts` — 3 tests pinning the OG font text-collection coverage
   (posts + dictionaries + fixed UI copy, emoji excluded) and the Vercel-only `hb-shape`-skip
   policy.
-- `tests/playwright/blog-parity.spec.ts` — 10 end-to-end contracts: legacy URL behavior,
+- `tests/unit/series.test.ts` and `tests/unit/series-rendering.test.ts` — series identity,
+  invalid-slug and collision rejection, visibility, deterministic reading order, member-wide
+  `lastmod`, shared link eligibility, and all supported post-layout integration points.
+- `tests/playwright/blog-parity.spec.ts` — end-to-end contracts for legacy URL behavior,
   hidden-post exclusion, KBar search (cyan active result + legacy navigation),
   KaTeX-without-MathJax, i18n about routes, Hux visual shell parity, post hero/nav geometry,
   blockquote long-string wrapping, MDX enhancers (responsive media + Medium Zoom), mobile
   keynote/pager sizing and colors, and the service worker's cross-origin hero image.
-- `tests/playwright/pagination.spec.ts` — 10 contracts: every post list surface (homepage,
+- `tests/playwright/pagination.spec.ts` — contracts ensuring every post list surface (homepage,
   pagination, tag pages) skips article RSC prefetch and only fetches on click (with a positive
   control so a stale detector fails first), one-click "Older Posts" reaching a
   genuinely different page, the legacy `/blog/*` redirects, and the sitemap's contents and
   `lastmod` honesty.
+- `tests/playwright/series.spec.ts` — static index/detail routes, unknown-series 404s, sitemap
+  entries, article links and placement, omission rules, desktop navigation order, and
+  default/hover/keyboard-focus contrast in both themes. Mobile hamburger order is covered by
+  `tests/playwright/kbar-touch.spec.ts`.
 - `tests/unit/site-font-*.test.ts` — unit suites for the site-font pipeline (corpus collection,
   bucket planning, canonical CSS, transactional artifact updates, the checker's
   schema/history/budget validation, and CLI forwarding), including mutation tests proving each
   validated field fails when broken.
-- `tests/playwright/site-font-loading.spec.ts` — 4 contracts: the homepage requests only the core
-  artifact with immutable cache headers, two representative articles select shards by rendered
-  DOM code points while keeping variable weights, and SW install prefetches core only, never
+- `tests/playwright/site-font-loading.spec.ts` — the homepage requests only the core artifact
+  with immutable cache headers; **every article** is measured against its rendered DOM code
+  points, request/byte budgets, and variable weights; SW install prefetches core only, never
   supplemental buckets.
 - `tests/playwright/serwist-precache.spec.ts` — 2 contracts: the precache holds exactly the
   offline fallback page plus its presentation dependencies, and offline navigation after clearing
@@ -547,8 +556,8 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   and light/dark hover colors.
 - `tests/playwright/social-card.spec.ts` — 4 contracts covering the home, gradient-backed
   post, header-image post, and branded hub/pagination social cards.
-- Full verification convention before shipping: `yarn tsc --noEmit && yarn lint && yarn
-build && yarn test:unit && yarn test:parity`.
+- Full verification convention before shipping from a clean checkout: `yarn contentlayer2
+build && yarn tsc --noEmit && yarn lint && yarn build && yarn test:unit && yarn test:parity`.
 - The `faq/` directory keeps three upstream starter guides (custom MDX components, KBar
   customization, Docker deploys) as reference material.
 
