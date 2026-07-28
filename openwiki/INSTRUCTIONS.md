@@ -26,6 +26,10 @@ Required corrections for existing generated pages:
 - In `openwiki/workflows/content-and-publishing.md`, the reading-width history must not say
   “current HEAD restored reading widths.” Attribute the restoration to stable commit `cae7df1`
   and the article-width browser tests instead.
+- When documenting Series post-hero typography, distinguish the base/mobile rule (16px) from
+  the `min-width: 768px` desktop rule (20px). Both use the same italic style, weight, and line
+  height as Posted/Updated metadata. Do not describe “base” and “mobile” as separate breakpoints,
+  and cite viewport coverage only when the Series browser test measures both 375px and 1200px.
 
 - **Keep these page paths stable.** `AGENTS.md` links directly to `openwiki/quickstart.md`, `openwiki/architecture/overview.md`, and `openwiki/operations/runbook.md`, and relies on them covering the build/command sequence, the Chiron font pipeline and its required CLIs, the article width breakpoints, and the Mermaid troubleshooting checklist. Do not rename, merge, or drop these pages, and do not move that material elsewhere — the rules file deliberately delegates it here instead of duplicating it.
 

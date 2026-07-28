@@ -105,6 +105,28 @@ test('series posts link to their collection above and below the article', async 
     )
   expect(headingOrder.indexOf('H1')).toBeLessThan(headingOrder.indexOf('series-meta'))
   expect(headingOrder.lastIndexOf('meta')).toBe(headingOrder.indexOf('series-meta') - 1)
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 1200, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport)
+    const heroTypography = await heading.evaluate((element) => {
+      const posted = getComputedStyle(element.querySelector('.meta')!)
+      const seriesLabel = getComputedStyle(element.querySelector('.series-meta > span')!)
+      return {
+        posted: {
+          fontSize: posted.fontSize,
+          fontStyle: posted.fontStyle,
+        },
+        seriesLabel: {
+          fontSize: seriesLabel.fontSize,
+          fontStyle: seriesLabel.fontStyle,
+        },
+      }
+    })
+    expect(heroTypography.seriesLabel).toEqual(heroTypography.posted)
+    expect(heroTypography.seriesLabel.fontStyle).toBe('italic')
+  }
 
   const postContainer = page.locator('.post-container')
   const bottomSeries = postContainer.locator('.post-series-link')
