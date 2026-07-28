@@ -26,7 +26,7 @@ Vitest is node-only and includes only `tests/unit/**/*.test.ts` ([`vitest.config
 | Content/Mermaid transform | [`rehype-mermaid.test.ts`](../../tests/unit/rehype-mermaid.test.ts) covers hash/cache lookup and fallback behavior. |
 | Social cards | font loading and card rendering paths. |
 | Pagination | URL/page-count semantics. |
-| Series domain/rendering | [`series.test.ts`](../../tests/unit/series.test.ts) covers normalized identities, visibility, collision rejection, locale-independent reading order, encoded route lookup, and member-wide modification dates; [`series-rendering.test.ts`](../../tests/unit/series-rendering.test.ts) pins link eligibility and article placement. |
+| Series domain/rendering | [`series.test.ts`](../../tests/unit/series.test.ts) covers normalized identities, visibility, collision rejection, locale-independent reading order, encoded route lookup, and member-wide modification dates; [`series-rendering.test.ts`](../../tests/unit/series-rendering.test.ts) pins link eligibility, top/bottom placement, and the rendered Hero sentence/order. |
 | Font pipeline | source metadata, code-point planning, generation, command parsing, validation policy, and rollback/failure behavior in `site-font-*.test.ts`; epoch-advance checks also require the exact deterministic rebalance output, and a missing base epoch remains history-protected. |
 
 Add unit coverage when changing a pure policy, parser/transform, cache key, or transactional generation invariant. In particular, security allowlists and font assignment behavior must not rely only on end-to-end coverage.
@@ -41,7 +41,7 @@ Important contract groups include:
 | --- | --- |
 | Legacy post URLs, redirect/search/feed/sitemap semantics, i18n | [`blog-parity.spec.ts`](../../tests/playwright/blog-parity.spec.ts) |
 | Home/tag pagination | [`pagination.spec.ts`](../../tests/playwright/pagination.spec.ts) |
-| Series index/detail routes, sitemap, article entry points, light/dark contrast, **post-hero Series metadata matching Posted/Updated at 375px and 1200px**, and **desktop** primary-navigation order | [`series.spec.ts`](../../tests/playwright/series.spec.ts) |
+| Series index/detail routes, sitemap, Hero sentence/link/order and its zero added metadata gap, post-body `Series:` label/placement, light/dark contrast, **post-hero Series metadata matching Posted/Updated at 375px and 1200px**, and **desktop** primary-navigation order | [`series.spec.ts`](../../tests/playwright/series.spec.ts) |
 | **Mobile** hamburger navigation order (and Search’s one-tap KBar transition) | [`kbar-touch.spec.ts`](../../tests/playwright/kbar-touch.spec.ts) |
 | Hux visual shell and responsive post widths | [`article-width.spec.ts`](../../tests/playwright/article-width.spec.ts), `blog-parity.spec.ts` |
 | Article hash/catalog/mobile ToC | [`catalog.spec.ts`](../../tests/playwright/catalog.spec.ts) |
