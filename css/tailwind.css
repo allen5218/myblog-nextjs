@@ -407,9 +407,6 @@ body {
   margin-top: 16px;
   padding-bottom: 8px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .intro-header-post .series-meta a {
@@ -466,6 +463,10 @@ body {
 .post-heading .meta {
   display: block;
   color: #fff;
+}
+
+.post-heading .meta,
+.post-heading .series-meta {
   font-size: 16px;
   font-style: italic;
   font-weight: 300;
@@ -1619,7 +1620,8 @@ body {
     line-height: 42px;
   }
 
-  .post-heading .meta {
+  .post-heading .meta,
+  .post-heading .series-meta {
     font-size: 20px;
     line-height: 22px;
   }
