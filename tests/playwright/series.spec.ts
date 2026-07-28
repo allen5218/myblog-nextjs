@@ -24,6 +24,35 @@ function contrastRatio(foreground: string, background: string) {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
+async function setTheme(page: import('@playwright/test').Page, theme: 'light' | 'dark') {
+  await page.emulateMedia({ colorScheme: theme })
+  await page
+    .locator('html')
+    .evaluate((element, dark) => element.classList.toggle('dark', dark), theme === 'dark')
+}
+
+async function colorsFor(
+  foreground: import('@playwright/test').Locator,
+  background: import('@playwright/test').Locator
+) {
+  return {
+    foreground: await foreground.evaluate((element) => getComputedStyle(element).color),
+    background: await background.evaluate((element) => getComputedStyle(element).backgroundColor),
+  }
+}
+
+async function focusWithKeyboard(
+  page: import('@playwright/test').Page,
+  target: import('@playwright/test').Locator
+) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  for (let attempts = 0; attempts < 200; attempts += 1) {
+    await page.keyboard.press('Tab')
+    if (await target.evaluate((element) => document.activeElement === element)) return
+  }
+  throw new Error('Target did not receive keyboard focus')
+}
+
 test('Series index links to the statically generated collection', async ({ page }) => {
   await page.goto('/series/')
   await expect(page.locator('.site-heading h1')).toHaveText('Series')
@@ -138,6 +167,59 @@ test('new Series secondary labels meet WCAG AA in light and dark themes', async 
       4.5
     )
   }
+})
+
+test('Series interactive states remain visible and meet WCAG AA in light and dark themes', async ({
+  page,
+}) => {
+  for (const theme of ['light', 'dark'] as const) {
+    const checks = [
+      {
+        path: '/series/',
+        link: '.series-index-link',
+        background: 'body',
+      },
+      {
+        path: encodedSeriesPath,
+        link: '.series-post-list .post-preview > a',
+        background: 'body',
+      },
+      {
+        path: '/2026/07/25/openwiki-tame-agents-md/',
+        link: '.post-series-link-bottom a',
+        background: '.post-series-link-bottom',
+      },
+    ]
+
+    for (const check of checks) {
+      await page.goto(check.path)
+      await setTheme(page, theme)
+      const link = page.locator(check.link)
+      const background = page.locator(check.background)
+      const resting = await link.evaluate((element) => getComputedStyle(element).color)
+
+      await link.hover()
+      const hover = await colorsFor(link, background)
+      expect(contrastRatio(hover.foreground, hover.background)).toBeGreaterThanOrEqual(4.5)
+      expect(hover.foreground).not.toBe(resting)
+
+      await page.mouse.move(0, 0)
+      await focusWithKeyboard(page, link)
+      const focus = await colorsFor(link, background)
+      expect(contrastRatio(focus.foreground, focus.background)).toBeGreaterThanOrEqual(4.5)
+      expect(focus.foreground).not.toBe(resting)
+    }
+  }
+})
+
+test('dark mode keeps Hero Series metadata translucent white over its image', async ({ page }) => {
+  await page.goto('/2026/07/25/openwiki-tame-agents-md/')
+  await setTheme(page, 'dark')
+
+  const heroColor = await page
+    .locator('.intro-header-post .series-meta')
+    .evaluate((element) => getComputedStyle(element).color)
+  expect(heroColor).toBe('rgba(255, 255, 255, 0.85)')
 })
 
 test('desktop primary navigation keeps the exact Series order', async ({ page }) => {
