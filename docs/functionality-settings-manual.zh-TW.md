@@ -65,7 +65,8 @@ series: "AI 自維護的知識庫"
 同名系列會出現在 `/series/` 索引與 `/series/[series]/` 閱讀頁。系列內順序直接由文章
 `date` 推導,由舊到新標示為 Part 1、Part 2……;**沒有也不需要手動排序欄位**。設定
 `series` 的文章在三種支援版型都會於頁首與正文結束處各顯示一次系列連結;
-`PostLayout` 的頁首連結位於 Hero 的 Updated/Posted 日期資訊下方,正文連結則在全站原有
+`PostLayout` 的頁首以 `Part of the [系列名稱] series` 句型顯示連結,緊接在 Hero 的
+Updated/Posted 日期資訊下方;正文連結則在全站原有
 上一篇／下一篇 pager 之前。這不會改變全站依日期排列的文章 pager。系列名稱不能只含空白,
 也必須能產生非空白網址 slug(例如不能只寫標點或 emoji);不合法值會讓 build 失敗。
 隱藏文章與草稿不參與系列；不同系列名稱也不能正規化成同一個 slug。名稱不合法或發生

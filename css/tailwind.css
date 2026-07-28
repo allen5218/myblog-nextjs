@@ -401,10 +401,7 @@ body {
 }
 
 .intro-header-post .series-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 16px;
+  margin-top: 0;
   padding-bottom: 8px;
   color: rgba(255, 255, 255, 0.85);
 }

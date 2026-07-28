@@ -47,7 +47,10 @@ describe('series rendering', () => {
     )
 
     expect(html.indexOf('Updated on')).toBeLessThan(html.indexOf('Posted by'))
-    expect(html.indexOf('Posted by')).toBeLessThan(html.indexOf('Series:'))
+    expect(html.indexOf('Posted by')).toBeLessThan(html.indexOf('Part of the'))
+    expect(html).toMatch(
+      /Part of the <a [^>]*href="\/series\/fixture-series"[^>]*>Fixture Series<\/a> series/
+    )
   })
 
   test.each([
