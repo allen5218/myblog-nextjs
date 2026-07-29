@@ -403,12 +403,16 @@ body {
 .intro-header-post .series-meta {
   margin-top: 0;
   padding-bottom: 8px;
-  color: rgba(255, 255, 255, 0.85);
 }
 
+/* 這行是 Hero metadata 的一部分,整句(含連結)必須跟 Posted by 同色同字重,
+   只靠底線標示可點。inherit 是必要的 —— 單純刪掉這兩個宣告的話,
+   .post-series-link-top a 的內文樣式(強調色 + 700)會遞補上來。
+   顏色的權威在下面的 .post-heading .meta, .post-heading .series-meta:它同為兩個
+   class 但排在後面,所以在上面那個 .intro-header-post .series-meta 加 color 會靜默失效。 */
 .intro-header-post .series-meta a {
-  color: #fff;
-  font-weight: 700;
+  color: inherit;
+  font-weight: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -459,11 +463,11 @@ body {
 
 .post-heading .meta {
   display: block;
-  color: #fff;
 }
 
 .post-heading .meta,
 .post-heading .series-meta {
+  color: #fff;
   font-size: 16px;
   font-style: italic;
   font-weight: 300;
