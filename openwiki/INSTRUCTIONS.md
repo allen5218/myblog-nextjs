@@ -33,6 +33,11 @@ Required corrections for existing generated pages:
   the `min-width: 768px` desktop rule (20px). Both use the same italic style, weight, and line
   height as Posted/Updated metadata. Do not describe “base” and “mobile” as separate breakpoints,
   and cite viewport coverage only when the Series browser test measures both 375px and 1200px.
+  The hero sentence's own link is part of that shared treatment: its color and weight match
+  Posted/Updated and only an underline marks it as a link. Do not describe the hero Series
+  metadata as translucent, accent-colored, or bold — that was the earlier treatment, and the
+  article-body `Series:` link (which does keep its accent color and bold weight) is a separate
+  rule set that this alignment deliberately leaves untouched.
 
 - **Keep these page paths stable.** `AGENTS.md` links directly to `openwiki/quickstart.md`, `openwiki/architecture/overview.md`, and `openwiki/operations/runbook.md`, and relies on them covering the build/command sequence, the Chiron font pipeline and its required CLIs, the article width breakpoints, and the Mermaid troubleshooting checklist. Do not rename, merge, or drop these pages, and do not move that material elsewhere — the rules file deliberately delegates it here instead of duplicating it.
 

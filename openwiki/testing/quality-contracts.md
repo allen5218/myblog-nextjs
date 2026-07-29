@@ -41,7 +41,7 @@ Important contract groups include:
 | --- | --- |
 | Legacy post URLs, redirect/search/feed/sitemap semantics, i18n | [`blog-parity.spec.ts`](../../tests/playwright/blog-parity.spec.ts) |
 | Home/tag pagination | [`pagination.spec.ts`](../../tests/playwright/pagination.spec.ts) |
-| Series index/detail routes, sitemap, Hero sentence/link/order and its zero added metadata gap, post-body `Series:` label/placement, light/dark contrast, **post-hero Series metadata matching Posted/Updated at 375px and 1200px**, and **desktop** primary-navigation order | [`series.spec.ts`](../../tests/playwright/series.spec.ts) |
+| Series index/detail routes, sitemap, Hero sentence/link/order and its zero added metadata gap, post-body `Series:` label/placement, light/dark contrast, **post-hero Series metadata and its link matching Posted/Updated in color, size, italic style, and weight at 375px and 1200px** (the link is underlined at rest and has theme-independent hover color), the body link retaining distinct bold/accent treatment, and **desktop** primary-navigation order | [`series.spec.ts`](../../tests/playwright/series.spec.ts) |
 | **Mobile** hamburger navigation order (and Search’s one-tap KBar transition) | [`kbar-touch.spec.ts`](../../tests/playwright/kbar-touch.spec.ts) |
 | Hux visual shell and responsive post widths | [`article-width.spec.ts`](../../tests/playwright/article-width.spec.ts), `blog-parity.spec.ts` |
 | Article hash/catalog/mobile ToC | [`catalog.spec.ts`](../../tests/playwright/catalog.spec.ts) |
@@ -57,7 +57,7 @@ Important contract groups include:
 | If you change… | Minimum validation |
 | --- | --- |
 | post schema, canonical URLs, pagination, tag/search/feed filtering | Contentlayer build, related unit tests, `pagination`/`blog-parity` browser specs |
-| series front matter, collection grouping/routes, or collection styling | Contentlayer build, `series.test.ts` and `series-rendering.test.ts`, then production-backed `series.spec.ts`; preserve hidden/draft exclusion, static 404 behavior, accessible hover/focus states in both themes, and matching post-hero metadata typography at its 375px/1200px assertions |
+| series front matter, collection grouping/routes, or collection styling | Contentlayer build, `series.test.ts` and `series-rendering.test.ts`, then production-backed `series.spec.ts`; preserve hidden/draft exclusion, static 404 behavior, accessible hover/focus states in both themes, the 375px/1200px Hero metadata/link alignment with Posted/Updated, and the distinct article-body link treatment |
 | Hux CSS, hero, article layout, catalog | targeted Playwright specs at desktop and mobile; use production build |
 | About locales/layout | `about-hero-persistence` plus parity URL metadata checks |
 | PWA/service-worker caching | `serwist-precache`; verify offline fallback hydration if chunk strategy changes |

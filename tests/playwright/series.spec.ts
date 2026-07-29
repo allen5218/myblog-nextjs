@@ -113,26 +113,51 @@ test('series posts link to their collection above and below the article', async 
     const heroTypography = await heading.evaluate((element) => {
       const postedElement = element.querySelector('.meta')!
       const seriesElement = element.querySelector('.series-meta')!
-      const posted = getComputedStyle(postedElement)
-      const series = getComputedStyle(seriesElement)
+      const seriesLinkElement = element.querySelector('.series-meta a')!
       const postedBounds = postedElement.getBoundingClientRect()
       const seriesBounds = seriesElement.getBoundingClientRect()
+      const typography = (target: Element) => {
+        const style = getComputedStyle(target)
+        return {
+          color: style.color,
+          fontSize: style.fontSize,
+          fontStyle: style.fontStyle,
+          fontWeight: style.fontWeight,
+        }
+      }
       return {
-        posted: {
-          fontSize: posted.fontSize,
-          fontStyle: posted.fontStyle,
-        },
-        series: {
-          fontSize: series.fontSize,
-          fontStyle: series.fontStyle,
-        },
+        posted: typography(postedElement),
+        series: typography(seriesElement),
+        seriesLink: typography(seriesLinkElement),
+        seriesLinkDecoration: getComputedStyle(seriesLinkElement).textDecorationLine,
         metadataGap: seriesBounds.top - postedBounds.bottom,
       }
     })
     expect(heroTypography.series).toEqual(heroTypography.posted)
+    // 連結只能靠底線跟句子其餘部分區分,顏色與字重都要跟 Posted by 一致。
+    expect(heroTypography.seriesLink).toEqual(heroTypography.posted)
+    expect(heroTypography.seriesLinkDecoration).toBe('underline')
     expect(heroTypography.series.fontStyle).toBe('italic')
     expect(Math.abs(heroTypography.metadataGap)).toBeLessThanOrEqual(0.5)
   }
+
+  // 靜止狀態刻意與周圍文字同色,hover 的變色是這個連結唯一的動態回饋。Hero 永遠是深色
+  // 照片、不隨站台主題翻轉,所以 hover 色必須兩個主題都相同。少了專屬的 hover 規則就會
+  // 遞補成 .post-series-link-top a:hover 的 --series-interactive —— 那個值會跟著主題走,
+  // 淺色主題下是深青色壓在深色照片上。只驗「顏色有變」抓不到這種遞補。
+  const heroLink = heading.locator('.series-meta a')
+  const heroHoverByTheme: string[] = []
+  for (const theme of ['light', 'dark'] as const) {
+    await setTheme(page, theme)
+    const resting = await heroLink.evaluate((element) => getComputedStyle(element).color)
+    await heroLink.hover()
+    const hovered = await heroLink.evaluate((element) => getComputedStyle(element).color)
+    expect(hovered).not.toBe(resting)
+    heroHoverByTheme.push(hovered)
+    await page.mouse.move(0, 0)
+  }
+  expect(heroHoverByTheme[0]).toBe(heroHoverByTheme[1])
+  await setTheme(page, 'light')
 
   const postContainer = page.locator('.post-container')
   const bottomSeries = postContainer.locator('.post-series-link')
@@ -141,6 +166,18 @@ test('series posts link to their collection above and below the article', async 
     'href',
     seriesPath
   )
+  // Hero 的排版對齊只能透過 .intro-header-post .series-meta 覆蓋層達成,
+  // 文章內的 series 連結必須保留自己的強調色與字重。
+  const bottomLinkStyle = await bottomSeries.evaluate((element) => {
+    const link = element.querySelector('a')!
+    return {
+      color: getComputedStyle(link).color,
+      surroundingColor: getComputedStyle(element).color,
+      fontWeight: getComputedStyle(link).fontWeight,
+    }
+  })
+  expect(bottomLinkStyle.fontWeight).toBe('700')
+  expect(bottomLinkStyle.color).not.toBe(bottomLinkStyle.surroundingColor)
   expect(
     await postContainer.evaluate((element) => {
       const prose = element.querySelector('.prose')
@@ -240,14 +277,19 @@ test('Series interactive states remain visible and meet WCAG AA in light and dar
   }
 })
 
-test('dark mode keeps Hero Series metadata translucent white over its image', async ({ page }) => {
+test('dark mode keeps Hero Series metadata on the Posted by treatment', async ({ page }) => {
   await page.goto('/2026/07/25/openwiki-tame-agents-md/')
   await setTheme(page, 'dark')
 
-  const heroColor = await page
-    .locator('.intro-header-post .series-meta')
-    .evaluate((element) => getComputedStyle(element).color)
-  expect(heroColor).toBe('rgba(255, 255, 255, 0.85)')
+  // 暗色模式不得讓 .dark .post-series-link-top 的文章灰滲進 Hero,
+  // 這行(含連結)必須維持圖片上的 Posted by 白。
+  const heroColors = await page.locator('.post-heading').evaluate((element) => ({
+    posted: getComputedStyle(element.querySelector('.meta')!).color,
+    series: getComputedStyle(element.querySelector('.series-meta')!).color,
+    seriesLink: getComputedStyle(element.querySelector('.series-meta a')!).color,
+  }))
+  expect(heroColors.series).toBe(heroColors.posted)
+  expect(heroColors.seriesLink).toBe(heroColors.posted)
 })
 
 test('desktop primary navigation keeps the exact Series order', async ({ page }) => {
