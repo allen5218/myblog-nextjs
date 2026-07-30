@@ -125,10 +125,37 @@ hero 現有顏色常數(8 個):
 headerStyle: { type: 'enum', options: ['text'] },
 ```
 
-`enum` 經確認為 contentlayer2 有效型別(`@contentlayer2/source-files/.../field.d.ts:113`)。
-**這是本 repo 第一個 `enum` 欄位** —— 連 `layout` 都是 `type: 'string'` + 執行期回退。帶來
-新的失敗模式:`headerStyle: txt` 會讓 `yarn contentlayer2 build`(進而 CI 的 `tsc --noEmit`)
-直接失敗,而非靜默回退。已確認為期望的 fail-fast。
+**⚠️ 修訂 6 更正:`enum` 不做執行期驗證。** 前幾版聲稱 `headerStyle: txt` 會讓
+`contentlayer2 build` 失敗 —— **那是錯的**。安裝版 contentlayer2 0.5.8 的原始碼:
+
+```ts
+// @contentlayer2/source-files/src/fetchData/mapping/parseFieldData.ts
+enum: zod.string(), // TODO
+
+// @contentlayer2/source-files/src/fetchData/mapping/index.ts
+case 'enum': // TODO validate enum value
+  return yield* $(parseFieldDataEff(fieldDef.type))
+```
+
+所以 `headerStyle: txt` **會被執行期接受**,而生成的 TypeScript 型別卻宣稱它是 `'text'` ——
+型別在說謊,resolver 拿到 `'txt'` 會靜默落到 image mode。這正是本設計想消滅的失敗模式,
+而 `enum` 完全不提供這個保護。
+
+**因此職責重新劃分:**
+
+| 機制 | 負責 |
+| --- | --- |
+| `type: 'enum', options: ['text']` | **只**產生 TypeScript union 與編輯器提示,**不是**執行期保證 |
+| `parseHeaderStyle(value: unknown)` | 執行期驗證,唯一的真實閘門 |
+
+`parseHeaderStyle()` 必須在 **`unknown` 邊界**被呼叫(validator 收到的 frontmatter 值型別上是
+不可信的),並由 validator 與 resolver **共用它的解析結果**。單元測試必須覆蓋 `txt`、空字串、
+純空白字串。
+
+**不要用一顆泛用的「trim 後判空」函式處理所有欄位。** `headerStyle`、`headerImg`、`headerMask`
+的空值語意各不相同(`headerMask: 0` 是有效值、`headerImg: ""` 等於未設、`headerStyle` 只有一個
+合法字面值),各自 parse 成 domain value 才不會在某個欄位上判錯。這也是「validator 與 resolver
+共用 normalization」的具體落實方式 —— 共用的是**解析後的 domain object**,不是一組 helper 慣例。
 
 **互斥組合的 build 時驗證(決策 1、5)**:`headerStyle: text` 同時帶下列任一項時,建置必須失敗
 並指出檔名與衝突欄位:
@@ -206,7 +233,8 @@ export function resolveHeroSurface(input: {
 }): HeroSurface
 ```
 
-`headerStyle` 收緊成 `'text'` 而非 `string`,讓 schema 的 `enum` 約束在型別層也成立。
+`headerStyle` 收緊成 `'text'` 而非 `string`,呼應 schema `enum` 產出的型別。**但這只是型別層** ——
+執行期的真實閘門是 `parseHeaderStyle()`,見上節的 P0 更正。
 `HuxHero` 的 props 同樣收緊;`variant: 'home' | 'archive'` 可搭配 `headerStyle?: never`,把本
 文件「非目標」列的組合從型別上封死,而不是只靠文件敘述。
 
@@ -638,7 +666,7 @@ Contentlayer」,`yarn test:unit` 就會依賴先跑過 `contentlayer2 build`,引
 | 層 | 覆蓋 |
 | --- | --- |
 | unit static rendering | `PostLayout → HuxHero` prop 接線與產出 markup |
-| `contentlayer2 build` | schema(`enum`)與跨欄位 validator |
+| `contentlayer2 build` | 跨欄位 validator 與 `parseHeaderStyle()`(**不是** schema `enum` —— 它不做執行期驗證) |
 | production E2E | 真實 markdown fixture → 實際頁面結果 |
 
 本層斷言:
