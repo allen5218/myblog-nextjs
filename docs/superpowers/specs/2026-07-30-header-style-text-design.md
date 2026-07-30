@@ -2,7 +2,12 @@
 
 > 修訂 2:依 Codex 唯讀審查修正六個 blocker。原始 v1 的三處設計會破壞它自己承諾的「零行為
 > 改變」(hero 外 tag 邊框消失、fixed navbar hover 變白底白字、image fallback 底色從
-> `#2D2D2D` 退化成 `#777`),另有兩處測試設計會假綠。逐項驗證記錄見「審查修正記錄」。
+> `#2D2D2D` 退化成 `#777`),另有兩處測試設計會假綠。
+>
+> 修訂 3:第二輪審查的三項必修(Playwright 笛卡兒積與斷言適用狀態矛盾、contentlayer 驗證
+> 順序與可單測邊界、OpenWiki 指令漏 `--print`)+ 四項維護性調整(死 token `--navbar-bg`、
+> `navigablePosts()` 命名不過度宣稱、`iframe + text` 改為 build 拒絕、static rendering 責任
+> 邊界)。並修正兩處文件錯誤。逐項驗證記錄見「審查修正記錄」。
 
 ## 背景
 
@@ -56,7 +61,9 @@ hero 現有顏色常數(8 個):
 
 ### CSS 變數的關鍵性質與其陷阱
 
-自訂屬性**不參與 specificity 競賽**,在賦值點解析、靠繼承傳播,因此消除一整類權重陷阱。
+自訂屬性的**宣告**完整參與 cascade(specificity、source order 都算)。差異在**消費端**:
+`color: var(--hero-fg)` 讀到的是繼承後已經定勝負的值,所以消費點不必再打權重戰。這才是消除
+權重陷阱的正確理由 —— 「不參與 specificity」的說法不精確。
 
 **但它有兩個反向陷阱,v1 各踩一個:**
 
@@ -91,6 +98,10 @@ hero 現有顏色常數(8 個):
 2. **prev/next 改為過濾 hidden;hidden 僅能以路徑訪問。**
 3. **`:has()` 方案已定案**,不再重新評估。
 4. **`@supports` 保險已撤回**(理由見「已否決/延後」)。
+5. **`iframe` + `headerStyle: text` → build 時拒絕。** 執行期優先序仍是 keynote 勝(單元測試
+   釘住),但作者層不接受這個組合:作者明確寫了 `headerStyle: text`,build 卻成功而頁面顯示
+   keynote,與決策 1 的 fail-fast 原則不一致。同一個 `validateHeroConfiguration()` 一起擋,
+   零額外成本。手冊必須寫明。
 
 ## 架構
 
@@ -105,12 +116,34 @@ headerStyle: { type: 'enum', options: ['text'] },
 新的失敗模式:`headerStyle: txt` 會讓 `yarn contentlayer2 build`(進而 CI 的 `tsc --noEmit`)
 直接失敗,而非靜默回退。已確認為期望的 fail-fast。
 
-**互斥組合的 build 時驗證(決策 1)**:`headerStyle: text` 同時帶非空 `headerImg` 或
-`headerBgCss` 時,建置必須失敗並指出檔名與衝突欄位。`enum` 表達不了跨欄位約束,因此驗證放在
-`makeSource` 的 `onSuccess`(與 `createTagCount` / `createSearchIndex` 同層)。
-**實作時必須先確認在 `onSuccess` 內 throw 真的會讓 `contentlayer2 build` 以非零狀態結束**
-—— 若不會,改用會在 build 期求值並拋錯的 computed field。這條驗證同時被 CI 的 `ci` job 與
-Vercel build 覆蓋。
+**互斥組合的 build 時驗證(決策 1、5)**:`headerStyle: text` 同時帶非空 `headerImg`、
+`headerBgCss` 或 `iframe` 時,建置必須失敗並指出檔名與衝突欄位。
+
+失敗傳播已驗證,不再是未知:`@contentlayer2/core` 的 `generate-dotpkg.ts:136` 會把 callback
+的 rejection 包成 `SuccessCallbackError` 送進失敗路徑,因此在 `onSuccess` 內同步 throw 或回傳
+rejected promise **就會**讓 `contentlayer2 build` 失敗。不需要改用 computed field。
+
+**驗證必須是 `onSuccess` 的第一個動作。** 現況順序是
+`collectSeries` → `createTagCount` → `createSearchIndex`(`contentlayer.config.ts:365-370`),
+這三者會寫出 `app/tag-data.json` 與 `public/search.json`。驗證若排在後面,無效 frontmatter 會
+先污染這兩個產物,形成「build 失敗但工作樹已被部分改動」的狀態:
+
+```ts
+onSuccess: async (importData) => {
+  const { allBlogs } = await importData()
+  assertValidHeroConfigurations(allBlogs) // 必須第一個執行,在任何產物寫出之前
+  collectSeries(allBlogs)
+  createTagCount(allBlogs)
+  createSearchIndex(allBlogs)
+},
+```
+
+**驗證邏輯必須抽成可匯出的純函式**(例如 `lib/hero-config.ts` 的
+`validateHeroConfiguration({ sourceFilePath, headerStyle, headerImg, headerBgCss, iframe })`),
+並在 `tests/unit/` 覆蓋錯誤路徑:訊息內容、空字串、純空白字串、各種衝突欄位組合。
+只靠「真實 build 裡沒有衝突的 fixture」無法證明錯誤路徑守得住 —— 那條路徑永遠不會被執行到。
+
+這條驗證同時被 CI 的 `ci` job(`yarn contentlayer2 build`)與 Vercel build 覆蓋。
 
 ### 2. `lib/hero-mode.ts` — hero 表面優先序純函式(新增)
 
@@ -198,9 +231,12 @@ export function resolveHeroSurface(input: {
 .navbar-custom {
   --navbar-fg: #fff;
   --navbar-fg-hover: rgba(255, 255, 255, 0.8);
-  --navbar-bg: transparent;
 }
 ```
+
+**只抽前景與 hover,不抽背景。** v2 曾定義 `--navbar-bg` 並在 fixed 狀態賦值,但「改讀變數的
+六處」全是前景宣告,沒有一處消費它 —— 照字面實作會產出一個**死 token**。而 text 模式的導覽列
+背景本來就維持透明,抽背景對本功能零幫助。既有的背景規則(218、1560、1578)原封不動。
 
 改讀變數的六處:217(根 `color`)、235(`.navbar-brand`)、243(hover)、259(`.icon-bar`,
 注意是 **`background`** 不是 `color`)、286(`.navbar-links a`、`.navbar-tools button`)、
@@ -213,12 +249,10 @@ export function resolveHeroSurface(input: {
   .navbar-custom.is-fixed {
     --navbar-fg: #2d2d2d;
     --navbar-fg-hover: #2d2d2d; /* 等值:複製「fixed 狀態 hover 不變色」的現況 */
-    --navbar-bg: rgba(255, 255, 255, 0.9);
   }
   .dark .navbar-custom.is-fixed {
     --navbar-fg: #fff;
     --navbar-fg-hover: #fff;
-    --navbar-bg: rgba(45, 45, 45, 0.9);
   }
 }
 ```
@@ -329,8 +363,12 @@ const next = sortedCoreContents[postIndex - 1]
 - **導覽**:另一份過濾後的清單計算 prev/next;hidden 文章在該清單中找不到 → **沒有
   prev/next**(合理:它不在公開序列上)。
 
-可見性政策集中出 `lib/` 的單一來源(例如 `listedPosts()` / `isNavigablePost()`),供 pager
-與其他公開表面共用,避免第四份各自為政的過濾邏輯。
+**命名要精準,不得過度宣稱。** 只新增一個 pager 專用的純函式 `navigablePosts()`,**不宣稱它已
+集中全站可見性政策**。同樣的判斷目前散落在首頁、年度頁、archive、tag、sitemap、search index
+與 series;若只新增一個函式給 pager 用卻取名 `listedPosts()`,實際結果是「多份判斷**再加**一層
+抽象」,比現況更難懂。
+
+全站可見性語意統一(含 sitemap 的 draft/production 語意)另案處理 —— 見「已否決/延後」。
 
 **這修掉一個既有缺陷**:`data/blog/hidden/` 目前有 6 篇,全部已經在公開 pager 鏈上。
 現有 pager 測試只斷言 slot 存在與幾何、不斷言連結目標,故不受影響。
@@ -359,7 +397,8 @@ specificity 無關**。因此:
 | --- | --- |
 | `contentlayer.config.ts` | `headerStyle` enum 欄位 + 互斥組合的 build 時驗證 |
 | `lib/hero-mode.ts` | 新增 |
-| `lib/post-visibility.ts`(或併入既有 lib) | 新增:`listedPosts()` / `isNavigablePost()` |
+| `lib/post-visibility.ts` | 新增:`navigablePosts()`(**僅 pager 用**,不是全站政策) |
+| `lib/hero-config.ts` | 新增:`validateHeroConfiguration()` 純函式 |
 | `app/[year]/[month]/[day]/[slug]/page.tsx` | 拆開定位與導覽清單 |
 | `components/hux/HuxHero.tsx` | 改用 `resolveHeroSurface`;加 `intro-header-text` class;text 模式不產生 inline `style`、不渲染遮罩 |
 | `layouts/PostLayout.tsx` | 多解 `headerStyle` 並傳給 `HuxHero` |
@@ -372,7 +411,7 @@ specificity 無關**。因此:
 | `tests/playwright/helpers/theme.ts` | 新增:抽出 `setTheme` / `contrastRatio` / `colorsFor`(`series.spec.ts:20-38`),**並加上 alpha 合成**;`series.spec.ts` 改 import 後必須維持全綠 |
 | `docs/functionality-settings-manual.zh-TW.md` / `.md` | 兩份都加 `headerStyle` + 互斥規則 + OG 策略 |
 | `README.md` | 功能清單一行 |
-| `series.spec.ts:144` 註解 / `openwiki/testing/quality-contracts.md:44` | 「Hero 永遠是深色照片」→ 限定為「此 image hero fixture」 |
+| `tests/playwright/series.spec.ts:144` 註解 | 「Hero 永遠是深色照片」→ 限定為「此 image hero fixture」 |
 | `CLAUDE.md` / `AGENTS.md` | 新教訓 |
 
 **inline style 是不可繞過的約束**:`HuxHero.tsx:52-59` 把背景寫成 inline `style`,inline 贏過
@@ -407,7 +446,20 @@ specificity 無關**。因此:
 ### Unit:`tests/unit/hero-rendering.test.ts`(static rendering)
 
 用 `renderToStaticMarkup`(沿用 `tests/unit/series-rendering.test.ts:36` 既有 harness),
-覆蓋 Contentlayer → PostLayout → HuxHero 的接線契約 —— 這是**唯一在 CI 內**能驗 markup 的層:
+覆蓋 **`PostLayout` → `HuxHero` 的 prop 接線**。這是**唯一在 CI 內**能驗 markup 的層。
+
+**責任邊界必須寫清楚,不可過度宣稱。** 本層用手工建構的 `content` object,所以覆蓋的是
+`PostLayout → HuxHero`,**不含** Contentlayer。若改為 import generated fixture 來「一路測到
+Contentlayer」,`yarn test:unit` 就會依賴先跑過 `contentlayer2 build`,引入測試順序耦合 ——
+不做。三層責任分工:
+
+| 層 | 覆蓋 |
+| --- | --- |
+| unit static rendering | `PostLayout → HuxHero` prop 接線與產出 markup |
+| `contentlayer2 build` | schema(`enum`)與跨欄位 validator |
+| production E2E | 真實 markdown fixture → 實際頁面結果 |
+
+本層斷言:
 
 - text 模式:`<header>` 帶 `intro-header-text`、**無 `style` 屬性**、**無 `.header-mask`**
 - text + series:series metadata markup 正確產出(補上 Playwright 測不到的系列組合)
@@ -450,8 +502,30 @@ tag 邊框(3:1)、tag hover(兩契約)、導覽列品牌/連結/ThemeSwitch 文�
 - **hero 外的 tag 邊框仍可見**(釘死 blocker 1:post card、文章內文、側邊目錄)
 - **fixed navbar hover 不得接近底色**(釘死 blocker 2,明/暗兩輪)
 
-視窗矩陣:mobile 375 / desktop 1280 × 明/暗 × 捲動前/捲動後。
-**手機必須額外測「捲動下去再回到接近頂端」** —— 那是 `is-fixed` 仍在而導覽列已部分可見的窗口。
+### 狀態表(取代笛卡兒積)
+
+**不可寫成 `viewport × theme × scroll` 的笛卡兒積。** 上面的斷言並非在每一格都適用,硬套會逼
+實作者加一堆 `if (isVisible)` / `.count()` 防衛式判斷 —— 而那正是假綠的溫床(元素不存在時
+斷言被跳過,測試照樣綠)。改為明確列出狀態與該狀態**實際可見**的元素:
+
+| 狀態 | 驗證內容 | 不適用 |
+| --- | --- | --- |
+| mobile / top | brand、ThemeSwitch 圖示、`.icon-bar`、hero 全部元素 | `.navbar-links`(`display:none`) |
+| mobile / near-top-with-`is-fixed` | navbar 仍套 text tone(釘死 `max-width:767px` 那條規則) | hero(已捲出) |
+| desktop / top | brand `===` body 色、`.navbar-links`、桌面文字版 ThemeSwitch、搜尋 SVG、hero 全部元素 | `.icon-bar`(`display:none`) |
+| desktop / fixed-visible(`is-fixed` + `is-visible`) | fixed 背景、前景、**hover 對比** | 「brand `===` body 色」**刻意不成立**(fixed 前景是 `#2d2d2d`／白) |
+| desktop / fixed-hidden(`is-fixed`,`top:-61px`) | 只驗 class/state,**不做 hover** | 元素不可見,hover 會直接失敗 |
+
+每個狀態各跑淺/深兩輪,且**只重跑該狀態可見的元素**。
+
+三個具體陷阱:
+
+- **`brand === body 色` 只適用於非 fixed 狀態。** 桌面 fixed 的前景刻意是 `#2d2d2d`／白,
+  不該等於 body。
+- **fixed navbar 向下捲時位於 `top: -61px`**,必須先向上捲讓它取得 `is-visible` 才可見;
+  否則 Playwright 的 `hover()` 會因元素不可見而失敗(不是因為顏色錯)。
+- **手機的「捲動後」與「捲回接近頂端」是兩個不同狀態**,不能用單一 after 表達。後者
+  (`is-fixed` 仍在、導覽列已部分可見)才是 `max-width:767px` 那條規則真正要守的窗口。
 
 **系列文測試分層(取代 v1 的注入 class 方案)**。v1 打算在圖片系列文章上用 JS 注入
 `.intro-header-text` —— **該方案無效**:圖片文章保有 inline background,而本文件自己就寫了
@@ -516,7 +590,18 @@ fixture 內容(標題、副標、tags、正文)**刻意全 ASCII**。`scripts/si
 | C | navbar 變數化(含 `.icon-bar`、`is-fixed` 兩組**含 hover token**) | **零像素變動**;含 fixed navbar hover 回歸測試 |
 | D | 可見性政策集中化 + pager 過濾 hidden | hidden 路徑仍 200、公開 pager 不含 hidden |
 | E | **原子功能 commit**:`enum` 欄位 + 互斥驗證 + text surface CSS + navbar tone + fixture + unit/static/E2E 測試 | 不得拆成「text hero」與「navbar 修復」兩個可部署 commit |
-| F | 雙語手冊 + README + `series.spec.ts`/OpenWiki 契約措辭 + CLAUDE.md 教訓 + `openwiki code --update` | — |
+| F | 雙語手冊 + README + `series.spec.ts:144` 註解措辭 + CLAUDE.md 教訓 | — |
+| G | OpenWiki 重生成(見下) | 生成頁差異已 review |
+
+**OpenWiki 不得手改,且順序不可顛倒。** `openwiki/` 底下全是生成頁(唯一例外是
+`openwiki/INSTRUCTIONS.md`)。`openwiki/testing/quality-contracts.md:44` 目前寫 hero 系列連結
+hover「theme-independent」,text 模式讓這句話需要限定 —— 但**修法是改 source/tests/手冊後讓
+OpenWiki 重生成**,不是直接編輯那一頁。流程:
+
+1. 改 source / tests / 手冊(commit A–F)
+2. **先 commit,確保工作樹乾淨** —— noop 判斷要求乾淨工作樹,髒的話一律做完整(付費)重生成
+3. 跑 `openwiki code --update --print`(**必須帶 `--print`**,這是本專案唯一支援的完整命令)
+4. review 生成差異並納入同一個 PR
 
 **E 不可再拆**:Vercel 部署 main 的每個 commit。若 text hero 先落地而 navbar tone 在下一個
 commit,中間會有一個 production 狀態是白字白底。
@@ -541,12 +626,22 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
 - **把 `<Header />` 移出 root layout** —— 已否決。要動七條以上路由且導覽列從此重複,是
   **增加**維護風險。
 - **`resolvePostPresentation()` 含 `layout` 正規化 —— 延後,另案處理。** 前提已驗證且比審查
-  所述更極端:`data/blog` 的 `layout` 值只有 `keynote`(2)與 `post`(15),而
+  所述更極端:`data/blog` 全部 16 篇的 `layout` 值只有 `keynote`(2)與 `post`(14),而
   route 的 map 只認 `PostLayout`/`PostSimple`/`PostBanner`,**每一篇都靠 unknown fallback 落到
   `PostLayout`**,包含兩篇 `keynote`。這是真實隱患,但 (a) 非本功能造成;(b) 修它要決定
-  `keynote` 該映射到什麼,是內容行為決策;(c) 影響 17 篇文章的 layout 解析。折進來會讓一個
+  `keynote` 該映射到什麼,是內容行為決策;(c) 影響全部 16 篇的 layout 解析。折進來會讓一個
   hero/CSS 功能的爆炸半徑擴大到全站 layout 選擇。應以 characterization test 釘住現況後另案處理。
 - **`data-navbar-tone` 語意屬性** —— 延後。限縮到 `main` 已解決範圍過寬的實際風險。
+- **全站可見性語意統一** —— 延後。同一判斷散落在首頁、年度頁、archive、tag、sitemap、
+  search index 與 series,且 sitemap 另有 draft/production 語意。一次統一會把本功能的爆炸半徑
+  擴大到全站資料流,且需要一整組 characterization tests。本次只做 pager 專用的
+  `navigablePosts()`。
+- **刪除未使用的 starter 版面** —— 延後。`AuthorLayout` / `ListLayout` / `ListLayoutWithTags`
+  零 importer(自初始移植後只被 prettier 動過);`PostSimple` / `PostBanner` 可達但零文章使用。
+  刪除能讓「`PostSimple` + `headerStyle` 被靜默忽略」在結構上消失,但牽動 `layouts` map、
+  `series-rendering.test.ts:58-59`、兩份手冊的 `layout` 與 `images` 說明,與本功能無強關聯。
+- **`--navbar-bg` / `--navbar-border` 為了對稱而抽** —— 已否決。兩者在本功能都沒有 consumer,
+  抽出來只會產生死 token(border 另有憑空多 1px 的風險)。
 
 ## 已知未處理問題(刻意留下)
 
@@ -556,7 +651,7 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
    真的成立 —— 子元素上的指定值會贏過祖先繼承。本功能靠的是 `.navbar-tools svg` 這條未分層
    規則仍在生效,不是靠繼承。
 2. **`layout: PostSimple` / `PostBanner` 目前無人使用,但可達。** 兩者不 import `HuxHero`,
-   所以會靜默忽略 `headerStyle`。現有 17 篇的 `layout` 值全是 `post`/`keynote`,都落到 unknown
+   所以會靜默忽略 `headerStyle`。現有 16 篇的 `layout` 值全是 `post`/`keynote`,都落到 unknown
    fallback → `PostLayout`,因此**實際零使用**;但 `layouts` map 確實有這兩個 key,任何新文章
    寫 `layout: PostSimple` 都會生效,兩份手冊也把它們記載為可選值。故手冊必須寫明
    `headerStyle` 僅對 `PostLayout` 有意義。
@@ -580,3 +675,17 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
 | 5 | contrast helper 忽略 alpha | `series.spec.ts:9-13` 的 `.slice(0, 3)`;實測合成後僅 1.12:1 / 1.29:1 | 加 alpha 合成;hover 拆兩契約;邊框用 3:1 |
 | 6 | 注入 class 的 series 測試無效 | 圖片文章保有 inline background,class 蓋不掉 | 改四層測試分層 |
 | — | Playwright 不是 CI gate | `ci.yml` 只跑 contentlayer/lint/tsc/unit | 核心契約移到 unit + static rendering |
+
+### 第二輪(修訂 3)
+
+| # | 問題 | 驗證依據 | 修正 |
+| --- | --- | --- | --- |
+| 1 | 笛卡兒積矩陣與斷言適用狀態矛盾,會逼出防衛式假綠測試 | 桌面 fixed 前景刻意非 body 色;`.icon-bar` 桌面 `display:none`;`.navbar-links` 手機 `display:none`;fixed 向下捲時在 `top:-61px`,hover 會因不可見而失敗 | 改為五個明確狀態的狀態表,只驗該狀態可見的元素 |
+| 2 | contentlayer 驗證的失敗傳播與執行順序未定 | `generate-dotpkg.ts:136` 把 rejection 包成 `SuccessCallbackError`(→ throw 確實會失敗,不確定性可收斂);`contentlayer.config.ts:365-370` 順序為 `collectSeries`→`createTagCount`→`createSearchIndex` | 驗證必須是 `onSuccess` 第一個動作(否則 `tag-data.json`/`search.json` 已被污染);抽成純函式 `validateHeroConfiguration()` 並單測錯誤路徑 |
+| 3 | OpenWiki 指令漏 `--print`,且檔案邊界誤列生成頁 | CLAUDE.md 與 README 都規定 `openwiki code --update --print`;`openwiki/` 除 `INSTRUCTIONS.md` 外皆為生成頁、不得手改 | 補 `--print`;移除 `quality-contracts.md` 列項,改為「改 source → commit → 重生成 → review」四步流程並獨立成 commit G |
+| 4 | `--navbar-bg` 是死 token | 「改讀變數的六處」全為前景宣告,無一消費 `--navbar-bg`;218/1560/1578 未列入 | 本次不抽背景 token,既有背景規則原封不動 |
+| 5 | `listedPosts()` 命名過度宣稱集中化 | 同一判斷散落首頁/年度頁/archive/tag/sitemap/search/series | 改名 `navigablePosts()` 並明寫「僅 pager 用」;全站統一另案 |
+| 6 | `iframe + headerStyle: text` 合法但靜默忽略,與決策 1 的 fail-fast 不一致 | 規格原本只用 unit test 釘優先序,無作者層語意 | 決策 5:build 拒絕該組合,同一個 validator 一起擋 |
+| 7 | static rendering 過度宣稱覆蓋 Contentlayer | 手工建構 `content` object 只覆蓋 `PostLayout → HuxHero`;改 import generated fixture 會引入測試順序耦合 | 明寫三層責任邊界,unit fixture 保持純粹 |
+| 8 | 文章數統計錯誤 | frontmatter-only 統計為 16 篇(`post` 14 + `keynote` 2);原本的 17 被某篇正文裡的 `layout: post` 範例污染 | 全部改為 16 |
+| 9 | 「自訂屬性不參與 specificity」不精確 | 宣告完整參與 cascade;差異在消費端讀取繼承後的 winning value | 改寫該段推理 |
