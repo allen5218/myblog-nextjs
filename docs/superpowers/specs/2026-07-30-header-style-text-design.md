@@ -138,21 +138,26 @@ validator 與 resolver 共用的是**解析後的 domain object**,不是一組 h
 `app/tag-data.json` 與 `public/search.json`。驗證若排在後面,無效 frontmatter 會先污染這兩個
 產物,形成「build 失敗但工作樹已被部分改動」。
 
-**抽出可注入依賴的 orchestration**,讓真正的 `onSuccess` 只是呼叫它:
+**orchestration seam 由 PR1 擁有,本 PR 只擴充,不得另建。** PR1 的
+`lib/content-outputs.ts` 已經是:
 
 ```ts
-export async function runContentDerivedOutputs(blogs, deps) {
-  deps.assertValidHeroConfigurations(blogs) // 必須第一個,在任何 project-owned 產物寫出前
-  deps.collectSeries(blogs)
-  await deps.createTagCount(blogs) // 現況漏了 await,錯誤不會傳回 contentlayer
-  deps.createSearchIndex(blogs)
+export async function runContentDerivedOutputs(posts, mode, deps) {
+  deps.assertValidHeroConfigurations?.(posts) // ← 本 PR 注入這一個
+  deps.collectSeries([...posts])              // raw posts(series 是獨立 eligibility domain)
+  const views = selectPostViews(posts, mode)
+  await deps.createTagCount(views.listed)
+  deps.createSearchIndex(views.listed)
 }
 ```
 
-(`.contentlayer` 本身在 `onSuccess` 執行前就已生成,擋不住;能擋的是上面這三個產物。)
+本 PR 的 commit D **只做兩件事**:實作 `assertValidHeroConfigurations`、把它注入 `deps`。
+**絕對不要**改成 `runContentDerivedOutputs(blogs, deps)` 或把 raw posts 傳給 tag/search
+—— 那會把 PR1 的 draft gate 倒退回去。
 
-測試除了 orchestration helper 本身,**還要守住實際 callback 的 wiring** —— 否則有人從 config
-移除呼叫,helper 單測仍全綠。
+validator 針對**全部文章**(不是 `views.listed`)且**第一個執行**:無效 frontmatter 不該因為
+文章剛好是 draft/hidden 就放行,而且必須在任何 project-owned 產物寫出前擋下。
+(`.contentlayer` 本身在 `onSuccess` 執行前就已生成,擋不住;能擋的是那三個產物。)
 
 ### 2. `lib/hero-mode.ts`
 
@@ -182,8 +187,24 @@ RawHeroConfiguration (unknown 值)
 ```
 
 只在文字上說「validator 與 resolver 共用 normalization」是不夠的 —— 若兩者都收 raw fields,
-`headerImg: "  "` 算不算空、`headerBgCss` 的尾隨分號、`headerMask: 0` 是否有效這三種 coercion
-就會在 validator、resolver、renderer **三處各自實作而漂移**。用型別強制單一 parse 點才守得住。
+coercion 就會在 validator、resolver、renderer **三處各自實作而漂移**。用型別強制單一 parse 點
+才守得住。
+
+**Raw → Parsed 的 coercion 契約(commit A 必須逐項 characterize)。** 下列是**現況**行為,
+`parseHeroConfiguration()` 第一版必須逐項複製;任何偏離都要在此表明列為**刻意的行為改變**:
+
+| Raw 輸入 | 現況結果 | Parsed 決定 |
+| --- | --- | --- |
+| `headerImg: "  "`(純空白) | **truthy** → `resolveHeaderImage` 產生 `/  `(壞路徑) | 視為未設 → **這是刻意的行為改變**,必須明列 |
+| `headerImg: ""` | falsy → 用 `/img/home-bg.avif` + `#2D2D2D` | 未設 |
+| `headerBgCss: "grad(...);  "` | trim + 移除尾隨分號 | 同現況 |
+| `headerMask: 0` | `Number(0) === 0` → **渲染 opacity 0 的遮罩** | 有效值 0 |
+| `headerMask: " "` / `false` / `[]` | `Number()` 皆為 **0** → 渲染遮罩 | 同現況(等值優先) |
+| `headerMask: {}` | `NaN` → **不渲染** | `null` |
+| `headerMask: null` / 未設 / `""` | 不渲染 | `null` |
+
+`headerImg` 純空白那一列是唯一的刻意改變(現況會產生壞路徑,沒有理由保留)。其餘全部維持等值,
+並由 characterization tests 釘住。
 
 優先序:**keynote > text > css-background > image**。
 
@@ -409,9 +430,13 @@ specificity 無關** —— 但這**只適用於 normal declaration**;`!importan
 - 所有新規則**必須留在未分層區**。包進 `@layer components` 會被任何 Tailwind 工具類蓋掉,
   失敗模式極隱晦:DevTools 看得到規則且未被劃掉,是輸在 layer 順位而非權重。
 - 推論:本文件所有 specificity 元組**只在同層前提下有意義**。
-- 決策 5 刪掉廣域 `.navbar-tools svg` 之後,`SearchButton` 上原本被靜默蓋掉的
-  `text-gray-900 dark:text-gray-100` 會**復活**。這是預期行為(popup/trigger 交還元件控制),
-  但必須在 commit C 的截圖比對中確認結果正確,並清掉不再需要的類別。
+- **SVG 顏色的最終不變量:一律繼承 trigger token,元件不得自帶顏色 utility。**
+  這兩件事不能同時成立:`.navbar-tool-trigger svg { color: currentColor }` 是未分層規則,會壓過
+  layered 的 `text-gray-*`,所以那些 utility **不會**「復活」—— 它們仍然是死的,只是死因從
+  「被 `.navbar-tools svg` 蓋掉」換成「被 `.navbar-tool-trigger svg` 蓋掉」。
+  → **直接刪除** trigger 元件上的 `text-gray-*` / `dark:text-gray-*` / hover 顏色 utility,
+  讓「顏色由 token 決定」在程式碼上是明確的,而不是靠另一條規則繼續靜默蓋住。
+  popup **內部**的顏色 utility 保留(那是 popup 自己的契約)。
 
 ## 檔案邊界
 
@@ -420,10 +445,10 @@ specificity 無關** —— 但這**只適用於 normal declaration**;`!importan
 | `contentlayer.config.ts` | `headerStyle` enum 欄位;`onSuccess` 改呼叫 orchestration |
 | `lib/hero-config.ts` | 新增:`parseHeaderStyle()`、`validateHeroConfiguration()`、domain parsing |
 | `lib/hero-mode.ts` | 新增:`resolveHeroSurface()` |
-| `lib/content-outputs.ts` | 新增:`runContentDerivedOutputs()`(可注入依賴) |
+| `lib/content-outputs.ts` | **擴充 PR1 既有的 seam**(只加 `assertValidHeroConfigurations` 這個 dep),**不得新建** |
 | `components/hux/HuxHero.tsx` | 改用 `resolveHeroSurface`;加 `intro-header-text`;text 模式不產生 inline `style`、不渲染遮罩 |
 | `layouts/PostLayout.tsx` | 多解 `headerStyle` 並傳給 `HuxHero` |
-| `components/ThemeSwitch.tsx` / `SearchButton.tsx` / `MobileNavMenu.tsx` | 加 `.navbar-tool-trigger`;popup focus 配色改用 `--hux-interactive`;清掉失效類別 |
+| `components/ThemeSwitch.tsx` / `SearchButton.tsx` / `MobileNavMenu.tsx` | 加 `.navbar-tool-trigger`;popup focus 改為 **`bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]`**(**成對** token,不是單一);**刪除** trigger 上的 `text-gray-*` / `dark:text-gray-*` / hover 顏色 utility(SVG 一律繼承 trigger token) |
 | `css/tailwind.css` | hero token、navbar token 與 popup 正規化、`--hux-interactive`、text 模式、`:has()` |
 | `data/blog/hidden/2026-07-30-header-style-text-test.md` | 新增,全 ASCII,正文含一條 internal markdown link |
 | `tests/unit/hero-config.test.ts` | 新增:`parseHeaderStyle` 與 validator 錯誤路徑 |
@@ -431,7 +456,8 @@ specificity 無關** —— 但這**只適用於 normal declaration**;`!importan
 | `tests/unit/hero-rendering.test.ts` | 新增:static rendering 契約 |
 | `tests/unit/content-outputs.test.ts` | 新增:orchestration + config wiring |
 | `tests/playwright/header-style-text.spec.ts` | 新增 |
-| `tests/playwright/helpers/color.ts` | 新增:唯一的 parser/compositor(見驗證章) |
+| `tests/helpers/color.ts` | 新增:唯一的 parser/compositor(兩套件共用,支援 hex/rgb/rgba/oklch) |
+| `tests/unit/color.test.ts` | 新增:golden tests(必須在 `tests/unit/` 才會被 CI 執行) |
 | `docs/functionality-settings-manual.zh-TW.md` / `.md` | 兩份都加 `headerStyle` + 互斥規則 + OG 策略 |
 | `README.md` | 功能清單一行 |
 | `tests/playwright/series.spec.ts` | ① 註解措辭:「Hero 永遠是深色照片」→ 限定為「此 image hero fixture」;② **改用共用 color helper** —— 它目前保留著自己那份丟掉 alpha 的 parser,留著就是留一份已知錯誤的第二實作;③ 補 image hero 的 focus 契約 |
@@ -480,13 +506,25 @@ await;**以及 `contentlayer.config.ts` 真的呼叫了 orchestration**(否則�
 
 ### 顏色 helper 的唯一責任與適用邊界
 
-只保留**一個**純 parser/compositor(`tests/playwright/helpers/color.ts`),不要把 alpha 責任
+只保留**一個**純 parser/compositor,不要把 alpha 責任
 分散到兩個檔案。現有 `relativeLuminance` 用 `.match(/\d+/g)?.slice(0, 3)` —— **直接丟掉 alpha**,
 會把 `rgba(0,0,0,.05)` 當純黑。
 
-必須有 golden tests:兩層半透明合成、淺/深 opaque base、alpha 0 與 1、已知手算 RGB 與對比值。
-**不支援的格式必須明確拋錯** —— 目前的數字 regex 會把 `oklch(0.656 0.241 354.308)` 誤讀成
-RGB(本 repo 的 primary 色階多為 oklch)。
+**模組放 `tests/helpers/color.ts`(兩個測試套件共用),golden tests 放 `tests/unit/color.test.ts`。**
+vitest 的 include 是 `tests/unit/**/*.test.ts`,所以 golden tests 必須放在那裡才會被必過的 `ci`
+job 執行 —— 放在 `tests/playwright/` 底下等於沒有 CI 歸屬。
+
+golden tests:兩層半透明合成、淺/深 opaque base、alpha 0 與 1、已知手算 RGB 與對比值。
+
+**必須支援 `oklch()`,不是拒絕它。** 本 repo 的 `--color-primary-*` 與 Tailwind 的 `gray-*` 多為
+oklch,而 popup panel(`dark:bg-gray-800`)的計算色可能就是 oklch —— 拒絕該格式會讓「focus
+surface 對 panel 的 3:1」無法量測。helper 支援 `#hex` / `rgb()` / `rgba()` / `oklch()`,並對
+**其他任何格式明確拋錯**(目前的數字 regex 會把 `oklch(0.656 0.241 354.308)` 誤讀成 RGB,
+那是靜默算錯,比拋錯糟得多)。
+
+**popup 要量兩個對比,不只一個**:focus 態的**文字**對 focus 背景 ≥ 4.5(WCAG 1.4.3),以及
+**focus surface 對 menu panel** ≥ 3:1(WCAG 1.4.11,非文字)。只量前者會漏掉「focus 指示器本身
+看不出來」。
 
 **適用邊界必須寫清楚,不可宣稱是通用的「實際觀察色」:**
 
@@ -588,7 +626,10 @@ hero 任意位置,否則選擇器根本不匹配)。
 | `is-fixed` 漏 `--navbar-fg-hover` | fixed navbar hover 等值 |
 | fixed 的 `--navbar-fg-hover` 從 `#2d2d2d` 漂到 `#333` | 同上 |
 | navbar token 改回用 `.navbar-tools button` | 展開選單後 focus 選單項的對比 |
-| popup focus 改回 `bg-primary-600` | popup focus 對比(2.31) |
+| popup focus 改回 `bg-primary-600` | popup focus 文字對比(2.31) |
+| **深色的 `--hux-on-interactive` 改回白色** | 深色 popup focus 文字對比(1.94) |
+| 刪掉 `--navbar-fg-hover` 的 consumer | **top 狀態**的 `hovered !== resting`(否則 consumer 根本不存在時,fixed 狀態的 `hovered === resting` 也會綠) |
+| trigger 元件留著 `text-gray-*` utility | trigger SVG 色 `===` `--navbar-fg`(證明顏色由 token 決定) |
 | `var(--hux-text)` 改成 `#404040` | 深色 h1 對比 + 「切換主題顏色要變」 |
 | 覆寫降成單一 class | 桌面 padding 85/20 |
 | 顏色 helper 丟掉 alpha | golden tests |
@@ -621,8 +662,8 @@ fixture 內容(標題、副標、tags、正文)**刻意全 ASCII**。`site-font-
 | --- | --- | --- |
 | A | `lib/hero-config.ts` 的 parse 管線 + `lib/hero-mode.ts` + 窮舉表單元測試 + `HuxHero` 接線 + **image/keynote 的 static characterization** | 不碰 CSS;既有測試組全綠 |
 | B | hero 顏色 token + 繼承化 + hero-scoped tag 邊框 + `--hux-interactive` 指向 | **零像素變動**;驗證閘是**搜尋整份 CSS**;含 post-card tag 邊框回歸測試 |
-| C | navbar token 正面列舉 + `.navbar-tool-trigger` + **popup cascade 正規化** + popup focus 配色 | **刻意有像素變動**(popup 交還元件、focus 2.31 → 6.49);含 fixed hover 等值與展開選單的 focus 對比測試 |
-| D | `parseHeaderStyle` + validator + orchestration seam + 其單元測試 | 錯誤路徑全覆蓋;既有測試組全綠 |
+| C | navbar token 正面列舉 + `.navbar-tool-trigger`(顏色/排版/padding/SVG 全收)+ **popup cascade 正規化** + popup focus 改為成對 token | **刻意有像素變動**:popup 交還元件、focus 從白字對青底 **2.31** 改為 `--hux-on-interactive` 對 `--hux-interactive`(淺 **6.49** / 深 **7.08**);含 fixed hover 等值、展開選單的 focus 文字對比與 **focus surface 對 panel 的 3:1** |
+| D | `validateHeroConfiguration` + **注入 PR1 既有 seam 的 `deps`**(不新建 seam)+ 其單元測試 | 錯誤路徑全覆蓋;既有測試組全綠;`tag-data.json` 零 diff |
 | E | **原子功能 commit**:`enum` 欄位 + text surface CSS + navbar tone + fixture + static/E2E 測試 + **兩份手冊 + README** | 不得拆成「text hero」與「navbar tone」兩個可部署 commit |
 | F | `series.spec.ts` 註解措辭 + CLAUDE.md／AGENTS.md 教訓 | — |
 | G | OpenWiki 重生成 | 生成頁差異已 review |
