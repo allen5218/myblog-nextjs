@@ -57,7 +57,9 @@ hero 的 8 個(`.intro-header` 根 `color`、`.site-heading h1`、`.site-heading
 ## 目標
 
 1. frontmatter 支援 `headerStyle: text`,並在 build 時擋掉所有無效組合。
-2. 淺色與深色主題**都**符合 WCAG(文字 4.5、非文字邊界 3:1),含導覽列與手機版。
+2. **本 PR 所觸及的介面**在淺色與深色主題都符合 WCAG(文字 4.5、非文字邊界 3:1),含導覽列、
+   popup 與手機版。**這不是全站合規聲明** —— 全域 focus outline 仍是 2.31(見非目標),
+   所以不要在手冊或 README 寫「全站符合 WCAG」。
 3. 逐值複製 Hux 的淺色外觀。
 4. 消除 14 個色值常數所編碼的失效假設。
 5. **正規化導覽列 popup 的 cascade**,並修掉 popup focus 態既有的 2.31 對比缺陷。
@@ -167,14 +169,21 @@ export type HeroMode =
 
 export type HeroSurface = { mode: HeroMode; maskOpacity: number | null }
 
-export function resolveHeroSurface(input: {
-  headerStyle?: 'text'
-  iframe?: string
-  headerImg?: string
-  headerBgCss?: string
-  headerMask?: unknown
-}): HeroSurface
+export function resolveHeroSurface(config: ParsedHeroConfiguration): HeroSurface
 ```
+
+**resolver 收的是 parsed domain object,不是 raw frontmatter。** 完整管線:
+
+```
+RawHeroConfiguration (unknown 值)
+  → parseHeroConfiguration()   ← 唯一做 coercion 的地方
+  → ParsedHeroConfiguration    ← headerImg 已判空、headerBgCss 已 trim、headerMask 已數值化(0 保留)
+  → validateHeroConfiguration() / resolveHeroSurface()
+```
+
+只在文字上說「validator 與 resolver 共用 normalization」是不夠的 —— 若兩者都收 raw fields,
+`headerImg: "  "` 算不算空、`headerBgCss` 的尾隨分號、`headerMask: 0` 是否有效這三種 coercion
+就會在 validator、resolver、renderer **三處各自實作而漂移**。用型別強制單一 parse 點才守得住。
 
 優先序:**keynote > text > css-background > image**。
 
@@ -263,10 +272,18 @@ CSS 裡的 `[role='menu'] button`(字體)與 `[role='menu'] svg { color: inherit
    不相關的既有 class 名,正是為了消除這種脆弱性。
 2. token consumer 限定為:`.navbar-brand`、`.navbar-links a`、`.navbar-tool-trigger`
    (及其 `svg`,用 `currentColor`)、`.icon-bar`(注意是 `background`)。
-3. **刪除**廣域 `.navbar-tools button` / `.navbar-tools svg` 的顏色宣告、`[role='menu']` 的顏色
-   補償規則、以及 `.is-fixed` 兩組裡針對 `.navbar-tools button/svg` 的 descendant 顏色宣告。
-4. **popup 自己的可及配色**:focus 態改用 `--hux-interactive` 當背景 + 白字 = **6.49**(取代
-   `bg-primary-600` 的 2.31)。淺/深主題皆通過,因為背景是 focus 色本身而非面板色。
+3. **`.navbar-tools button` 不只帶顏色,還帶排版與 padding**,必須一起搬。它同時宣告
+   `font-size: 12px`、`font-weight: 800`、`letter-spacing: 1px`、`line-height: 20px`、
+   `text-transform: uppercase`,桌面斷點另有 `padding: 20px`。**只刪顏色宣告卻刪掉
+   `[role='menu']` 補償規則,popup 會變成大寫 12px 字 + 20px padding。**
+   → trigger 專屬的顏色、排版、padding、SVG color **全部**綁到 `.navbar-tool-trigger`;
+   `.navbar-tools button` 從所有這些宣告中移除。
+4. **刪除**全部 `[role='menu']` 補償規則(字體與圖標兩組)、以及 `.is-fixed` 兩組裡針對
+   `.navbar-tools button/svg` 的 descendant 宣告。補償規則之所以能刪,是因為污染源已經移除 ——
+   **順序不可顛倒**:先刪補償再刪污染源,中間會有一個 popup 外觀壞掉的狀態。
+4. **popup 自己的可及配色**:focus 態改用**成對 token**(見下節)。
+   **不可只用 `--hux-interactive` 配白字** —— 該 token 會隨主題翻轉(淺 `#00677d` / 深
+   `#66c7e0`),白字對深色模式的值只有 **1.94**,必然違反本文件自己要求的 4.5。
 
 ```css
 @media (min-width: 768px) {
@@ -289,13 +306,34 @@ CSS 裡的 `[role='menu'] button`(字體)與 `[role='menu'] svg { color: inherit
 ### 5. 一般互動色 token
 
 navbar 與 text hero 都需要「可讀的互動色」,但**不該直接依賴系列專用的 `--series-interactive`**
-—— 否則將來改系列配色會連動導覽列。加一層指向:
+—— 否則將來改系列配色會連動導覽列。
+
+**必須是成對 token。** 同一個值不能同時擔任「頁面底色上的 accent 前景」與「承載文字的 focus
+背景」—— 前者需要對頁面底色有對比,後者需要對自己承載的文字有對比,而 `--hux-interactive` 隨主題
+翻轉深淺,兩個需求的正確答案不同:
 
 ```css
-:root { --hux-interactive: #00677d; }
-.dark { --hux-interactive: #66c7e0; }
---series-interactive: var(--hux-interactive); /* 值不變,零像素 */
+:root {
+  --hux-interactive: #00677d;
+  --hux-on-interactive: #fff;
+}
+.dark {
+  --hux-interactive: #66c7e0;
+  --hux-on-interactive: #2d2d2d;
+}
+/* 既有 token 改為指向,值不變、零像素 */
+:root { --series-interactive: var(--hux-interactive); }
+.dark { --series-interactive: var(--hux-interactive); }
 ```
+
+(自訂屬性宣告必須寫在 selector 內 —— 裸在頂層是無效 CSS。)
+
+| 用途 | 讀什麼 | 淺色對比 | 深色對比 |
+| --- | --- | --- | --- |
+| hero / navbar 的連結 hover(前景) | `--hux-interactive` | 6.49(對白底) | 7.08(對 `#2d2d2d`) |
+| popup focus(背景 + 其上文字) | `--hux-interactive` + `--hux-on-interactive` | 6.49 | **7.08** |
+
+深色模式若誤用白字,對比是 **1.94** —— 這正是成對 token 存在的理由。
 
 ### 6. text 模式 CSS
 
@@ -396,7 +434,7 @@ specificity 無關** —— 但這**只適用於 normal declaration**;`!importan
 | `tests/playwright/helpers/color.ts` | 新增:唯一的 parser/compositor(見驗證章) |
 | `docs/functionality-settings-manual.zh-TW.md` / `.md` | 兩份都加 `headerStyle` + 互斥規則 + OG 策略 |
 | `README.md` | 功能清單一行 |
-| `tests/playwright/series.spec.ts` | 只改註解措辭:「Hero 永遠是深色照片」→ 限定為「此 image hero fixture」 |
+| `tests/playwright/series.spec.ts` | ① 註解措辭:「Hero 永遠是深色照片」→ 限定為「此 image hero fixture」;② **改用共用 color helper** —— 它目前保留著自己那份丟掉 alpha 的 parser,留著就是留一份已知錯誤的第二實作;③ 補 image hero 的 focus 契約 |
 
 **inline style 是不可繞過的約束**:`HuxHero` 把背景寫成 inline `style`,inline 贏過任何 class
 規則。純 CSS **蓋不掉** `backgroundImage` 的 fallback,故 text 模式必須讓元件根本不產生 `style`。
@@ -425,6 +463,9 @@ Playwright 只負責真實瀏覽器才能驗的東西(計算色、對比、幾�
 - `headerBgCss` 帶尾隨分號 → 清理後的值(補上目前只有註解保護的 SPA 修復)
 - 未填 `headerImg` → `image` + fallback URL + **`fallbackColor: '#2D2D2D'`**
 - 明填同一 URL → `image` + 同 URL + **`fallbackColor: null`**
+- **`fallbackColor` 必須在 static rendering 層另外斷言** —— resolver 回傳正確不代表 renderer
+  真的用了它。要分別驗「未填圖 → inline style 含 `#2D2D2D`」與「明填同 URL → inline style
+  **不含** background-color」
 - commit A:遮罩行為與現況逐項相同;功能 commit:`text` → `maskOpacity === null`
 
 **`hero-rendering`**(static rendering,`renderToStaticMarkup`):覆蓋
@@ -578,7 +619,7 @@ fixture 內容(標題、副標、tags、正文)**刻意全 ASCII**。`site-font-
 
 | # | 內容 | 驗收 |
 | --- | --- | --- |
-| A | `lib/hero-mode.ts` + 窮舉表單元測試 + `HuxHero` 接線 | 不碰 CSS;既有測試組全綠 |
+| A | `lib/hero-config.ts` 的 parse 管線 + `lib/hero-mode.ts` + 窮舉表單元測試 + `HuxHero` 接線 + **image/keynote 的 static characterization** | 不碰 CSS;既有測試組全綠 |
 | B | hero 顏色 token + 繼承化 + hero-scoped tag 邊框 + `--hux-interactive` 指向 | **零像素變動**;驗證閘是**搜尋整份 CSS**;含 post-card tag 邊框回歸測試 |
 | C | navbar token 正面列舉 + `.navbar-tool-trigger` + **popup cascade 正規化** + popup focus 配色 | **刻意有像素變動**(popup 交還元件、focus 2.31 → 6.49);含 fixed hover 等值與展開選單的 focus 對比測試 |
 | D | `parseHeaderStyle` + validator + orchestration seam + 其單元測試 | 錯誤路徑全覆蓋;既有測試組全綠 |
