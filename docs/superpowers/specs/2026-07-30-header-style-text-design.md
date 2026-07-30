@@ -6,8 +6,14 @@
 >
 > 修訂 3:第二輪審查的三項必修(Playwright 笛卡兒積與斷言適用狀態矛盾、contentlayer 驗證
 > 順序與可單測邊界、OpenWiki 指令漏 `--print`)+ 四項維護性調整(死 token `--navbar-bg`、
-> `navigablePosts()` 命名不過度宣稱、`iframe + text` 改為 build 拒絕、static rendering 責任
-> 邊界)。並修正兩處文件錯誤。逐項驗證記錄見「審查修正記錄」。
+> 命名不過度宣稱、`iframe + text` 改為 build 拒絕、static rendering 責任邊界)。
+>
+> 修訂 4:第三輪審查的兩個 production regression blocker —— ① 把 404 閘門換成 raw
+> `findPost()` 會讓 **draft 從 404 變 200**(`allCoreContent()` 在 production 會過濾 draft,
+> 那一行同時是 draft 閘門與 pager 序列);② 刪掉 470 行的 `.series-meta` 顏色 consumer 會讓
+> **image hero 的 series 句子變 `#666`**(該元素同時帶 `.post-series-link-top`,878 行有直接
+> 宣告,直接宣告永遠贏過繼承)。另修 validator 覆蓋缺口、text+series 在瀏覽器層完全沒有
+> oracle、tag 邊框測試只驗 `border-color` 會假綠等問題。逐項驗證記錄見「審查修正記錄」。
 
 ## 背景
 
@@ -116,8 +122,18 @@ headerStyle: { type: 'enum', options: ['text'] },
 新的失敗模式:`headerStyle: txt` 會讓 `yarn contentlayer2 build`(進而 CI 的 `tsc --noEmit`)
 直接失敗,而非靜默回退。已確認為期望的 fail-fast。
 
-**互斥組合的 build 時驗證(決策 1、5)**:`headerStyle: text` 同時帶非空 `headerImg`、
-`headerBgCss` 或 `iframe` 時,建置必須失敗並指出檔名與衝突欄位。
+**互斥組合的 build 時驗證(決策 1、5)**:`headerStyle: text` 同時帶下列任一項時,建置必須失敗
+並指出檔名與衝突欄位:
+
+| 衝突欄位 | 為何要擋 |
+| --- | --- |
+| `headerImg`、`headerBgCss` | 決策 1 |
+| `iframe` | 決策 5 |
+| `headerMask` | text renderer 強制 `maskOpacity: null`,OG fallback 漸層也不用它 —— 欄位完全惰性。**注意 `headerMask: 0` 是有效值,不可用 truthy 判斷漏掉** |
+| `layout: PostSimple` / `PostBanner` | 兩者可達但不 render `HuxHero`,`headerStyle` 會被靜默忽略。只在手冊寫警告不夠 —— 合法的 enum 值被靜默丟棄正是 fail-fast 要防的事 |
+
+`layout` 這一項**不需要**先做全面正規化:validator 多收一個 `layout` 參數、拒絕兩個已知不支援
+的值即可。
 
 失敗傳播已驗證,不再是未知:`@contentlayer2/core` 的 `generate-dotpkg.ts:136` 會把 callback
 的 rejection 包成 `SuccessCallbackError` 送進失敗路徑,因此在 `onSuccess` 內同步 throw 或回傳
@@ -131,17 +147,26 @@ rejected promise **就會**讓 `contentlayer2 build` 失敗。不需要改用 co
 ```ts
 onSuccess: async (importData) => {
   const { allBlogs } = await importData()
-  assertValidHeroConfigurations(allBlogs) // 必須第一個執行,在任何產物寫出之前
+  // 必須第一個執行,在任何 project-owned derived output 寫出之前。
+  // (.contentlayer 本身在 onSuccess 執行前就已生成,擋不住;能擋的是下面這三個產物。)
+  assertValidHeroConfigurations(allBlogs)
   collectSeries(allBlogs)
-  createTagCount(allBlogs)
+  await createTagCount(allBlogs) // 現況漏了 await,錯誤不會可靠傳回 contentlayer
   createSearchIndex(allBlogs)
 },
 ```
 
+`createTagCount` 是 `async function`(`contentlayer.config.ts:75`)但現況沒有 `await`,所以它
+內部的錯誤不會傳回 contentlayer。順手補上。
+
 **驗證邏輯必須抽成可匯出的純函式**(例如 `lib/hero-config.ts` 的
-`validateHeroConfiguration({ sourceFilePath, headerStyle, headerImg, headerBgCss, iframe })`),
-並在 `tests/unit/` 覆蓋錯誤路徑:訊息內容、空字串、純空白字串、各種衝突欄位組合。
-只靠「真實 build 裡沒有衝突的 fixture」無法證明錯誤路徑守得住 —— 那條路徑永遠不會被執行到。
+`validateHeroConfiguration({ sourceFilePath, headerStyle, headerImg, headerBgCss, iframe,
+headerMask, layout })`),並在 `tests/unit/` 覆蓋錯誤路徑:訊息內容、空字串、純空白字串、
+`headerMask: 0`、各種衝突欄位組合。只靠「真實 build 裡沒有衝突的 fixture」無法證明錯誤路徑
+守得住 —— 那條路徑永遠不會被執行到。
+
+**validator 與 resolver 必須共用同一套「什麼算空值/什麼算有效模式」的定義**,不可各自實作。
+否則會出現 validator 放行、resolver 卻走另一條分支(或反之)的漂移。
 
 這條驗證同時被 CI 的 `ci` job(`yarn contentlayer2 build`)與 Vercel build 覆蓋。
 
@@ -157,7 +182,7 @@ export type HeroMode =
   | { kind: 'keynote'; iframeSrc: string }
   | { kind: 'text' }
   | { kind: 'css-background'; background: string }
-  | { kind: 'image'; url: string; fallbackColor?: string }
+  | { kind: 'image'; url: string; fallbackColor: string | null }
 
 export type HeroSurface = {
   mode: HeroMode
@@ -202,13 +227,52 @@ export function resolveHeroSurface(input: {
 }
 ```
 
-**優先靠繼承,而不是把六個硬值換成六個 `var()`。** 427/436/450/458/470 這五條的 `color: #fff`
-是 `.intro-header` 顏色的**冗餘重述** —— 直接刪除比轉成 `var()` 好。
+**部分可以靠繼承,但 470 行絕對不能刪 —— 已證實。**
 
-> **刪除前的驗證閘(不可跳過)**:必須先確認 `@layer base`(63 行起)沒有直接對 `h1`–`h6` 或
-> `.subheading` 設 `color`。**直接宣告在元素上會贏過繼承,與 cascade layer 無關**,刪掉就會
-> 露出來。這是要用截圖證明的零像素變動,不能假設。若確有這類規則,該條就保留為
-> `color: var(--hero-fg)`。
+`.post-heading .series-meta` 的元素**同時帶有 `.post-series-link-top`**,而後者在 878 行
+**直接宣告** `color: #666`:
+
+```css
+.post-series-link-top { margin-top: 16px; color: #666; font-size: 14px; }
+.dark .post-series-link-top:not(.series-meta) { color: #b3b3b3; }
+```
+
+第二條的 `:not(.series-meta)` 就是這兩個 class 共存的鐵證 —— 那個 `:not()` 存在的唯一理由就是
+要把 hero 這個情況排除掉。
+
+目前 `.post-heading .series-meta`(0,2,0)壓過 `.post-series-link-top`(0,1,0)。**刪掉前者之後,
+`#666` 這個直接宣告會贏過從 `.intro-header` 繼承來的顏色**,結果是:
+
+- `Posted by` 正確繼承 hero 白色(它只有 `.meta`)
+- Series 那句話變成 `#666`
+- Series 的 `<a>` 因 `color: inherit` 一起變灰
+
+**這會直接破壞現有 image hero 的視覺。** 因此 470 行必須保留為 consumer:
+
+```css
+.post-heading .meta,
+.post-heading .series-meta {
+  color: var(--hero-fg);
+}
+```
+
+**`--hero-link-hover` 的 consumer 也必須明列**,否則它會是死 token,text hero 的 hover 會繼續
+用 `#66c7e0`:
+
+```css
+.intro-header-post .series-meta a:hover,
+.intro-header-post .series-meta a:focus {
+  color: var(--hero-link-hover);
+}
+```
+
+> **刪除 427/436/450/458 前的驗證閘(不可跳過,且範圍比 v2 寫的更寬)**:
+> v2 只要求檢查 `@layer base` —— **那個範圍太窄**,470 行的反例就在未分層區的 878 行。
+> 正確做法是**搜尋整份 CSS 中所有直接命中目標元素的 `color` 規則**(含元素選擇器、
+> 該元素身上任何其他 class、以及 `.dark` 變體),而不只看某一層。
+> **直接宣告在元素上永遠贏過繼承,與 cascade layer 和 specificity 高低都無關**
+> —— 繼承只在該元素完全沒有 `color` 宣告時才生效。
+> 任一條有反例就保留為 `color: var(--hero-fg)`。零像素變動必須用截圖證明,不能假設。
 
 **tag 邊框(v1 的 blocker 1)**:`.tags .tag` 的 `border` shorthand 在 489 行,**是全域規則**,
 文章列表卡片(`HuxPostCard.tsx:31`)、文章內文與側邊目錄都在用。把它改成
@@ -317,7 +381,7 @@ frontmatter。資訊在下、需求在上,React 單向資料流無 prop 路徑�
 
 ```css
 /* 桌面:fixed 有自己的實心底,text tone 只在非 fixed 時套用 */
-body:has(main .intro-header-text) .navbar-custom:not(.is-fixed) {
+body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed) {
   --navbar-fg: var(--hux-text);
   --navbar-fg-hover: var(--series-interactive);
 }
@@ -327,16 +391,23 @@ body:has(main .intro-header-text) .navbar-custom:not(.is-fixed) {
    的透明疊層。因此手機不能被 is-fixed 排除,否則捲動回頂端途中(scrollY 僅數 px、導覽列
    已部分可見而 is-fixed 尚未移除)會是白字白底。 */
 @media (max-width: 767px) {
-  body:has(main .intro-header-text) .navbar-custom {
+  body:has(main .intro-header-post.intro-header-text) .navbar-custom {
     --navbar-fg: var(--hux-text);
     --navbar-fg-hover: var(--series-interactive);
   }
 }
 ```
 
-`:not(.is-fixed)` 在桌面是必要的:`:has()` 權重等於其參數最高權重,整條
-`body:has(main .intro-header-text) .navbar-custom:not(.is-fixed)` 是 (0,3,1),會壓過
-`.navbar-custom.is-fixed` (0,2,0)。用 `:not()` 讓兩者以 class 互斥,比賭權重穩健。
+**選擇器加上 `.intro-header-post` 限定**:確保只有文章 hero 會切換 navbar tone,正文 raw HTML
+若出現同名 class 也不會誤觸,並且自然排除首頁(`.intro-header-home`)與 archive
+(`.intro-header-archive`)。**刻意不用 `main > article > ...` 的直接子選擇器鏈** —— 那會把
+CSS 綁死在確切的 DOM 嵌套上,日後任何人多包一層 wrapper 就會**靜默失效**(navbar tone 不再
+套用,而且沒有任何錯誤)。多一個 class 限定拿到大部分好處,不引入這個脆弱性。
+
+`:not(.is-fixed)` 在桌面是必要的:`:has()` 權重等於其參數的權重,整條
+`body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed)` 是
+**(0,4,2)**,會壓過 `.navbar-custom.is-fixed` 的 (0,2,0)。用 `:not()` 讓兩者以 class 互斥,
+比賭權重穩健。
 
 > v1 聲稱這條規則「一次涵蓋手機與桌面、不必放進任何 media query」—— **該說法錯誤**,已修正。
 
@@ -346,29 +417,62 @@ body:has(main .intro-header-text) .navbar-custom:not(.is-fixed) {
 
 ### 7. prev/next 過濾 hidden(決策 2)
 
-`app/[year]/[month]/[day]/[slug]/page.tsx:96` 目前是 `allCoreContent(sortPosts(allBlogs))`,
-**未過濾**,且同一份清單同時用於**定位當前文章**與**計算 prev/next**:
+`app/[year]/[month]/[day]/[slug]/page.tsx:94-102` 目前是:
 
 ```ts
-const postIndex = sortedCoreContents.findIndex(...)
+const sortedCoreContents = allCoreContent(sortPosts(allBlogs))
+const postIndex = sortedCoreContents.findIndex((p) => p.legacyPath === routePath(params))
 if (postIndex === -1) return notFound()
 const prev = sortedCoreContents[postIndex + 1]
 const next = sortedCoreContents[postIndex - 1]
 ```
 
-**天真地過濾會讓 hidden 文章自己的頁面 404**,直接違反決策 2 與既有測試
-(`blog-parity.spec.ts:67-68` 斷言 hidden 路徑回 200)。因此必須把兩個職責拆開:
+**這份清單並非「未過濾」—— 它已經過濾 draft。** `pliny/utils/contentlayer.js:35` 的
+`allCoreContent()` 在 production 會 `.filter((c) => !('draft' in c && c.draft === true))`,
+所以這一行同時承擔**兩個**職責:draft 的 404 閘門,以及 pager 序列。手冊
+(`functionality-settings-manual.zh-TW.md:78`)明訂「`draft: true` — 未發佈。production 全面
+排除」。
 
-- **定位**:沿用既有的 `findPost(params)`(105 行已在用),含 hidden → 直接路徑照樣可訪問。
-- **導覽**:另一份過濾後的清單計算 prev/next;hidden 文章在該清單中找不到 → **沒有
-  prev/next**(合理:它不在公開序列上)。
+因此有**三個**必須分清楚的關注點,不是兩個:
 
-**命名要精準,不得過度宣稱。** 只新增一個 pager 專用的純函式 `navigablePosts()`,**不宣稱它已
-集中全站可見性政策**。同樣的判斷目前散落在首頁、年度頁、archive、tag、sitemap、search index
-與 series;若只新增一個函式給 pager 用卻取名 `listedPosts()`,實際結果是「多份判斷**再加**一層
-抽象」,比現況更難懂。
+| 關注點 | 清單 | 錯誤後果 |
+| --- | --- | --- |
+| draft 的 404 閘門 | `allCoreContent(...)`(production 排除 draft) | 換成 raw `findPost()` → **draft 從 404 變成 200**,違反手冊契約 |
+| hidden 的 pager 排除 | 再排除 `listed === false` | 不做 → hidden 洩漏進公開導覽 |
+| hidden 自己的頁面仍可訪問 | 必須通過上面的閘門 | 用過濾後清單當閘門 → hidden **404**,違反 `blog-parity.spec.ts:67-68` |
 
-全站可見性語意統一(含 sitemap 的 draft/production 語意)另案處理 —— 見「已否決/延後」。
+固定的 route 順序:
+
+```ts
+const renderablePosts = allCoreContent(sortPosts(allBlogs)) // production 已排除 draft
+
+const currentIndex = renderablePosts.findIndex((p) => p.legacyPath === routePath(params))
+if (currentIndex === -1) return notFound() // 保留 draft policy,且 hidden 仍在此清單中
+
+const { prev, next } = resolvePostNeighbors(renderablePosts, routePath(params))
+const post = findPost(params) as Blog // 通過閘門後才取完整 Blog
+```
+
+**抽 `resolvePostNeighbors(renderablePosts, currentPath)`,不是 `navigablePosts()`。**
+理由有二:
+
+1. **`-1` index 是真陷阱,必須由函式內部封裝。** 若只提供過濾後的清單讓 route 自己算:
+
+   ```ts
+   const index = pagerPosts.findIndex(...) // hidden → -1
+   const prev = pagerPosts[index + 1]      // pagerPosts[0] —— 是最新文章,不是 undefined
+   const next = pagerPosts[index - 1]      // pagerPosts[-2] —— undefined
+   ```
+
+   hidden 文章會顯示一個指向**最新公開文章**的 Previous。`resolvePostNeighbors()` 必須在
+   current 不在 pager 序列時明確回傳 `{ prev: undefined, next: undefined }`。
+
+2. **`navigablePosts` 語意不準** —— hidden 文章自己是可導航的(路徑可訪問),只是不在 pager
+   序列上。函式應該以「求鄰居」為名,而非以「哪些文章可導航」為名。
+
+**不宣稱這集中了全站可見性政策。** 同樣的判斷目前散落在首頁、年度頁、archive、tag、sitemap、
+search index 與 series;sitemap 另有 draft/production 語意。一次統一另案處理 —— 見
+「已否決/延後」。
 
 **這修掉一個既有缺陷**:`data/blog/hidden/` 目前有 6 篇,全部已經在公開 pager 鏈上。
 現有 pager 測試只斷言 slot 存在與幾何、不斷言連結目標,故不受影響。
@@ -397,7 +501,7 @@ specificity 無關**。因此:
 | --- | --- |
 | `contentlayer.config.ts` | `headerStyle` enum 欄位 + 互斥組合的 build 時驗證 |
 | `lib/hero-mode.ts` | 新增 |
-| `lib/post-visibility.ts` | 新增:`navigablePosts()`(**僅 pager 用**,不是全站政策) |
+| `lib/post-neighbors.ts` | 新增:`resolvePostNeighbors()`(**僅 pager 用**,不是全站可見性政策) |
 | `lib/hero-config.ts` | 新增:`validateHeroConfiguration()` 純函式 |
 | `app/[year]/[month]/[day]/[slug]/page.tsx` | 拆開定位與導覽清單 |
 | `components/hux/HuxHero.tsx` | 改用 `resolveHeroSurface`;加 `intro-header-text` class;text 模式不產生 inline `style`、不渲染遮罩 |
@@ -440,7 +544,11 @@ specificity 無關**。因此:
 - `text` + `headerImg` → `text`;`text` + `headerBgCss` → `text`
 - `headerBgCss` 帶尾隨分號 → 清理後的值(補上目前只有 `HuxHero.tsx:46-50` 註解保護的修復)
 - 未填 `headerImg` → `image` + `/img/home-bg.avif` + **`fallbackColor: '#2D2D2D'`**
-- 明填 `/img/home-bg.avif` → `image` + 同 URL + **`fallbackColor: undefined`**(釘死 blocker 3)
+- 明填 `/img/home-bg.avif` → `image` + 同 URL + **`fallbackColor: null`**(釘死 blocker 3)
+
+`fallbackColor` 刻意是 **required `string | null`** 而非 optional:它是等值重構的必要資訊,
+設成 optional 的話實作者漏填時 TypeScript 不會抗議,而症狀(圖片載入前底色由 `#2D2D2D` 變
+`#777`)在測試裡幾乎看不出來。
 - commit A:遮罩行為與現況逐項相同(含 keynote + mask);功能 commit:`text` → `maskOpacity === null`
 
 ### Unit:`tests/unit/hero-rendering.test.ts`(static rendering)
@@ -467,9 +575,12 @@ Contentlayer」,`yarn test:unit` 就會依賴先跑過 `contentlayer2 build`,引
 
 ### Unit:`tests/unit/post-visibility.test.ts`
 
-- hidden 文章不出現在 `listedPosts()`
 - hidden 文章的相鄰公開文章,prev/next 互指(跳過 hidden)
-- **hidden 文章本身沒有 prev/next,但仍可被定位**(釘死「過濾不得造成 404」)
+- **hidden 文章本身回傳 `{ prev: undefined, next: undefined }`** —— 明確釘死 `-1` index 陷阱
+  (天真實作會讓 `list[-1 + 1]` 回傳 `list[0]`,也就是最新文章)
+- **hidden 文章仍在傳入的 `renderablePosts` 中**(釘死「過濾不得造成 404」)
+- **draft 文章在 production 不在 `renderablePosts` 中** —— 這條屬於 route 層的閘門契約,
+  用 `allCoreContent()` 的行為驗證,守住「不可把閘門換成 raw `findPost()`」
 
 ### Playwright:`tests/playwright/header-style-text.spec.ts`
 
@@ -499,8 +610,18 @@ tag 邊框(3:1)、tag hover(兩契約)、導覽列品牌/連結/ThemeSwitch 文�
 - 主題切換前後同一元素顏色**必須不同**(證明真的吃變數)
 - text 文章 hero `background-image` 為 `none`;圖片文章不為 `none`
 - 桌面斷點 `.intro-header-content` 上下 padding 為 85/20 而非 150
-- **hero 外的 tag 邊框仍可見**(釘死 blocker 1:post card、文章內文、側邊目錄)
-- **fixed navbar hover 不得接近底色**(釘死 blocker 2,明/暗兩輪)
+- **hero 外的 tag 邊框仍可見**(釘死 blocker 1:post card、文章內文、側邊目錄)。
+  **不可只斷言 `border-color`** —— blocker 1 的失敗模式是 shorthand 整條失效,此時 556 行的
+  `border-color: var(--hux-text)` 仍然生效、computed `border-color` 照樣有值,只有
+  `border-style` 變 `none`、`border-width` 變 `0px`。必須同時斷言:
+  `border-style !== 'none'`、四側 `border-width > 0`、border 對背景 ≥ 3:1。
+- **fixed navbar 的 hover 等值**:直接斷言 `hoveredColor === restingColor`(明/暗兩輪)。
+  這比「hover 對比合格」強 —— 後者抓不到細微色偏(例如從 `#2d2d2d` 漂到 `#333`),而現況的
+  契約就是「fixed 狀態 hover 不變色」。
+- **SPA client navigation**:text 文章 → 圖片文章 → 瀏覽器上一頁。守住 inline style 與
+  `:has()` 在 client 導覽後同步切換。本 repo 有這類前科(`HuxHero.tsx:46-50` 記錄的
+  「站內連結進來背景消失、重新整理才正常」),而 `:has()` 的選賣點正是它不需要 effect ——
+  必須有測試證明這個宣稱。
 
 ### 狀態表(取代笛卡兒積)
 
@@ -537,7 +658,26 @@ class 蓋不掉 inline style,量到的會是 text 前景色對**圖片**背景,�
 | Unit(`hero-mode`) | 優先序、清理、mask、fallbackColor |
 | Static rendering(`hero-rendering`) | text + series 的 markup、class、無 style、無 mask |
 | Production E2E | 真實 hidden fixture 路徑的實際背景與對比 |
+| **CSS consumer harness** | text hero 內 `.series-meta > a` 的 hover 實際計算色(見下) |
 | Image-series E2E | 保留現有圖片 hero 的 hover 契約(`series.spec.ts` 不變) |
+
+**上面四層仍然守不住 `--hero-link-hover`,必須補第四層。** 缺口的成因:hidden fixture 進不了
+系列(`lib/series.ts:47` 跳過 `listed === false`),所以**真實 text fixture 頁面上根本沒有
+`.series-meta` 元素**;static rendering 有 markup 但不算 CSS;現有 series E2E 是 image hero、
+不會讀到 text token。三者相加的結果是:**把 text 模式的 `--hero-link-hover` 改壞,現有設計
+全部照樣綠燈。**
+
+補法:**在真實 text fixture 的 hero 內注入同形的 `.series-meta > a` markup**,量它 hover 的
+計算色。與 v1 被否決的方案差別是關鍵 ——
+
+- v1 注入的是**模式 class**(`.intro-header-text`)到一個 image hero 上 → 背景仍是 inline
+  style 的圖片,量到的東西沒有意義。
+- 這裡注入的是**內容元素**到一個**真正的 text hero** 上 → 背景、token、cascade 全都是真的,
+  只補上內容政策不允許存在的那個元素。
+
+測試內必須註明它是 **CSS consumer harness**,不是內容路徑測試:它證明「規則存在且值正確」,
+不證明「真實系列文章會走到這裡」。斷言:hover 對比 ≥ 4.5 **且兩主題不同色**(規則不存在時會
+退回 `#66c7e0`,淺色對比 1.94 → 紅)。
 
 **反向不變量警告**:**不可**複製 `series.spec.ts:148-159` 的「兩主題 hover 同色」。那條的
 前提是「hero 永遠是深色照片」,text 模式打破它。照抄會斷言**錯誤的不變量**並綠燈通過 ——
@@ -560,6 +700,13 @@ class 蓋不掉 inline style,量到的會是 text 前景色對**圖片**背景,�
 | `image` 模式丟掉 `fallbackColor` | 未填 `headerImg` 的 fallback 底色單元測試 |
 | pager 用未過濾清單 | hidden 不得進公開 pager |
 | pager 用過濾清單定位當前文章 | hidden 路徑仍回 200 |
+| **把 404 閘門換成 raw `findPost()`** | **draft 在 production 仍 404** |
+| **`resolvePostNeighbors` 不處理 `-1`** | hidden 文章回 `{ undefined, undefined }`(否則 Previous 會指向最新文章) |
+| **刪掉 470 行的 `.series-meta` consumer** | image hero 的 series 句子不得變 `#666` |
+| **刪掉 `--hero-link-hover` 的 consumer** | text hero 的 CSS consumer harness |
+| tag 邊框測試只斷言 `border-color` | 必須由 `border-style`/`border-width` 那條抓到 |
+| validator 不擋 `headerMask`(或用 truthy 判斷) | `headerMask: 0` 的錯誤路徑單測 |
+| `--hero-fg` 的 fixed navbar hover 值漂到 `#333` | `hoveredColor === restingColor` |
 
 ### production 目視驗收
 
@@ -588,7 +735,7 @@ fixture 內容(標題、副標、tags、正文)**刻意全 ASCII**。`scripts/si
 | A | `lib/hero-mode.ts` + 窮舉表單元測試(含 `fallbackColor`)+ `HuxHero` 接線 | 不碰 CSS;既有測試組全綠 |
 | B | hero 顏色繼承化 + `--hero-*` token + hero-scoped tag 邊框 | **零像素變動**;含 `@layer base` 驗證閘;含 hero 外 tag 邊框回歸測試 |
 | C | navbar 變數化(含 `.icon-bar`、`is-fixed` 兩組**含 hover token**) | **零像素變動**;含 fixed navbar hover 回歸測試 |
-| D | 可見性政策集中化 + pager 過濾 hidden | hidden 路徑仍 200、公開 pager 不含 hidden |
+| D | 抽 `resolvePostNeighbors()` + pager 排除 hidden | hidden 路徑仍 200、公開 pager 不含 hidden、**draft 在 production 仍 404** |
 | E | **原子功能 commit**:`enum` 欄位 + 互斥驗證 + text surface CSS + navbar tone + fixture + unit/static/E2E 測試 | 不得拆成「text hero」與「navbar 修復」兩個可部署 commit |
 | F | 雙語手冊 + README + `series.spec.ts:144` 註解措辭 + CLAUDE.md 教訓 | — |
 | G | OpenWiki 重生成(見下) | 生成頁差異已 review |
@@ -635,7 +782,7 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
 - **全站可見性語意統一** —— 延後。同一判斷散落在首頁、年度頁、archive、tag、sitemap、
   search index 與 series,且 sitemap 另有 draft/production 語意。一次統一會把本功能的爆炸半徑
   擴大到全站資料流,且需要一整組 characterization tests。本次只做 pager 專用的
-  `navigablePosts()`。
+  `resolvePostNeighbors()`。
 - **刪除未使用的 starter 版面** —— 延後。`AuthorLayout` / `ListLayout` / `ListLayoutWithTags`
   零 importer(自初始移植後只被 prettier 動過);`PostSimple` / `PostBanner` 可達但零文章使用。
   刪除能讓「`PostSimple` + `headerStyle` 被靜默忽略」在結構上消失,但牽動 `layouts` map、
@@ -689,3 +836,22 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
 | 7 | static rendering 過度宣稱覆蓋 Contentlayer | 手工建構 `content` object 只覆蓋 `PostLayout → HuxHero`;改 import generated fixture 會引入測試順序耦合 | 明寫三層責任邊界,unit fixture 保持純粹 |
 | 8 | 文章數統計錯誤 | frontmatter-only 統計為 16 篇(`post` 14 + `keynote` 2);原本的 17 被某篇正文裡的 `layout: post` 範例污染 | 全部改為 16 |
 | 9 | 「自訂屬性不參與 specificity」不精確 | 宣告完整參與 cascade;差異在消費端讀取繼承後的 winning value | 改寫該段推理 |
+
+### 第三輪(修訂 4)
+
+| # | 問題 | 驗證依據 | 修正 |
+| --- | --- | --- | --- |
+| 1 | **blocker**:用 raw `findPost()` 當閘門會讓 production draft 從 404 變 200 | `pliny/utils/contentlayer.js:35` 的 `allCoreContent()` 在 production `.filter(c => !('draft' in c && c.draft === true))`;手冊 `zh-TW.md:78` 明訂「production 全面排除」 | 閘門必須維持 `allCoreContent(...)`;拆成三個關注點(draft 閘門／hidden pager 排除／hidden 頁面可訪問),`findPost()` 只在通過閘門後取完整 `Blog` |
+| 2 | **blocker**:刪掉 470 行會讓 image hero 的 series 句子變 `#666` | `tailwind.css:878` `.post-series-link-top { color: #666 }` 是**直接宣告**,且 884 行的 `.dark .post-series-link-top:not(.series-meta)` 就是兩 class 共存的鐵證 | 470 行保留為 `color: var(--hero-fg)`;驗證閘從「只查 `@layer base`」擴大為「搜尋所有直接命中目標元素的 `color` 規則」 |
+| 3 | `--hero-link-hover` 沒有明列 consumer,會是死 token | v2/v3 只在表格裡隱含帶到 422 行 | 明列 `.intro-header-post .series-meta a:hover/:focus` |
+| 4 | validator 漏擋兩類完全惰性的欄位 | text renderer 強制 `maskOpacity: null`;`PostSimple`/`PostBanner` 不 render `HuxHero` | 加擋 `headerMask`(含 `headerMask: 0` 不可用 truthy 判斷)與 `layout: PostSimple`/`PostBanner` |
+| 5 | text + series 在瀏覽器層**完全沒有 oracle** | hidden fixture 進不了系列(`lib/series.ts:47`)→ 真實 text 頁面沒有 `.series-meta`;static rendering 不算 CSS;現有 series E2E 是 image hero | 新增 CSS consumer harness:在**真實 text hero** 內注入**內容元素**(而非 v1 被否決的注入模式 class) |
+| 6 | tag 邊框回歸測試只驗 `border-color` 會假綠 | shorthand 失效時 556 行的 `border-color` 仍生效,只有 `border-style: none`、`border-width: 0px` | 同時斷言 `border-style !== none`、四側 width > 0、對背景 ≥ 3:1 |
+| 7 | `resolvePostNeighbors` 的 `-1` index 陷阱 | `list[-1 + 1]` → `list[0]`,即最新文章,不是 `undefined` | 由函式內部封裝並明確回傳兩個 `undefined`;列入突變測試 |
+| 8 | `createTagCount` 未 `await` | `contentlayer.config.ts:75` 是 `async function`,現況 callback 沒 await | 補 `await`,否則錯誤不會傳回 contentlayer |
+| 9 | 「任何產物寫出前」不精確 | `.contentlayer` 在 `onSuccess` 執行前就已生成 | 改為「任何 project-owned derived output 寫出前」 |
+| 10 | `fallbackColor` 設成 optional 會讓漏填不被 TypeScript 抓到 | 等值重構的必要資訊 | 改為 required `string \| null` |
+| 11 | fixed navbar 零變化測試只驗對比,抓不到細微漂移 | 現況契約是「hover 不變色」 | 直接斷言 `hoveredColor === restingColor` |
+| 12 | `:has()` 範圍仍可縮 | 正文 raw HTML 可能出現同名 class | 加 `.intro-header-post` 限定;**刻意不用 `main > article >` 直接子選擇器鏈**(綁死 DOM 嵌套、加 wrapper 會靜默失效) |
+| 13 | 缺 SPA client navigation 測試 | `:has()` 的賣點是不需 effect,但無測試證明;repo 有 `HuxHero.tsx:46-50` 記錄的同類前科 | 新增 text → image → 上一頁的 production 測試 |
+| 14 | 命名殘留不一致 | 檔案邊界、unit 測試、commit D 三處仍寫 `listedPosts()` / 「可見性政策集中化」 | 全部統一為 `resolvePostNeighbors()` |
