@@ -25,14 +25,15 @@ import rehypePrismPlus from 'rehype-prism-plus'
 import rehypePresetMinify from 'rehype-preset-minify'
 import { visit } from 'unist-util-visit'
 import siteMetadata from './data/siteMetadata'
-import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
+import { coreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 import prettier from 'prettier'
 import { legacyPathFromDateAndSlug, stripPostDatePrefix } from './lib/legacy-url'
 import { isResponsiveIframeSrc } from './lib/iframe'
 import { collectSeries } from './lib/series'
+import { runContentDerivedOutputs } from './lib/content-outputs'
+import { resolvePublicationMode } from './lib/post-publication'
 
 const root = process.cwd()
-const isProduction = process.env.NODE_ENV === 'production'
 
 // 舊站(Jekyll)用 AnchorJS 的 icon: '#' 選項,標題錨點就是一個純文字 #,
 // 不是圖示字型也不是 SVG——比照移植,樣式交給 css/tailwind.css 的 .content-header-link。
@@ -70,12 +71,14 @@ const computedFields: ComputedFields = {
 }
 
 /**
- * Count the occurrences of all tags across blog posts and write to json file
+ * 只負責寫出傳進來的文章的 tag 統計。**不做任何 visibility 判斷** ——
+ * 那是 lib/post-publication.ts 的責任。以前這裡自己讀 module-level isProduction,
+ * 導致「傳入正確 view」也可能被 writer 二次過濾。
  */
-async function createTagCount(allBlogs) {
+export async function createTagCount(allBlogs) {
   const tagCount: Record<string, number> = {}
   allBlogs.forEach((file) => {
-    if (file.tags && file.listed !== false && (!isProduction || file.draft !== true)) {
+    if (file.tags) {
       file.tags.forEach((tag) => {
         const formattedTag = slug(tag)
         if (formattedTag in tagCount) {
@@ -90,14 +93,19 @@ async function createTagCount(allBlogs) {
   writeFileSync('./app/tag-data.json', formatted)
 }
 
-function createSearchIndex(allBlogs) {
+/**
+ * 同上:不做 visibility 判斷。刻意不用 pliny 的 allCoreContent() —— 它內含
+ * production-only 的 draft 過濾。改為自己做 coreContent projection 以維持輸出形狀不變。
+ * sortPosts 會原地排序,所以先複製。
+ */
+export function createSearchIndex(allBlogs) {
   if (
     siteMetadata?.search?.provider === 'kbar' &&
     siteMetadata.search.kbarConfig.searchDocumentsPath
   ) {
     writeFileSync(
       `public/${path.basename(siteMetadata.search.kbarConfig.searchDocumentsPath)}`,
-      JSON.stringify(allCoreContent(sortPosts(allBlogs.filter((post) => post.listed !== false))))
+      JSON.stringify(sortPosts([...allBlogs]).map((post) => coreContent(post)))
     )
     console.log('Local search index generated...')
   }
@@ -364,8 +372,10 @@ export default makeSource({
   },
   onSuccess: async (importData) => {
     const { allBlogs } = await importData()
-    collectSeries(allBlogs)
-    createTagCount(allBlogs)
-    createSearchIndex(allBlogs)
+    await runContentDerivedOutputs(
+      allBlogs,
+      resolvePublicationMode(process.env.BLOG_PUBLICATION_MODE),
+      { collectSeries, createTagCount, createSearchIndex }
+    )
   },
 })
