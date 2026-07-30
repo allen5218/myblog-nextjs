@@ -555,9 +555,14 @@ B/C 的比對範圍:圖片文章、首頁、archive、series、about、404、off
    同一條規則,需一併檢查。**注意**:只要這批死類別還在,「單一前景 token」在 SVG 上就不是
    真的成立 —— 子元素上的指定值會贏過祖先繼承。本功能靠的是 `.navbar-tools svg` 這條未分層
    規則仍在生效,不是靠繼承。
-2. **`layout: PostSimple` / `PostBanner` 目前不可達。** 兩者不 import `HuxHero`,理論上會忽略
-   `headerStyle`;但如上所述,現有 frontmatter 的 `layout` 值全部落到 unknown fallback,
-   **沒有任何文章能選到那兩個版面**。手冊仍應寫明 `headerStyle` 僅對 `PostLayout` 有意義。
+2. **`layout: PostSimple` / `PostBanner` 目前無人使用,但可達。** 兩者不 import `HuxHero`,
+   所以會靜默忽略 `headerStyle`。現有 17 篇的 `layout` 值全是 `post`/`keynote`,都落到 unknown
+   fallback → `PostLayout`,因此**實際零使用**;但 `layouts` map 確實有這兩個 key,任何新文章
+   寫 `layout: PostSimple` 都會生效,兩份手冊也把它們記載為可選值。故手冊必須寫明
+   `headerStyle` 僅對 `PostLayout` 有意義。
+   **更徹底的解法是刪掉這兩個版面**(它們是 tailwind-nextjs-starter-blog 遺留,零文章使用,
+   卻讓 #63 系列功能必須同步改它們、並被 `tests/unit/series-rendering.test.ts:58-59` 釘住)。
+   刪除後這個組合在結構上不可能存在。屬獨立清理,不折進本功能。
 3. **keynote(`iframe`)+ `headerMask` 會把遮罩渲染在 iframe 上**,可能阻擋點擊。既有行為,
    本次刻意保持不變(commit A 必須零行為改變),未觀察到有文章使用該組合。
 4. **`text` + `images` frontmatter 時 JSON-LD 仍會用 `images[0]`。** 決策 1 只擋
