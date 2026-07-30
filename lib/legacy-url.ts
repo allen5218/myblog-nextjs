@@ -9,3 +9,19 @@ export function legacyPathFromDateAndSlug(dateInput: string | Date, slug: string
   const day = String(date.getUTCDate()).padStart(2, '0')
   return `${year}/${month}/${day}/${slug}`
 }
+
+export type LegacyParams = {
+  year: string
+  month: string
+  day: string
+  slug: string
+}
+
+export function legacyParamsFromPath(legacyPath: string): LegacyParams {
+  const [year, month, day, ...rest] = legacyPath.split('/')
+  return { year, month, day, slug: rest.join('/') }
+}
+
+export function legacyPathFromParams(params: LegacyParams): string {
+  return `${params.year}/${params.month}/${params.day}/${params.slug}`
+}
