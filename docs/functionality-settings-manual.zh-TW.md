@@ -487,6 +487,12 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 - `tests/unit/series.test.ts` 與 `tests/unit/series-rendering.test.ts` — 系列 identity、
   無效 slug／碰撞拒絕、可見性、確定性閱讀順序、全成員 `lastmod`、共用連結資格與三種
   文章版型的整合點。
+- `tests/unit/css-token-contract.test.ts` — hero 與導覽列 custom property 的**接線**契約,
+  跑在必過的 `ci` job 裡。用 postcss 釘住每個 token 的宣告 scope 與消費點(比對集合而非
+  計數,且同一條規則只採最後一次宣告,所以在 `var()` 後面補一行寫死值也會被抓到),
+  以渲染結果驗三個 navbar trigger 的語意 class,並要求 popup focus 的成對 token 只以
+  成對形式出現在 focus 分支。**只守接線**:算出來的顏色、對比度與斷點覆蓋仍然只有
+  Playwright 抓得到,而 Playwright 不是必過檢查。
 - `tests/playwright/blog-parity.spec.ts` — 端到端契約:legacy 網址行為、隱藏文章排除、
   KBar 搜尋(青色 active 結果 + legacy 導航)、KaTeX 無 MathJax、i18n about 路由、
   Hux 視覺外殼 parity、文章 hero/導覽幾何、blockquote 長字串換行、MDX 增強器

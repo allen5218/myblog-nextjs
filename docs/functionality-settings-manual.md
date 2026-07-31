@@ -552,6 +552,14 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
 - `tests/unit/series.test.ts` and `tests/unit/series-rendering.test.ts` — series identity,
   invalid-slug and collision rejection, visibility, deterministic reading order, member-wide
   `lastmod`, shared link eligibility, and all supported post-layout integration points.
+- `tests/unit/css-token-contract.test.ts` — the **wiring** contract for the hero and navbar
+  custom properties, running inside the required `ci` job. postcss pins each token's
+  declaration scopes and consumer sites (compared as sets rather than counts, and taking
+  only the last declaration of a property in a rule, so appending a hard-coded override
+  after the `var()` is caught), rendered markup pins the semantic class on all three navbar
+  triggers, and the paired popup focus tokens must appear only as a pair inside a focus
+  branch. **Wiring only**: computed colour, contrast, and breakpoint coverage remain
+  Playwright's job, and Playwright is not a required check.
 - `tests/playwright/blog-parity.spec.ts` — end-to-end contracts for legacy URL behavior,
   hidden-post exclusion, KBar search (cyan active result + legacy navigation),
   KaTeX-without-MathJax, i18n about routes, Hux visual shell parity, post hero/nav geometry,
