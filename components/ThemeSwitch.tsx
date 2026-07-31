@@ -17,7 +17,7 @@ const Sun = () => (
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 20 20"
     fill="currentColor"
-    className="group:hover:text-gray-100 h-6 w-6"
+    className="h-6 w-6"
   >
     <path
       fillRule="evenodd"
@@ -31,7 +31,7 @@ const Moon = () => (
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 20 20"
     fill="currentColor"
-    className="group:hover:text-gray-100 h-6 w-6"
+    className="h-6 w-6"
   >
     <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
   </svg>
@@ -45,7 +45,7 @@ const Monitor = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="group:hover:text-gray-100 h-6 w-6"
+    className="h-6 w-6"
   >
     <rect x="3" y="3" width="14" height="10" rx="2" ry="2"></rect>
     <line x1="7" y1="17" x2="13" y2="17"></line>
@@ -64,8 +64,11 @@ const ThemeSwitch = () => {
   return (
     <div className="flex items-center">
       <Menu as="div" className="relative inline-block text-left">
-        <div className="hover:text-primary-500 dark:hover:text-primary-400 flex items-center justify-center">
-          <MenuButton aria-label="Theme switcher" className="theme-switch-button">
+        <div className="flex items-center justify-center">
+          <MenuButton
+            aria-label="Theme switcher"
+            className="theme-switch-button navbar-tool-trigger"
+          >
             {/* 桌面顯示的文字標籤,反映目前實際套用的模式(淺色→Light、深色→Dark)。
                 mounted 前用 'Dark' 佔位以避免 hydration 不一致(此站預設深色)。 */}
             <span className="theme-switch-text">
@@ -92,7 +95,11 @@ const ThemeSwitch = () => {
                   <MenuItem>
                     {({ focus }) => (
                       <button
-                        className={`${focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'} group flex w-full items-center rounded-md px-2 py-2 text-sm`}
+                        className={`${
+                          focus
+                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            : 'text-gray-700! dark:text-gray-200!'
+                        } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
                         <div className="mr-2">
                           <Sun />
@@ -107,8 +114,10 @@ const ThemeSwitch = () => {
                     {({ focus }) => (
                       <button
                         className={`${
-                          focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
-                        } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
+                          focus
+                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            : 'text-gray-700! dark:text-gray-200!'
+                        } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
                         <div className="mr-2">
                           <Moon />
@@ -123,8 +132,10 @@ const ThemeSwitch = () => {
                     {({ focus }) => (
                       <button
                         className={`${
-                          focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
-                        } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
+                          focus
+                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            : 'text-gray-700! dark:text-gray-200!'
+                        } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
                         <div className="mr-2">
                           <Monitor />

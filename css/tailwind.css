@@ -235,11 +235,16 @@ body {
   justify-content: space-between;
 }
 
+.navbar-custom {
+  --navbar-fg: #fff;
+  --navbar-fg-hover: rgba(255, 255, 255, 0.8);
+}
+
 .navbar-brand {
   float: left;
   margin-left: -15px;
   padding: 15px;
-  color: #fff;
+  color: var(--navbar-fg);
   font-size: 18px;
   font-weight: 800;
   line-height: 20px;
@@ -247,7 +252,7 @@ body {
 
 .navbar-brand:hover,
 .navbar-links a:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--navbar-fg-hover);
 }
 
 .navbar-toggle {
@@ -263,7 +268,7 @@ body {
   width: 20px;
   height: 2px;
   margin-bottom: 4px;
-  background: #fff;
+  background: var(--navbar-fg);
 }
 
 /* 桌面版橫排導覽;手機版隱藏(手機改用 .navbar-mobile) */
@@ -279,18 +284,9 @@ body {
   margin-right: -15px;
 }
 
-/* HeadlessUI 下拉選單裡的按鈕不應繼承導覽列工具列的大寫/小字/字距樣式,
-   讓 theme 彈窗與漢堡下拉的搜尋項與其他項目一致 */
-.navbar-custom [role='menu'] button {
-  text-transform: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-}
-
 .navbar-links a,
-.navbar-tools button {
-  color: #fff;
+.navbar-tool-trigger {
+  color: var(--navbar-fg);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 1px;
@@ -298,21 +294,15 @@ body {
   text-transform: uppercase;
 }
 
+/* SVG 一律繼承 trigger 的 token;元件不得自帶顏色 utility。 */
+.navbar-tool-trigger svg {
+  color: currentColor;
+}
+
 .navbar-tools {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.navbar-tools svg {
-  color: #fff;
-}
-
-/* HeadlessUI 選單是行內渲染,選單項的圖標(svg)會被上面 .navbar-tools svg{color:#fff} 染白,
-   在淺色下拉(白底)時看不見、只有 hover 變青底才顯現。這裡(0,2,1 > .navbar-tools svg 的 0,1,1)
-   讓選單圖標改為 inherit 按鈕本身的文字色,淺/深色與 hover 皆正常可見。 */
-.navbar-custom [role='menu'] svg {
-  color: inherit;
 }
 
 .theme-switch-button {
@@ -1538,15 +1528,8 @@ body {
   }
 
   .navbar-links a,
-  .navbar-tools button {
+  .navbar-tool-trigger {
     padding: 20px;
-  }
-
-  /* HeadlessUI 選單是行內渲染,主題彈窗按鈕會被上面 .navbar-tools button 的 20px 波及而撐高。
-     這裡(權重 0,2,1 > .navbar-tools button 的 0,1,1)把彈窗按鈕 padding 收回 px-2 py-2 的意圖。
-     僅桌面套用;手機選單在 .navbar-mobile(此斷點下 display:none),不受影響。 */
-  .navbar-custom [role='menu'] button {
-    padding: 0.5rem;
   }
 
   .navbar-tools {
@@ -1578,30 +1561,20 @@ body {
     background-color: rgba(255, 255, 255, 0.9);
     border-bottom: 1px solid #f2f2f2;
     transition: transform 0.3s;
+    --navbar-fg: #2d2d2d;
+    /* 等值:複製「fixed 狀態 hover 不變色」的現況 */
+    --navbar-fg-hover: #2d2d2d;
   }
 
   .navbar-custom.is-visible {
     transform: translate3d(0, 100%, 0);
   }
 
-  /* 浅色浮動列需把原本白色的文字/圖示轉深色 */
-  .navbar-custom.is-fixed .navbar-brand,
-  .navbar-custom.is-fixed .navbar-links a,
-  .navbar-custom.is-fixed .navbar-tools button,
-  .navbar-custom.is-fixed .navbar-tools svg {
-    color: #2d2d2d;
-  }
-
   .dark .navbar-custom.is-fixed {
     background-color: rgba(45, 45, 45, 0.9);
     border-bottom-color: #535353;
-  }
-
-  .dark .navbar-custom.is-fixed .navbar-brand,
-  .dark .navbar-custom.is-fixed .navbar-links a,
-  .dark .navbar-custom.is-fixed .navbar-tools button,
-  .dark .navbar-custom.is-fixed .navbar-tools svg {
-    color: #fff;
+    --navbar-fg: #fff;
+    --navbar-fg-hover: #fff;
   }
 
   .intro-header {
