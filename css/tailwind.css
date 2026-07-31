@@ -221,8 +221,10 @@ body {
   top: 0;
   z-index: 30;
   min-height: 56px;
-  color: #fff;
+  color: var(--navbar-fg);
   background: transparent;
+  --navbar-fg: #fff;
+  --navbar-fg-hover: rgba(255, 255, 255, 0.8);
 }
 
 .navbar-inner {
@@ -233,11 +235,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.navbar-custom {
-  --navbar-fg: #fff;
-  --navbar-fg-hover: rgba(255, 255, 255, 0.8);
 }
 
 /* <Header/> 與 <main>{children}</main> 是兄弟節點,拿不到 frontmatter —— 資訊在下、需求在上,
@@ -258,8 +255,13 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
 /* 手機:JS 在所有 viewport 都會加 is-fixed,但手機沒有 fixed 視覺狀態(那組規則全在
    min-width:768px 內),導覽列始終是 position:absolute 的透明疊層。因此不能被 is-fixed
    排除,否則捲動回頂端途中(scrollY 僅數 px、導覽列已部分可見而 is-fixed 尚未移除)
-   會是白字白底。 */
-@media (max-width: 767px) {
+   會是白字白底。
+
+   767.98px 而非 767px:兩者中間有一段小數 viewport(瀏覽器縮放或 fractional device
+   pixel ratio 可達到)兩條媒體查詢都不吃,加上 is-fixed 存在時桌面規則又被
+   :not(.is-fixed) 排除,--navbar-fg 會退回 .navbar-custom 基底的 #fff,變成白字白底。
+   .98 讓兩個範圍在整數邊界上首尾相接,不要「整理」回 767px。 */
+@media (max-width: 767.98px) {
   body:has(main .intro-header-post.intro-header-text) .navbar-custom {
     --navbar-fg: var(--hux-text);
     --navbar-fg-hover: var(--hux-interactive);
