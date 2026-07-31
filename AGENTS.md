@@ -211,6 +211,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   dashboard → Deployments → **Create Deployment** 選 `main`(**不要**用舊部署的 Redeploy,
   那會重建舊 commit);手動建的部署 meta 會少 `repoPushedAt` 但仍帶正確 `githubCommitSha`。
   排查時 `gh api repos/<owner>/<repo>/commits/<sha>/status` 看有沒有 `Vercel` context 最快。
+  **已證實是偶發,不是設定問題**:下一次合併(PR #69,`737bcce`)在 71 秒內自動部署完成。
+  **所以再遇到請直接補觸發,不要重新排查專案設定** —— 那條路上次已經全部走完且全部乾淨。
 - **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
   這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
   `renovate.json`,範圍**只限 GitHub Actions 版本**
