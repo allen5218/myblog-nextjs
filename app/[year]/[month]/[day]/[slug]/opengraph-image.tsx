@@ -10,33 +10,26 @@ import {
   selectSocialCardSummary,
 } from '@/lib/social-card'
 import { loadSocialCardFonts } from '@/lib/social-card-font'
-
-type LegacyParams = {
-  year: string
-  month: string
-  day: string
-  slug: string
-}
+import {
+  findReachableByLegacyPath,
+  publishedPostStaticParams,
+  selectPostViews,
+} from '@/lib/post-publication'
+import { legacyPathFromParams, type LegacyParams } from '@/lib/legacy-url'
 
 export const alt = `${siteMetadata.title} post social card`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 export const runtime = 'nodejs'
 
-function routePath(params: LegacyParams) {
-  return `${params.year}/${params.month}/${params.day}/${params.slug}`
-}
+const publicationMode = process.env.NODE_ENV === 'development' ? 'preview' : 'production'
+const views = selectPostViews(allBlogs, publicationMode)
 
-export const generateStaticParams = async () => {
-  return allBlogs.map((post) => {
-    const [year, month, day, slug] = post.legacyPath.split('/')
-    return { year, month, day, slug }
-  })
-}
+export const generateStaticParams = async () => publishedPostStaticParams(views)
 
 export default async function Image({ params }: { params: Promise<LegacyParams> }) {
   const resolvedParams = await params
-  const post = allBlogs.find((candidate) => candidate.legacyPath === routePath(resolvedParams))
+  const post = findReachableByLegacyPath(views, legacyPathFromParams(resolvedParams))
 
   if (!post) {
     notFound()

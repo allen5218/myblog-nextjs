@@ -37,7 +37,7 @@ standalone typecheck.
 | `tags`         | string list |          | Tag pages, archive filter, feeds, post header. Tag pages use slugified names.                                                                                       |
 | `series`       | string      |          | Optional post-series name; posts with the same name share one Series reading page.                                                                                  |
 | `update`       | date        |          | Shown as the updated date; becomes `lastmod` for sitemap/SEO.                                                                                                       |
-| `draft`        | boolean     |          | Drafts are excluded from listings, sitemap, RSS, and tag counts in production builds.                                                                               |
+| `draft`        | boolean     |          | Unpublished draft. Excluded from **every** public entrance in production builds (see "Draft vs. hidden" below).                                                     |
 | `subtitle`     | string      |          | Visible subtitle; also the fallback `summary` for SEO/feeds.                                                                                                        |
 | `images`       | string/list |          | JSON-LD `image` fallback (behind `headerImg`) and the `PostBanner` layout background. **Not** used for the generated `og:image`/Twitter card — see §6.              |
 | `authors`      | string list |          | References `data/authors/*.mdx` by filename; defaults to `default`.                                                                                                 |
@@ -83,10 +83,24 @@ because mobile and desktop catalogs handle them differently.
 
 ### Draft vs. hidden
 
-- `draft: true` — unpublished. Excluded everywhere in production.
-- `hidden: true` — published but unlisted. The direct `/YYYY/MM/DD/slug/` URL works, but the
-  post is excluded from homepage, blog listing, tags, archive, search index, sitemap, and
-  RSS. Note: the URL itself is not secret; do not rely on `hidden` for confidentiality.
+- `draft: true` — unpublished. Production excludes it from **every** public entrance: the
+  post URL itself (404), `/opengraph-image` (404; it used to render a PNG bearing the
+  draft's title), the `/blog/...` legacy alias (404 with no `Location`; it used to 308 and
+  leak the canonical path), the previous/next pager, `app/tag-data.json`, and
+  `public/search.json`. It stays visible in preview mode (see below) for local proofreading.
+- `hidden: true` — published but unlisted. The direct `/YYYY/MM/DD/slug/` URL still works and
+  the legacy alias still 308s, but the post appears in no list and no pager (homepage, blog
+  listing, tags, archive, search index, sitemap, RSS). Note: the URL itself is not secret; do
+  not rely on `hidden` for confidentiality.
+- **Publication mode**: `yarn dev` is always preview, so drafts are visible locally;
+  `yarn build` (including both Vercel Production and Preview Deployments) is always
+  production, so drafts are fully excluded — **a Vercel Preview Deployment is publicly
+  reachable, so it counts as production** and drafts never appear there. This is backed by
+  the `BLOG_PUBLICATION_MODE` environment variable: unset is equivalent to `production`
+  (fail-closed — a missing variable must never leak drafts); only `production`/`preview` are
+  accepted, any other value fails `yarn contentlayer2 build` outright. `yarn dev`
+  (`scripts/dev.mjs`) sets it to `preview` automatically; only drive it through the `yarn
+  dev`/`yarn build` entry points, don't override it manually elsewhere.
 
 ## 2. Markdown / MDX Capabilities
 
@@ -259,8 +273,8 @@ everything else (including real years such as `/2025/`).
 ## 5. Search, Comments, Analytics
 
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
-  excludes hidden posts. The index is public — never put secrets in listed posts. Active
-  result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
+  excludes draft and hidden posts. The index is public — never put secrets in listed posts.
+  Active result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
 - **Comments**: giscus (GitHub Discussions on `allen5218/myblog`) loads automatically once its
   container is within 1000px before or after the viewport; there is no "Load Comments" button.
   Browsers without `IntersectionObserver` load it automatically so comments cannot disappear
