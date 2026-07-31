@@ -73,3 +73,50 @@ export function parseHeroConfiguration(raw: RawHeroConfiguration): ParsedHeroCon
     layout: parseOptionalString(raw.layout),
   }
 }
+
+/** 不 render HuxHero 的版面。denylist 的已知限制:未來新增其他不支援 hero 的 layout 仍會漏掉。 */
+const LAYOUTS_WITHOUT_HERO = ['PostSimple', 'PostBanner']
+
+/**
+ * build 時的互斥組合閘門。收 raw frontmatter 而非 parsed object,是因為它必須連
+ * 「headerStyle 拼錯」這種 parse 期錯誤一起回報,並附上檔名。
+ */
+export function validateHeroConfiguration(raw: RawHeroConfiguration, sourceFilePath: string): void {
+  let config: ParsedHeroConfiguration
+  try {
+    config = parseHeroConfiguration(raw)
+  } catch (error) {
+    throw new Error(`${sourceFilePath}: ${(error as Error).message}`)
+  }
+
+  if (config.headerStyle !== 'text') return
+
+  const conflicts: string[] = []
+  if (config.headerImg !== null) conflicts.push('headerImg')
+  if (config.headerBgCss !== null) conflicts.push('headerBgCss')
+  if (config.iframe !== null) conflicts.push('iframe')
+  // headerMask: 0 是有效值 —— 不可用 truthy 判斷。
+  if (config.headerMask !== null) conflicts.push('headerMask')
+  if (config.layout !== null && LAYOUTS_WITHOUT_HERO.includes(config.layout)) {
+    conflicts.push(`layout: ${config.layout}`)
+  }
+
+  if (conflicts.length > 0) {
+    throw new Error(
+      `${sourceFilePath}: headerStyle: text cannot be combined with ${conflicts.join(', ')}`
+    )
+  }
+}
+
+type ValidatablePost = RawHeroConfiguration & { _raw?: { sourceFilePath?: string } }
+
+/**
+ * 針對**全部文章**(不是 listed view)且在 orchestration 中**第一個執行**:無效 frontmatter
+ * 不該因為文章剛好是 draft/hidden 就放行,而且必須在任何 project-owned 產物寫出前擋下。
+ */
+export function assertValidHeroConfigurations(posts: readonly unknown[]): void {
+  for (const post of posts) {
+    const typed = post as ValidatablePost
+    validateHeroConfiguration(typed, typed._raw?.sourceFilePath ?? '<unknown source file>')
+  }
+}

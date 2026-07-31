@@ -32,6 +32,7 @@ import { isResponsiveIframeSrc } from './lib/iframe'
 import { collectSeries } from './lib/series'
 import { runContentDerivedOutputs } from './lib/content-outputs'
 import { resolvePublicationMode } from './lib/post-publication'
+import { assertValidHeroConfigurations } from './lib/hero-config'
 
 const root = process.cwd()
 
@@ -269,6 +270,7 @@ export const Blog = defineDocumentType(() => ({
     headerImg: { type: 'string' },
     headerBgCss: { type: 'string' },
     headerMask: { type: 'json' },
+    headerStyle: { type: 'enum', options: ['text'] },
     catalog: { type: 'boolean' },
     mathjax: { type: 'boolean' },
     mermaid: { type: 'boolean' },
@@ -375,7 +377,7 @@ export default makeSource({
     await runContentDerivedOutputs(
       allBlogs,
       resolvePublicationMode(process.env.BLOG_PUBLICATION_MODE),
-      { collectSeries, createTagCount, createSearchIndex }
+      { assertValidHeroConfigurations, collectSeries, createTagCount, createSearchIndex }
     )
   },
 })

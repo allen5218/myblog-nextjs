@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { parseHeaderStyle, parseHeroConfiguration } from '../../lib/hero-config'
+import {
+  parseHeaderStyle,
+  parseHeroConfiguration,
+  validateHeroConfiguration,
+  assertValidHeroConfigurations,
+} from '../../lib/hero-config'
 
 describe('parseHeaderStyle', () => {
   test('未設視為未啟用', () => {
@@ -75,5 +80,76 @@ describe('parseHeroConfiguration coercion characterization', () => {
   test('headerStyle 的錯誤會從 parseHeroConfiguration 傳播出來', () => {
     expect(() => parseHeroConfiguration({ headerStyle: 'txt' })).toThrow(/headerStyle/)
     expect(parseHeroConfiguration({ headerStyle: 'text' }).headerStyle).toBe('text')
+  })
+})
+
+describe('validateHeroConfiguration', () => {
+  const validate = (raw: Record<string, unknown>) =>
+    validateHeroConfiguration(raw, 'blog/example.md')
+
+  test('沒有 headerStyle 時什麼都不擋', () => {
+    expect(() => validate({ headerImg: '/img/a.jpg', headerMask: 0.6 })).not.toThrow()
+    expect(() => validate({ iframe: 'https://slide.allenspace.de/a' })).not.toThrow()
+  })
+
+  test('text 單獨使用是合法的', () => {
+    expect(() => validate({ headerStyle: 'text' })).not.toThrow()
+  })
+
+  test.each([
+    ['headerImg', { headerImg: '/img/a.jpg' }],
+    ['headerBgCss', { headerBgCss: 'linear-gradient(a, b)' }],
+    ['iframe', { iframe: 'https://slide.allenspace.de/a' }],
+  ])('text 併用 %s 必須失敗,並指出檔名與衝突欄位', (field, extra) => {
+    expect(() => validate({ headerStyle: 'text', ...extra })).toThrow(
+      new RegExp(`blog/example\\.md[\\s\\S]*${field}`)
+    )
+  })
+
+  // headerMask: 0 是有效值,truthy 判斷會漏掉它。
+  test('text 併用 headerMask 必須失敗,含 headerMask: 0', () => {
+    expect(() => validate({ headerStyle: 'text', headerMask: 0.6 })).toThrow(/headerMask/)
+    expect(() => validate({ headerStyle: 'text', headerMask: 0 })).toThrow(/headerMask/)
+  })
+
+  test.each(['PostSimple', 'PostBanner'])('text 併用 layout %s 必須失敗', (layout) => {
+    expect(() => validate({ headerStyle: 'text', layout })).toThrow(/layout/)
+  })
+
+  test('text 併用預設 layout 是合法的', () => {
+    expect(() => validate({ headerStyle: 'text', layout: 'post' })).not.toThrow()
+    expect(() => validate({ headerStyle: 'text' })).not.toThrow()
+  })
+
+  test('一次列出所有衝突欄位,不是只報第一個', () => {
+    const message = (() => {
+      try {
+        validate({ headerStyle: 'text', headerImg: '/a.jpg', headerMask: 0 })
+        return ''
+      } catch (error) {
+        return (error as Error).message
+      }
+    })()
+    expect(message).toContain('headerImg')
+    expect(message).toContain('headerMask')
+  })
+})
+
+describe('assertValidHeroConfigurations', () => {
+  test('對每一篇都驗證,錯誤訊息帶得出是哪一篇', () => {
+    expect(() =>
+      assertValidHeroConfigurations([
+        { _raw: { sourceFilePath: 'blog/ok.md' }, headerStyle: 'text' },
+        { _raw: { sourceFilePath: 'blog/bad.md' }, headerStyle: 'text', headerImg: '/a.jpg' },
+      ])
+    ).toThrow(/blog\/bad\.md/)
+  })
+
+  test('全部合法時不拋錯', () => {
+    expect(() =>
+      assertValidHeroConfigurations([
+        { _raw: { sourceFilePath: 'blog/ok.md' }, headerImg: '/a.jpg' },
+      ])
+    ).not.toThrow()
   })
 })
