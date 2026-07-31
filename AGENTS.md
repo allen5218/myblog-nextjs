@@ -157,6 +157,15 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   的 token 重新賦值寫在 `min-width: 768px` 區塊內,而 `.navbar-toggle` 與 `.navbar-mobile`
   在那個斷點是 `display: none`。把這組 token 搬出媒體查詢的話,手機漢堡選單會在 fixed
   狀態悄悄變暗。
+- **Tailwind v4 會掃 `docs/` 底下的 markdown。** `css/tailwind.css` 只有 `@import 'tailwindcss'`
+  加一條 `@source '../node_modules/pliny'`,沒有限制掃描範圍,所以 v4 的預設行為(從專案根
+  目錄掃所有 git 追蹤的檔案)會把設計文件也算進去。**在 spec 裡「提到」一個 class name,
+  它就會變成 production 的死 CSS。** 2026-08-01 實測:`edc01cb` 的 bundle 裡有
+  `.bg-\[var\(--hux-interactive\)\]`,但該 commit 的程式碼沒有這個 class、連
+  `--hux-interactive` 都還不存在 —— 來源是 PR #67 一起合併的 spec 裡的一行 markdown 表格。
+  因此**不要用「CSS bundle 裡有沒有某個 token」判斷 production 跑的是哪個 commit**(這次
+  就差點誤判成已部署);要用只有實作才會產生的東西:手寫的 custom property(`--hero-fg`)、
+  語意 class(`.navbar-tool-trigger`),或直接比對 `/_next/static/chunks/*.css` 的 hash。
 - **Tailwind v4 的色盤編譯後,Chromium 的 `getComputedStyle` 會回傳 `lab()`。** 任何顏色斷言
   都要走 `tests/helpers/color.ts`(支援 hex / rgb / rgba / oklch / lab,其餘一律拋錯)。用
   數字 regex 讀顏色字串會同時誤判 `oklch()` 與 `lab()`,而且是靜默算錯,不會報錯。
@@ -192,6 +201,16 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     check 兩者兼得。
   - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
+- **合併後確認 Vercel 真的有部署 —— 這件事會靜默失敗。** 2026-08-01 合併 PR #68 後
+  production 完全沒動:Vercel 一筆部署紀錄都沒建(不是 build 失敗、不是 skip 後留一筆),
+  `9b228d3` 的 commit status 是空的,而前幾次合併都有 `Vercel` 這個 context。當時已排除
+  `[skip ci]` 類標記、`git.deploymentEnabled`(repo 沒有 `vercel.json`/`vercel.ts`)、
+  配額(24 小時內只有 3 筆)、平台故障(status 全綠)與設定漂移(專案 `updatedAt` 停在
+  合併之前),而同一個 GitHub App 在合併前 5 分鐘才剛建過該分支的 preview。最可能是那次
+  push 的 webhook 掉了(GitHub App 的 delivery 失敗**不會自動重送**)。**補救**:Vercel
+  dashboard → Deployments → **Create Deployment** 選 `main`(**不要**用舊部署的 Redeploy,
+  那會重建舊 commit);手動建的部署 meta 會少 `repoPushedAt` 但仍帶正確 `githubCommitSha`。
+  排查時 `gh api repos/<owner>/<repo>/commits/<sha>/status` 看有沒有 `Vercel` context 最快。
 - **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
   這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
   `renovate.json`,範圍**只限 GitHub Actions 版本**
@@ -326,6 +345,15 @@ dev-only 現象,真因是 `/` 與 `/blog` 內容重複)與 kbar「手機點文�
    抓出後者,才換成真正有鑑別力的不變量(hover 色在淺/深主題必須相同,因為 hero 永遠是
    深色照片、不隨主題翻轉)。**CSS 斷言尤其容易寫成空包彈**:比對絕對值容易在重構時
    誤綠,要斷言的是「跟參照元素相同/不同」這種關係。
+
+   2026-08-01 寫 `tests/unit/css-token-contract.test.ts` 時又踩到兩個同型陷阱,都是「斷言
+   覆蓋了函式,卻沒覆蓋它存在的理由」:**① 計數表達不了位置。** 用「兩個 class 字串出現
+   次數相同」守成對 focus token,把前景 token 搬到 else 分支、或把整對搬到非 focus 的元素
+   上,計數都不變,全綠 —— 要守「位置」就得把成對字串當成**一個** needle,再要求它出現在
+   focus 分支上。**② 存在性表達不了覆蓋。** 用「這條規則有沒有出現 `var(--token)`」守 token
+   接線,在後面補一行寫死值(CSS 後者勝出)會讓 token 完全失效而斷言照樣綠 —— 掃 AST 時
+   同一個屬性只能採**最後一次**宣告。寫「掃原始碼/AST 找某個字串」這類斷言前,先問:
+   **有沒有一種改法保留了這個字串,卻讓它不再生效?**
 
 ## 提交慣例
 
