@@ -37,6 +37,19 @@ describe('image hero static rendering', () => {
     expect(html).toContain('intro-header-keynote')
     expect(html).toContain('keynote-frame')
   })
+
+  // keynote 底下不該有任何東西畫背景色,標題內容也要被 sr-only 蓋掉(視覺上由 iframe 取代)。
+  test('keynote 完全沒有 inline style,內容包裝用 sr-only', () => {
+    const html = render({ title: 'Deck', iframe: 'https://slide.allenspace.de/deck/' })
+    expect(html).toContain('sr-only')
+    expect(html).not.toContain('style=')
+  })
+
+  test('自訂 headerImg 會渲染出該 URL,而不是預設圖', () => {
+    const html = render({ title: 'Custom Image Post', headerImg: '/img/custom-hero.jpg' })
+    expect(html).toContain('/img/custom-hero.jpg')
+    expect(html).not.toContain('home-bg')
+  })
 })
 
 describe('text hero static rendering', () => {
