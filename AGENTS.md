@@ -67,7 +67,19 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   (HuxPager 的 `←`、返回頂部的 `↑`、SideCatalog 的 `−`/`+`)不在任何 markdown 裡,
   必須明列在 `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT`。漏掉時靜態檢查照樣綠燈,
   只有 `tests/playwright/site-font-loading.spec.ts` 的 production 量測抓得到 —— 該測試
-  **必須涵蓋全部文章**,抽測代表文章會漏掉只打中特定頁面的遺漏。
+  **必須涵蓋全部 production-reachable 文章**(draft 的 404 由
+  `tests/playwright/publication-policy.spec.ts` 負責),原則仍是不可抽測,只是「全部」
+  現在排除掉本來就進不去 production 的頁面。
+- **`BLOG_PUBLICATION_MODE` 只管 contentlayer 衍生產物**(`app/tag-data.json`、
+  `public/search.json`),**不管路由**——文章頁、`/opengraph-image`、`/blog/...` 別名
+  各自讀 `NODE_ENV === 'development'`,完全不讀這個變數。`yarn dev` 與 `yarn build`
+  下兩者剛好一致(前者都是 preview,後者都是 production),差異平時看不出來;**不要在
+  這兩個入口以外手動設它**——例如在 Vercel Preview Deployment 手動設 `preview`:
+  `next build` 仍強制 `NODE_ENV=production`,頁面/OG/別名照樣 404,但 draft 的標題與
+  標籤會悄悄寫進這兩個產物,比兩種模式單獨出錯更糟。未設 = production(fail-closed ——
+  漏設環境變數不能讓 draft 外洩);非 `production`/`preview` 的值會讓
+  `yarn contentlayer2 build` 直接失敗。行為細節見
+  `docs/functionality-settings-manual.zh-TW.md` 的「草稿 vs. 隱藏」。
 - **判斷「要不要 seed」看的是字型鏈,不是字元有沒有出現在 DOM。** 2026-07-25 實測:KaTeX 的
   輸出字元(`\times` → `×`、減號 → U+2212、`≈` 等)雖然出現在 DOM,但 `.katex-html` 與
   MathML 都自訂 `font-family`(`KaTeX_Main` / `math`),**Chiron 不在它們的字型鏈上**,

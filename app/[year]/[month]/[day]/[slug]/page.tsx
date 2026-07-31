@@ -3,9 +3,9 @@ import 'katex/dist/katex.css'
 
 import { components } from '@/components/MDXComponents'
 import { MDXLayoutRenderer } from 'pliny/mdx-components'
-import { sortPosts, coreContent, allCoreContent } from 'pliny/utils/contentlayer'
+import { coreContent } from 'pliny/utils/contentlayer'
 import { allBlogs, allAuthors } from 'contentlayer/generated'
-import type { Authors, Blog } from 'contentlayer/generated'
+import type { Authors } from 'contentlayer/generated'
 import PostSimple from '@/layouts/PostSimple'
 import PostLayout from '@/layouts/PostLayout'
 import PostBanner from '@/layouts/PostBanner'
@@ -13,6 +13,13 @@ import { Metadata } from 'next'
 import siteMetadata from '@/data/siteMetadata'
 import { notFound } from 'next/navigation'
 import { postSocialImagePath } from '@/lib/social-card'
+import {
+  findReachableByLegacyPath,
+  publishedPostStaticParams,
+  resolvePostNeighbors,
+  selectPostViews,
+} from '@/lib/post-publication'
+import { legacyPathFromParams, type LegacyParams } from '@/lib/legacy-url'
 
 const defaultLayout = 'PostLayout'
 const layouts = {
@@ -21,26 +28,15 @@ const layouts = {
   PostBanner,
 }
 
-type LegacyParams = {
-  year: string
-  month: string
-  day: string
-  slug: string
-}
-
-function routePath(params: LegacyParams) {
-  return `${params.year}/${params.month}/${params.day}/${params.slug}`
-}
-
-function findPost(params: LegacyParams) {
-  return allBlogs.find((p) => p.legacyPath === routePath(params))
-}
+// NODE_ENV 在 runtime 固定,所以 views 只算一次。
+const publicationMode = process.env.NODE_ENV === 'development' ? 'preview' : 'production'
+const views = selectPostViews(allBlogs, publicationMode)
 
 export async function generateMetadata(props: {
   params: Promise<LegacyParams>
 }): Promise<Metadata | undefined> {
   const params = await props.params
-  const post = findPost(params)
+  const post = findReachableByLegacyPath(views, legacyPathFromParams(params))
 
   if (!post) {
     return
@@ -84,25 +80,20 @@ export async function generateMetadata(props: {
   }
 }
 
-export const generateStaticParams = async () => {
-  return allBlogs.map((post) => {
-    const [year, month, day, slug] = post.legacyPath.split('/')
-    return { year, month, day, slug }
-  })
-}
+export const generateStaticParams = async () => publishedPostStaticParams(views)
 
 export default async function Page(props: { params: Promise<LegacyParams> }) {
   const params = await props.params
-  const sortedCoreContents = allCoreContent(sortPosts(allBlogs))
-  const postIndex = sortedCoreContents.findIndex((p) => p.legacyPath === routePath(params))
+  const legacyPath = legacyPathFromParams(params)
+  const post = findReachableByLegacyPath(views, legacyPath)
 
-  if (postIndex === -1) {
+  if (!post) {
     return notFound()
   }
 
-  const prev = sortedCoreContents[postIndex + 1]
-  const next = sortedCoreContents[postIndex - 1]
-  const post = findPost(params) as Blog
+  const neighbors = resolvePostNeighbors(views, legacyPath)
+  const prev = neighbors.prev && coreContent(neighbors.prev)
+  const next = neighbors.next && coreContent(neighbors.next)
   const authorList = post?.authors || ['default']
   const authorDetails = authorList.map((author) => {
     const authorResults = allAuthors.find((p) => p.slug === author)

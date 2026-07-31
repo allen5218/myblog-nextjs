@@ -26,6 +26,7 @@ Vitest is node-only and includes only `tests/unit/**/*.test.ts` ([`vitest.config
 | Content/Mermaid transform | [`rehype-mermaid.test.ts`](../../tests/unit/rehype-mermaid.test.ts) covers hash/cache lookup and fallback behavior. |
 | Social cards | font loading and card rendering paths. |
 | Pagination | URL/page-count semantics. |
+| Publication policy and derived outputs | [`post-publication.test.ts`](../../tests/unit/post-publication.test.ts) defines the production/preview reachable-and-listed truth table, deterministic navigation ordering, static params, aliases, and hidden-pager behavior; [`content-outputs.test.ts`](../../tests/unit/content-outputs.test.ts) and [`content-writers.test.ts`](../../tests/unit/content-writers.test.ts) verify explicit-mode content-output orchestration and writers that do not re-filter their inputs; [`route-publication-wiring.test.ts`](../../tests/unit/route-publication-wiring.test.ts) guards canonical, OG, and legacy-route policy wiring. |
 | Series domain/rendering | [`series.test.ts`](../../tests/unit/series.test.ts) covers normalized identities, visibility, collision rejection, locale-independent reading order, encoded route lookup, and member-wide modification dates; [`series-rendering.test.ts`](../../tests/unit/series-rendering.test.ts) pins link eligibility, top/bottom placement, and the rendered Hero sentence/order. |
 | Font pipeline | source metadata, code-point planning, generation, command parsing, validation policy, and rollback/failure behavior in `site-font-*.test.ts`; epoch-advance checks also require the exact deterministic rebalance output, and a missing base epoch remains history-protected. |
 
@@ -40,6 +41,7 @@ Important contract groups include:
 | Behavior | Specs to inspect before changing it |
 | --- | --- |
 | Legacy post URLs, redirect/search/feed/sitemap semantics, i18n | [`blog-parity.spec.ts`](../../tests/playwright/blog-parity.spec.ts) |
+| Production draft gates; hidden canonical/OG/alias reachability and pager exclusion | [`publication-policy.spec.ts`](../../tests/playwright/publication-policy.spec.ts) |
 | Home/tag pagination | [`pagination.spec.ts`](../../tests/playwright/pagination.spec.ts) |
 | Series index/detail routes, sitemap, Hero sentence/link/order and its zero added metadata gap, post-body `Series:` label/placement, light/dark contrast, **post-hero Series metadata and its link matching Posted/Updated in color, size, italic style, and weight at 375px and 1200px** (the link is underlined at rest and has theme-independent hover color), the body link retaining distinct bold/accent treatment, and **desktop** primary-navigation order | [`series.spec.ts`](../../tests/playwright/series.spec.ts) |
 | **Mobile** hamburger navigation order (and Search’s one-tap KBar transition) | [`kbar-touch.spec.ts`](../../tests/playwright/kbar-touch.spec.ts) |
@@ -56,7 +58,7 @@ Important contract groups include:
 
 | If you change… | Minimum validation |
 | --- | --- |
-| post schema, canonical URLs, pagination, tag/search/feed filtering | Contentlayer build, related unit tests, `pagination`/`blog-parity` browser specs |
+| post schema, publication policy, canonical URLs, pagination, tag/search/feed filtering | Contentlayer build; publication-policy/output/wiring unit tests when visibility changes; `publication-policy`, `pagination`, and/or `blog-parity` browser specs as applicable |
 | series front matter, collection grouping/routes, or collection styling | Contentlayer build, `series.test.ts` and `series-rendering.test.ts`, then production-backed `series.spec.ts`; preserve hidden/draft exclusion, static 404 behavior, accessible hover/focus states in both themes, the 375px/1200px Hero metadata/link alignment with Posted/Updated, and the distinct article-body link treatment |
 | Hux CSS, hero, article layout, catalog | targeted Playwright specs at desktop and mobile; use production build |
 | About locales/layout | `about-hero-persistence` plus parity URL metadata checks |

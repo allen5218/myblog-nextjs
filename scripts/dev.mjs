@@ -4,10 +4,14 @@ let contentlayerWatcher
 let nextDev
 let stopping = false
 
-function runYarn(args) {
+function runYarn(args, env) {
   // Windows 上執行 yarn.cmd 必須帶 shell:true —— CVE-2024-27980 修補後的 Node
   // (含本專案要求的 20.9+)對 .cmd/.bat 直接 spawn 會拋 EINVAL。
-  return spawn('yarn', args, { stdio: 'inherit', shell: process.platform === 'win32' })
+  return spawn('yarn', args, {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+    env: env ? { ...process.env, ...env } : process.env,
+  })
 }
 
 function stopChild(child, signal = 'SIGTERM') {
@@ -28,7 +32,10 @@ function stop(signal) {
   process.exit(0)
 }
 
-const contentlayerBuild = runYarn(['contentlayer2', 'build'])
+// 本機 authoring 才看得到 draft。production build 不設這個變數,fail-closed 成 production。
+const contentlayerBuild = runYarn(['contentlayer2', 'build'], {
+  BLOG_PUBLICATION_MODE: 'preview',
+})
 
 contentlayerBuild.once('exit', (code, signal) => {
   if (code !== 0 || signal) {
@@ -36,7 +43,9 @@ contentlayerBuild.once('exit', (code, signal) => {
     return
   }
 
-  contentlayerWatcher = runYarn(['contentlayer2', 'dev'])
+  contentlayerWatcher = runYarn(['contentlayer2', 'dev'], {
+    BLOG_PUBLICATION_MODE: 'preview',
+  })
   nextDev = runYarn(['next', 'dev'])
 
   contentlayerWatcher.once('exit', (watcherCode, watcherSignal) => {

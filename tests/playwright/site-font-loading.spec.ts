@@ -122,8 +122,13 @@ test('首頁只請求 schema-v2 core 並使用 immutable 同源快取', async ({
 const articles = (
   JSON.parse(
     readFileSync(join(process.cwd(), '.contentlayer/generated/Blog/_index.json'), 'utf8')
-  ) as { path: string }[]
-).map(({ path }) => ({ label: path, path: `/${path}/` }))
+  ) as { path: string; draft?: boolean }[]
+)
+  // production 抵達不了的文章沒有 <article> 可量。draft 的 404 由
+  // publication-policy.spec.ts 負責;這裡的「不可抽測」原則仍然成立 ——
+  // 涵蓋的是全部 production-reachable 文章,不是取樣。
+  .filter((article) => article.draft !== true)
+  .map(({ path }) => ({ label: path, path: `/${path}/` }))
 
 for (const article of articles) {
   test(`${article.label} 依 DOM code point 選片且維持可變字重`, async ({ page }) => {

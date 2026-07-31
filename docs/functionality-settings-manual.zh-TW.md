@@ -34,7 +34,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `tags`         | string list |      | 標籤頁、archive 篩選、feed、文章頁首。標籤頁使用 slug 化名稱。                                                                    |
 | `series`       | string      |      | 選填的文章系列名稱;同名文章會收錄到同一個 Series 閱讀頁。                                                                         |
 | `update`       | date        |      | 顯示為更新日期;同時作為 sitemap/SEO 的 `lastmod`。                                                                                |
-| `draft`        | boolean     |      | 草稿在 production build 排除於列表、sitemap、RSS 與標籤計數。                                                                     |
+| `draft`        | boolean     |      | 草稿,未發佈。production build 排除於**所有**公開入口(見下方「草稿 vs. 隱藏」)。                                                   |
 | `subtitle`     | string      |      | 顯示副標;也是 SEO/feed 的 `summary` 後備值。                                                                                      |
 | `images`       | string/list |      | JSON-LD `image` 後備值(順位在 `headerImg` 之後)與 `PostBanner` 版面背景。**不會**用於自動產生的 `og:image`/Twitter 卡片 — 見 §6。 |
 | `authors`      | string list |      | 以檔名引用 `data/authors/*.mdx`;預設 `default`。                                                                                  |
@@ -77,10 +77,22 @@ Updated/Posted 日期資訊下方;正文連結則在全站原有
 
 ### 草稿 vs. 隱藏
 
-- `draft: true` — 未發佈。production 全面排除。
-- `hidden: true` — 已發佈但不列出。直接網址 `/YYYY/MM/DD/slug/` 可讀,但排除於首頁、
-  文章列表、標籤、archive、搜尋索引、sitemap 與 RSS。注意:網址本身不是秘密,不要把
-  `hidden` 當成保密機制。
+- `draft: true` — 未發佈。production 排除於**所有**公開入口:文章網址本身(404)、
+  `/opengraph-image`(404;過去仍會產生帶草稿標題的 PNG)、`/blog/...` 舊網址別名
+  (404、不帶 `Location`;過去仍會 308 導向並洩漏 canonical 路徑)、上一篇/下一篇
+  pager、`app/tag-data.json`、`public/search.json`。preview 模式(見下)下維持可見,
+  供本機校稿。
+- `hidden: true` — 已發佈但不列出。直接網址 `/YYYY/MM/DD/slug/` 仍可讀,舊網址別名也
+  仍會 308;但不進任何列表與 pager(首頁、文章列表、標籤、archive、搜尋索引、
+  sitemap、RSS)。注意:網址本身不是秘密,不要把 `hidden` 當成保密機制。
+- **發佈模式**:`yarn dev` 一律是 preview,草稿在本機可見;`yarn build`(含 Vercel 的
+  Production 與 Preview Deployments)一律是 production,草稿完全排除 ——
+  **Vercel Preview Deployment 因為公開可連,算 production**,草稿不會出現在那裡。
+  背後是環境變數 `BLOG_PUBLICATION_MODE`:未設時等同 `production`(fail-closed,漏設
+  絕不能讓草稿外洩);只接受 `production`/`preview`,其餘值會讓
+  `yarn contentlayer2 build` 直接失敗。`yarn dev`(`scripts/dev.mjs`)會自動把它設成
+  `preview`;只透過 `yarn dev`/`yarn build` 這兩個既定入口操作即可,不要在其他情境
+  手動覆寫。
 
 ## 2. Markdown / MDX 能力
 
@@ -228,8 +240,8 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 
 ## 5. 搜尋、留言、分析
 
-- **搜尋**:Pliny KBar(`⌘K` / `Ctrl+K`)。索引在 `/search.json`,build 時產生,排除隱藏
-  文章。索引是公開的 — 列出的文章絕不可含機密。選中結果的高亮色是品牌青色
+- **搜尋**:Pliny KBar(`⌘K` / `Ctrl+K`)。索引在 `/search.json`,build 時產生,排除草稿與
+  隱藏文章。索引是公開的 — 列出的文章絕不可含機密。選中結果的高亮色是品牌青色
   (`--color-primary-600`,`#4db8d1`)。
 - **留言**:giscus(`allen5218/myblog` 的 GitHub Discussions),留言容器距離 viewport 前後
   1000px 時才自動載入,不需要「Load Comments」按鈕；不支援 `IntersectionObserver` 的瀏覽器會
@@ -429,13 +441,14 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 
 ### 環境變數
 
-| 變數                                                                        | 用途                           |
-| --------------------------------------------------------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus 覆寫(有已提交的後備值)  |
-| `BASE_PATH`                                                                 | 選配的子路徑部署前綴           |
-| `EXPORT=1`                                                                  | 靜態匯出輸出                   |
-| `UNOPTIMIZED=1`                                                             | 停用圖片最佳化(與 EXPORT 搭配) |
-| `ANALYZE=true`                                                              | Bundle analyzer                |
+| 變數                                                                        | 用途                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus 覆寫(有已提交的後備值)                                                                                                                                                          |
+| `BASE_PATH`                                                                 | 選配的子路徑部署前綴                                                                                                                                                                   |
+| `EXPORT=1`                                                                  | 靜態匯出輸出                                                                                                                                                                           |
+| `UNOPTIMIZED=1`                                                             | 停用圖片最佳化(與 EXPORT 搭配)                                                                                                                                                         |
+| `ANALYZE=true`                                                              | Bundle analyzer                                                                                                                                                                        |
+| `BLOG_PUBLICATION_MODE`                                                     | 只管 contentlayer 衍生產物(`app/tag-data.json`、`public/search.json`);路由另看 `NODE_ENV`,見「草稿 vs. 隱藏」。未設 = production(fail-closed);`yarn dev` 自動設 `preview`;其餘值拋錯。 |
 
 ### 部署模式
 
