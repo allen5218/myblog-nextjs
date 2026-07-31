@@ -1216,7 +1216,8 @@ yarn eslint app components lib layouts scripts
 - [ ] **Step 6: 跑既有 parity 套件當守門員**
 
 ```bash
-yarn test:parity 2>&1 | tail -10
+set -o pipefail
+yarn test:parity 2>&1 | tail -30
 ```
 
 Expected: 全綠(基準:PR1 合併時是 80 passed)。
@@ -1390,7 +1391,27 @@ focus
 
 **刪除** `.navbar-tools svg { color: #fff; }`(300-302)整條。
 
-- [ ] **Step 5: 刪除補償規則(污染源已移除)**
+- [ ] **Step 4b: 先把補償規則提供的排版契約還給元件(順序不可顛倒)**
+
+`.navbar-custom [role='menu'] button` 目前同時提供 `font-weight: 600` 與
+`letter-spacing: 0.025em`。**`components/ThemeSwitch.tsx` 的三個 MenuItem 只有 `text-sm`,
+沒有 `font-semibold tracking-wide`** —— 也就是說它們的 600/0.025em **完全來自那條補償規則**。
+直接刪掉會讓它們退成 400/normal,與 commit C「popup 字體不變」的宣稱矛盾。
+(`components/MobileNavMenu.tsx` 兩處已經自帶 `font-semibold tracking-wide`,不用動。)
+
+把 ThemeSwitch 三個 MenuItem 的 className 從
+
+```
+group flex w-full items-center rounded-md px-2 py-2 text-sm
+```
+
+改成
+
+```
+group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide
+```
+
+- [ ] **Step 5: 刪除補償規則(污染源與排版契約都已移除)**
 
 **刪除**下列三處:
 
@@ -1454,20 +1475,21 @@ Expected: 全部通過。
 
 依 Global Constraints 的「啟動與關閉 production server(標準流程)」啟動,必須逐一確認並說明:
 
-| 位置                                 | 預期                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| 頂欄 brand / 連結 / 圖示,兩主題      | 與改動前**相同**                                                                              |
-| 桌面 fixed 浮動列(向上捲觸發),兩主題 | 與改動前**相同**,且 hover 時**顏色不變**                                                      |
-| 展開 ThemeSwitch popup               | 字體/padding 與改動前**相同**(補償規則已由元件契約接手)                                       |
-| popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08) |
-| 手機展開漢堡 popup                   | 同上                                                                                          |
+| 位置                                 | 預期                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 頂欄 brand / 連結 / 圖示,兩主題      | 與改動前**相同**                                                                                                                                                                                                                                                                                                |
+| 桌面 fixed 浮動列(向上捲觸發),兩主題 | 與改動前**相同**,且 hover 時**顏色不變**                                                                                                                                                                                                                                                                        |
+| 展開 ThemeSwitch popup               | 字體/padding 與改動前**相同**。**用 `getComputedStyle` 逐項量**,不要只看截圖:`fontWeight === '600'`、`letterSpacing === '0.35px'`(0.025em × 14px)、`fontSize === '14px'`、`textTransform === 'none'`、`padding === '8px'`。這五項原本由補償規則提供,Step 4b 才剛搬進元件 —— 漏搬時目視幾乎看不出來,量了才會現形 |
+| popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08)                                                                                                                                                                                                                   |
+| 手機展開漢堡 popup                   | 同上                                                                                                                                                                                                                                                                                                            |
 
 用 `getComputedStyle` 量實際值,不從 CSS 原始碼推論。**驗證完依 Global Constraints 的關閉流程收工。**
 
 - [ ] **Step 9: 跑 parity 套件**
 
 ```bash
-yarn test:parity 2>&1 | tail -10
+set -o pipefail
+yarn test:parity 2>&1 | tail -30
 ```
 
 Expected: 全綠。
@@ -1703,7 +1725,7 @@ export function assertValidHeroConfigurations(posts: readonly unknown[]): void {
 }
 ```
 
-- [ ] **Step 4: 注入 PR1 既有的 seam**
+- [ ] **Step 4: 注入 PR1 既有的 seam,並把 schema 欄位一起加進來**
 
 在 `contentlayer.config.ts` 頂部加 import:
 
@@ -1711,13 +1733,37 @@ export function assertValidHeroConfigurations(posts: readonly unknown[]): void {
 import { assertValidHeroConfigurations } from './lib/hero-config'
 ```
 
-把 `onSuccess`(373-380)的 `deps` 物件加一個鍵 —— **其餘一字不改**:
+在 `headerMask`(271)之後加上 enum 欄位:
 
 ```ts
-{
-  ;(assertValidHeroConfigurations, collectSeries, createTagCount, createSearchIndex)
-}
+    headerStyle: { type: 'enum', options: ['text'] },
 ```
+
+> **這個欄位必須在本 task 就加,不能留到 Task 8。** contentlayer 只把
+> `documentTypeDef.fieldDefs` 裡宣告過的欄位放進文件物件 —— 欄位不存在時,Step 7 那個
+> 帶 `headerStyle: text` 的 probe 檔案會被**整個丟掉**該欄位,validator 看到的是「沒有
+> headerStyle」,於是沒有衝突、build 成功,而 Step 7 期待的是失敗。**驗證失敗路徑的實驗
+> 會反過來證明驗證不存在。**
+>
+> 提早加是安全的:欄位本身只產生 TypeScript union,沒有任何文章使用它,commit D 的
+> 零像素要求不受影響。
+
+把 `onSuccess`(373-380)整段換成下面這樣 —— 唯一的差別是 `deps` 物件多了第一個鍵:
+
+```ts
+  onSuccess: async (importData) => {
+    const { allBlogs } = await importData()
+    await runContentDerivedOutputs(
+      allBlogs,
+      resolvePublicationMode(process.env.BLOG_PUBLICATION_MODE),
+      { assertValidHeroConfigurations, collectSeries, createTagCount, createSearchIndex }
+    )
+  },
+```
+
+> 這裡刻意寫出**完整呼叫**而不是只貼那個物件。裸寫 `{ a, b, c, d }` 會被 prettier 解讀成
+> **block statement 內的 comma expression** 並重排成 `{ ;(a, b, c, d) }` —— 貼進第三個參數
+> 是語法錯誤。這份計畫本身就被這樣改壞過一次。
 
 - [ ] **Step 5: 跑測試確認通過**
 
@@ -1789,15 +1835,17 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **⚠️ 本 task 與 Task 9 落在同一個 commit。** 不得先 commit 產品端:若 text hero 先落地而 navbar
 tone 在下個 commit,中間會有一個 production 狀態是**白字白底**。
 
-- [ ] **Step 1: 加 schema 欄位**
+- [ ] **Step 1: 確認 schema 欄位已在 Task 7 加好**
 
-在 `contentlayer.config.ts` 的 `headerMask`(271)之後加:
-
-```ts
-    headerStyle: { type: 'enum', options: ['text'] },
+```bash
+grep -n "headerStyle" contentlayer.config.ts
 ```
 
-> 這個欄位**只**產生 TypeScript union 與編輯器提示。執行期驗證完全靠 `parseHeaderStyle`。
+Expected: 找得到 `headerStyle: { type: 'enum', options: ['text'] },`。
+
+> 欄位在 **Task 7** 就加了(見該 task 的說明:欄位不存在時,驗證失敗路徑的 build probe
+> 會反過來證明驗證不存在)。它**只**產生 TypeScript union 與編輯器提示,執行期驗證完全靠
+> `parseHeaderStyle`。
 
 - [ ] **Step 2: 拿掉 PostLayout 的暫時 cast**
 
@@ -2002,8 +2050,9 @@ yarn contentlayer2 build && yarn tsc --noEmit && yarn eslint app components lib 
 ```
 
 Expected: 全部通過;`check:site-font --full` 通過且**零字型產物變動**。
-`app/tag-data.json` 會因為 fixture 的 `Test` tag 而**可能**變動 —— 若該 tag 是新的,這是預期
-變動,必須一起 commit。
+**`app/tag-data.json` 必須零 diff。** fixture 設了 `hidden: true`,而 PR1 的 orchestration
+只把 `views.listed` 餵給 tag writer,hidden 一律排除 —— 所以那個 `Test` tag **不可能**進得去。
+**任何 diff 都是 publication policy 的回歸,不是預期變動**,出現就停手診斷。
 
 - [ ] **Step 10: 不 commit,交給 Task 9**
 
@@ -2234,6 +2283,43 @@ test('hero 外的 tag 邊框仍然完整 —— 不只是 border-color', async (
   expect(contrastRatio(parseColor(box.color), parseColor(box.background))).toBeGreaterThanOrEqual(3)
 })
 
+// 沒有這條的話,commit B 新增的 `.intro-header .tags .tag { border-color: var(--hero-border) }`
+// **完全沒有 oracle**:刪掉它之後淺色 text hero 的 tag 會退回全域 shorthand 的
+// rgba(255,255,255,.8),白邊疊在白底上直接看不見,而既有測試(hero 外的 shorthand、
+// tag hover 背景)全部照樣綠。
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}:text hero 的 tag 邊框讀 --hero-border 且對底色可見`, async ({ page }) => {
+    await open(page, textPost, theme)
+    const tag = page.locator('.intro-header-text .tags .tag').first()
+    await expect(tag).toBeVisible()
+
+    const measured = await tag.evaluate((el) => ({
+      borderColor: getComputedStyle(el).borderTopColor,
+      heroBorder: getComputedStyle(el.closest('.intro-header') as HTMLElement)
+        .getPropertyValue('--hero-border')
+        .trim(),
+      page: getComputedStyle(document.body).backgroundColor,
+    }))
+
+    expect(parseColor(measured.borderColor)).toEqual(parseColor(measured.heroBorder))
+    // 非文字用 WCAG 1.4.11 的 3:1。
+    expect(contrastOf(measured.borderColor, [measured.page])).toBeGreaterThanOrEqual(3)
+  })
+
+  // 對照組:image hero 的 tag 邊框必須仍是白色半透明,證明上一條測的是 text 專屬的賦值。
+  test(`${theme}:image hero 的 tag 邊框仍是白色系`, async ({ page }) => {
+    await open(page, imagePost, theme)
+    const tag = page.locator('.intro-header-post .tags .tag').first()
+    await expect(tag).toBeVisible()
+
+    const borderColor = await tag.evaluate((el) => getComputedStyle(el).borderTopColor)
+    const parsed = parseColor(borderColor)
+    expect(parsed.r).toBeGreaterThan(200)
+    expect(parsed.g).toBeGreaterThan(200)
+    expect(parsed.b).toBeGreaterThan(200)
+  })
+}
+
 test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     await open(page, textPost, theme)
@@ -2267,71 +2353,99 @@ test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ pa
   }
 })
 
-test('桌面 fixed-visible:前景正確,且 hover 必須完全不變色', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await open(page, textPost, 'light')
+// fixed 狀態的前景在兩個主題**不同**(淺 #2d2d2d / 深 #fff),所以兩輪都必須跑 ——
+// 只跑 light 的話 .dark .navbar-custom.is-fixed 那組 token 被刪掉照樣全綠。
+const FIXED_FOREGROUND = { light: 'rgb(45, 45, 45)', dark: 'rgb(255, 255, 255)' } as const
 
-  // Header.tsx:向下捲且 scrollY > headerHeight(61) 才加 is-fixed;
-  // 之後向上捲且 scrollY > 0 才加 is-visible。scrollY 一旦回到 0 就整組移除。
-  await scrollTo(page, 500)
-  await scrollTo(page, 400)
-  await expect(page.locator('.navbar-custom.is-fixed.is-visible')).toBeVisible()
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}:桌面 fixed-visible 前景正確,hover 完全不變色,popup 對比仍合格`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await open(page, textPost, theme)
 
-  const brand = page.locator('.navbar-brand')
-  const resting = await brand.evaluate((el) => getComputedStyle(el).color)
-  // fixed 有自己的實心底,所以 text tone 刻意**不**套用 —— 此時不等於 body 色。
-  expect(resting).toBe('rgb(45, 45, 45)')
+    // Header.tsx:向下捲且 scrollY > headerHeight(61) 才加 is-fixed;
+    // 之後向上捲且 scrollY > 0 才加 is-visible。scrollY 一旦回到 0 就整組移除。
+    await scrollTo(page, 500)
+    await scrollTo(page, 400)
+    await expect(page.locator('.navbar-custom.is-fixed.is-visible')).toBeVisible()
 
-  await brand.hover()
-  // 直接斷言相等比「對比合格」強 —— 後者抓不到 #2d2d2d 漂到 #333。
-  expect(await brand.evaluate((el) => getComputedStyle(el).color)).toBe(resting)
-})
+    const brand = page.locator('.navbar-brand')
+    const resting = await brand.evaluate((el) => getComputedStyle(el).color)
+    // fixed 有自己的實心底,所以 text tone 刻意**不**套用 —— 此時不等於 body 色。
+    expect(resting).toBe(FIXED_FOREGROUND[theme])
 
-test('桌面 fixed-hidden:只驗 class 與位置,不做 hover(元素不可見)', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await open(page, textPost, 'light')
+    await brand.hover()
+    // 直接斷言相等比「對比合格」強 —— 後者抓不到 #2d2d2d 漂到 #333。
+    expect(await brand.evaluate((el) => getComputedStyle(el).color)).toBe(resting)
 
-  await scrollTo(page, 500)
-  const navbar = page.locator('.navbar-custom')
-  await expect(navbar).toHaveClass(/is-fixed/)
-  await expect(navbar).not.toHaveClass(/is-visible/)
-  // 藏在視窗上緣。hover() 在這個狀態會因不可見而失敗,那是環境問題不是顏色問題。
-  expect(await navbar.evaluate((el) => getComputedStyle(el).top)).toBe('-61px')
-})
+    // fixed 狀態下展開 popup:.navbar-custom.is-fixed .navbar-tools svg(0,3,1)原本
+    // 壓過 [role='menu'] svg(0,2,1),補償規則在浮動狀態失效 —— 這是本 PR 要修的
+    // 既有 cascade 問題,只在 top 狀態測 popup 抓不到它。
+    await page.locator('.theme-switch-button').click()
+    const item = page.locator('[role="menu"] button').first()
+    await item.focus()
+    const measured = await item.evaluate((el) => {
+      const panel = el.closest('[role="menu"]') as HTMLElement
+      return {
+        color: getComputedStyle(el).color,
+        background: getComputedStyle(el).backgroundColor,
+        panel: getComputedStyle(panel).backgroundColor,
+      }
+    })
+    expect(
+      contrastOf(measured.color, [measured.background, measured.panel])
+    ).toBeGreaterThanOrEqual(4.5)
+  })
 
-test('桌面 top 狀態的 hover 必須真的變色 —— 否則 consumer 不存在時 fixed 那條也會綠', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await open(page, textPost, 'light')
+  test(`${theme}:桌面 fixed-hidden 只驗 class 與位置,不做 hover(元素不可見)`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await open(page, textPost, theme)
 
-  const brand = page.locator('.navbar-brand')
-  const resting = await brand.evaluate((el) => getComputedStyle(el).color)
-  await brand.hover()
-  expect(await brand.evaluate((el) => getComputedStyle(el).color)).not.toBe(resting)
-})
+    await scrollTo(page, 500)
+    const navbar = page.locator('.navbar-custom')
+    await expect(navbar).toHaveClass(/is-fixed/)
+    await expect(navbar).not.toHaveClass(/is-visible/)
+    // 藏在視窗上緣。hover() 在這個狀態會因不可見而失敗,那是環境問題不是顏色問題。
+    expect(await navbar.evaluate((el) => getComputedStyle(el).top)).toBe('-61px')
+  })
 
-test('手機 near-top-with-is-fixed:導覽列仍套 text tone 且可讀', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await open(page, textPost, 'light')
+  test(`${theme}:桌面 top 的 hover 必須真的變色 —— 否則 consumer 不存在時 fixed 那條也會綠`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await open(page, textPost, theme)
 
-  // 手機沒有 fixed 的視覺狀態(那組規則全在 min-width:768px 內),導覽列始終是
-  // position:absolute 的透明疊層。這個狀態就是規範說的「捲回接近頂端」:
-  // scrollY 僅數 px、導覽列已部分可見,而 is-fixed 尚未被移除(移除只發生在 scrollY === 0)。
-  await scrollTo(page, 500)
-  await scrollTo(page, 5)
+    const brand = page.locator('.navbar-brand')
+    const resting = await brand.evaluate((el) => getComputedStyle(el).color)
+    await brand.hover()
+    expect(await brand.evaluate((el) => getComputedStyle(el).color)).not.toBe(resting)
+  })
+}
 
-  // 前置斷言:沒有這兩條的話,scrollY 被夾到 0 會讓 is-fixed 消失,
-  // 測試就變成在測一般的 top 規則,@media (max-width:767px) 那條被刪掉也照樣綠。
-  await expect(page.locator('.navbar-custom')).toHaveClass(/is-fixed/)
-  expect(await page.evaluate(() => window.scrollY)).toBe(5)
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}:手機 near-top-with-is-fixed 導覽列仍套 text tone 且可讀`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await open(page, textPost, theme)
 
-  const measured = await page.locator('.navbar-brand').evaluate((el) => ({
-    color: getComputedStyle(el).color,
-    page: getComputedStyle(document.body).backgroundColor,
-  }))
-  expect(contrastOf(measured.color, [measured.page])).toBeGreaterThanOrEqual(4.5)
-})
+    // 手機沒有 fixed 的視覺狀態(那組規則全在 min-width:768px 內),導覽列始終是
+    // position:absolute 的透明疊層。這個狀態就是規範說的「捲回接近頂端」:
+    // scrollY 僅數 px、導覽列已部分可見,而 is-fixed 尚未被移除(移除只發生在 scrollY === 0)。
+    await scrollTo(page, 500)
+    await scrollTo(page, 5)
+
+    // 前置斷言:沒有這兩條的話,scrollY 被夾到 0 會讓 is-fixed 消失,
+    // 測試就變成在測一般的 top 規則,@media (max-width:767px) 那條被刪掉也照樣綠。
+    await expect(page.locator('.navbar-custom')).toHaveClass(/is-fixed/)
+    expect(await page.evaluate(() => window.scrollY)).toBe(5)
+
+    const measured = await page.locator('.navbar-brand').evaluate((el) => ({
+      color: getComputedStyle(el).color,
+      page: getComputedStyle(document.body).backgroundColor,
+    }))
+    expect(contrastOf(measured.color, [measured.page])).toBeGreaterThanOrEqual(4.5)
+  })
+}
 
 for (const theme of ['light', 'dark'] as const) {
   test(`${theme}:桌面展開 ThemeSwitch 的 focus 態對比`, async ({ page }) => {
@@ -2360,27 +2474,29 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
-test('手機展開漢堡後 Search 按鈕的 focus 態對比', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await open(page, textPost, 'light')
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}:手機展開漢堡後 Search 按鈕的 focus 態對比`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await open(page, textPost, theme)
 
-  await page.locator('.navbar-toggle').click()
-  // 必須明確 focus Search 按鈕 —— 其他選單項是 <a>,抓不到 button 相關的回歸。
-  const search = page.locator('[role="menu"] button', { hasText: 'Search' })
-  await search.focus()
+    await page.locator('.navbar-toggle').click()
+    // 必須明確 focus Search 按鈕 —— 其他選單項是 <a>,抓不到 button 相關的回歸。
+    const search = page.locator('[role="menu"] button', { hasText: 'Search' })
+    await search.focus()
 
-  const measured = await search.evaluate((el) => {
-    const panel = el.closest('[role="menu"]') as HTMLElement
-    return {
-      color: getComputedStyle(el).color,
-      background: getComputedStyle(el).backgroundColor,
-      panel: getComputedStyle(panel).backgroundColor,
-    }
+    const measured = await search.evaluate((el) => {
+      const panel = el.closest('[role="menu"]') as HTMLElement
+      return {
+        color: getComputedStyle(el).color,
+        background: getComputedStyle(el).backgroundColor,
+        panel: getComputedStyle(panel).backgroundColor,
+      }
+    })
+    expect(
+      contrastOf(measured.color, [measured.background, measured.panel])
+    ).toBeGreaterThanOrEqual(4.5)
   })
-  expect(contrastOf(measured.color, [measured.background, measured.panel])).toBeGreaterThanOrEqual(
-    4.5
-  )
-})
+}
 
 test('SPA 導覽:text → 圖片 → 上一頁,樣式都要跟著切換', async ({ page }) => {
   await page.goto(textPost)
@@ -2412,14 +2528,30 @@ test('trigger 元件不得自帶顏色 utility', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await open(page, textPost, 'light')
 
+  // ① 正面存在斷言。只用 `.navbar-tool-trigger` 當 locator 的話,漏加語意 class 的元件
+  //    會直接從集合裡消失,測試反而更綠 —— 必須先釘住三個 trigger 都在。
+  await expect(page.locator('.theme-switch-button.navbar-tool-trigger')).toHaveCount(1)
+  await expect(page.locator('.navbar-toggle.navbar-tool-trigger')).toHaveCount(1)
+  await expect(page.locator('.navbar-search-tool.navbar-tool-trigger')).toHaveCount(1)
+
+  // ② popup 內的 Sun/Moon/Monitor 圖示只有展開後才在 DOM 裡。關著的話 evaluateAll
+  //    根本看不到它們,而那正是 text-gray utility 的所在地。
+  await page.locator('.theme-switch-button').click()
+  await expect(page.locator('[role="menu"]')).toBeVisible()
+
+  // locator 刻意**不含** [role="menu"] button:那些按鈕的 text-gray-700! /
+  // dark:text-gray-200! 是 popup 自己的契約,規範明訂保留。這裡只管 trigger 與圖示 ——
+  // Sun/Moon/Monitor 三個圖示元件在 trigger 與 popup 兩處共用同一份 className。
   const classNames = await page
-    .locator('.navbar-tool-trigger, .navbar-tool-trigger svg')
+    .locator('.navbar-tool-trigger, .navbar-tool-trigger svg, [role="menu"] svg')
     .evaluateAll((elements) => elements.map((el) => el.getAttribute('class') ?? ''))
 
-  expect(classNames.length).toBeGreaterThan(0)
+  expect(classNames.length).toBeGreaterThan(3)
   for (const className of classNames) {
-    expect(className, className).not.toMatch(/(^|\s)(dark:)?(hover:)?text-gray-\d/)
-    expect(className, className).not.toMatch(/(^|\s)(dark:)?hover:text-primary-\d/)
+    // ③ 任意前綴都要擋。實際存在的是 `group:hover:text-gray-100`,
+    //    只寫 (dark:)?(hover:)? 的話抓不到 group: 這個前綴。
+    expect(className, className).not.toMatch(/(^|\s)[\w:-]*text-gray-\d/)
+    expect(className, className).not.toMatch(/(^|\s)[\w:-]*text-primary-\d/)
   }
 })
 
@@ -2514,6 +2646,7 @@ yarn build
 ```
 
 ```bash
+set -o pipefail
 yarn playwright test tests/playwright/header-style-text.spec.ts 2>&1 | tail -30
 ```
 
@@ -2528,7 +2661,8 @@ Expected: 全部 PASS。若 `.post-preview .tags .tag` 找不到,先確認首頁
 - [ ] **Step 3: 跑完整 parity 套件**
 
 ```bash
-yarn test:parity 2>&1 | tail -20
+set -o pipefail
+yarn test:parity 2>&1 | tail -30
 ```
 
 Expected: 全綠。**驗證完依 Global Constraints 的關閉流程收工,並確認 `lsof -ti:3012` 為空。**
@@ -2550,7 +2684,7 @@ Expected: **產品端的 diff 不應出現任何新的十六進位色碼**。有
 - [ ] **Step 6: Commit(commit E)**
 
 ```bash
-git add contentlayer.config.ts css/tailwind.css lib/hero-mode.ts layouts/PostLayout.tsx data/blog/hidden/2026-07-31-header-style-text-test.md tests/unit/hero-mode.test.ts tests/unit/hero-rendering.test.tsx tests/playwright/header-style-text.spec.ts docs/functionality-settings-manual.zh-TW.md docs/functionality-settings-manual.md README.md app/tag-data.json
+git add contentlayer.config.ts css/tailwind.css lib/hero-mode.ts layouts/PostLayout.tsx data/blog/hidden/2026-07-31-header-style-text-test.md tests/unit/hero-mode.test.ts tests/unit/hero-rendering.test.tsx tests/playwright/header-style-text.spec.ts docs/functionality-settings-manual.zh-TW.md docs/functionality-settings-manual.md README.md
 git commit -m "feat: add a text-only post hero
 
 headerStyle: text drops the header image, the gradient and the mask, and puts
@@ -2675,7 +2809,8 @@ test('image hero 的 series 連結 focus 色在兩個主題必須相同', async 
 - [ ] **Step 5: 檢查**
 
 ```bash
-yarn eslint app components lib layouts scripts && yarn tsc --noEmit && yarn test:unit && yarn test:parity 2>&1 | tail -10
+set -o pipefail
+yarn eslint app components lib layouts scripts && yarn tsc --noEmit && yarn test:unit && yarn test:parity 2>&1 | tail -30
 ```
 
 Expected: 全部通過。**驗證完依 Global Constraints 的關閉流程收工。**
@@ -2858,8 +2993,10 @@ Task 2/7 覆蓋,resolver 與 renderer 共 4 條由 Task 3/4/8 覆蓋,CSS 與導�
    fixture 正文的 internal link 也指向它。計畫中已標註。
 3. **`.post-preview .tags .tag` 這個 locator 假設首頁至少有一篇帶 tag 的文章**。實測過側邊目錄
    與文章正文都沒有 tag producer,所以不要為不存在的 locator 寫 count-based 跳過。
-4. **commit E 的 `app/tag-data.json` 可能變動**(fixture 帶 `Test` tag)。這是預期內的產物變動,
-   與 commit A/B/D 的零像素要求不衝突。
+4. **commit E 的 `app/tag-data.json` 必須零 diff。** fixture 是 `hidden: true`,而 PR1 的
+   orchestration 只把 `views.listed` 餵給 tag writer,所以 `Test` tag 進不去。這是 PR1 的
+   直接好處:**任何 diff 都代表可見性政策回歸**。因此它也不在 commit E 的 `git add` 清單裡
+   —— 列進去只會讓別的東西被誤 stage。
 5. **`ContentOutputDeps` 的 `assertValidHeroConfigurations` 維持 optional。** PR1 這樣定義是
    因為當時沒有實作可注入。PR2 落地後它就永遠會被注入,理論上可以收緊成 required —— 但那會
    改到 PR1 剛穩定下來的公開型別,而現有的「validator 拋錯時三個 writer 呼叫數為 0」加上
@@ -2876,6 +3013,19 @@ Task 2/7 覆蓋,resolver 與 renderer 共 4 條由 Task 3/4/8 覆蓋,CSS 與導�
 | 狀態表寫「全部元素」,測試只驗 `h1` 與 brand                                                            | 改成明列 selector 陣列,含 `.subheading`、`.meta`、`.navbar-links a`、`.theme-switch-text`、`.icon-bar`,並補 fixed-hidden 狀態 |
 | Task 10 用了不存在的 `articlePath` 常數                                                                | 改成字面路徑                                                                                                                  |
 | `yarn build && yarn serve ... &` 在 zsh 會把整個 AND-list 背景化,與 Playwright 的 webServer 並行 build | build 前景跑完,只把 server 放背景並輪詢等待 ready                                                                             |
+
+**第三輪外部審查(2026-07-31)後修的八項 P1:**
+
+| 問題                                                                                                                                                                                                                                     | 修正                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task 7 的 build probe 期待失敗,但 `headerStyle` 到 Task 8 才進 schema。contentlayer 只把 `fieldDefs` 宣告過的欄位放進文件物件,probe 的該欄位會被整個丟掉 → validator 看不到衝突 → build 成功。**驗證失敗路徑的實驗反過來證明驗證不存在** | enum 欄位移到 Task 7 Step 4,probe 之前就位;Task 8 改為確認它已存在                                                                                      |
+| `deps` 範例被 prettier 重排成 `{ ;(a, b, c, d) }` —— 那是 block statement 加 comma expression,貼進第三個參數是語法錯誤(這是我自己跑 prettier 造成的)                                                                                     | 改寫成**完整的 `onSuccess` 呼叫**,prettier 無法把它誤判成 block                                                                                         |
+| 刪掉 `[role='menu'] button` 補償規則會讓 ThemeSwitch 三個 MenuItem 退成 400/normal —— 它們只有 `text-sm`,`font-weight: 600` 與 `letter-spacing: .025em` **完全來自那條規則**(MobileNavMenu 則自帶)                                       | 新增 Step 4b:先把 `font-semibold tracking-wide` 搬進元件再刪規則;驗收表改成用 `getComputedStyle` 逐項量五個屬性                                         |
+| 狀態矩陣沒落實「每個狀態各跑淺/深兩輪」:fixed-visible、fixed-hidden、mobile near-top、mobile Search 都只跑 light,mobile top 漏 brand 與 ThemeSwitch 圖示,fixed-visible 沒測 popup,圖片對照組漏 `theme-switch-text` 與搜尋 SVG            | 四組測試全部改成雙主題迴圈;fixed 前景改用 `FIXED_FOREGROUND[theme]` 對照表;fixed-visible 補 popup 對比(既有的 fixed-popup cascade 缺陷只在這個狀態現形) |
+| commit B 新增的 `.intro-header .tags .tag { border-color: var(--hero-border) }` **完全沒有 oracle** —— 刪掉後淺色 text hero 會是白邊疊白底而不可見,所有測試照樣綠                                                                        | 新增雙主題斷言:border-color `===` `--hero-border`,且對底色 ≥ 3:1;另加 image hero 對照組                                                                 |
+| utility mutation test 假綠三重:regex 抓不到實際存在的 `group:hover:text-gray-100`;locator 只收**已經帶** `.navbar-tool-trigger` 的元素,漏加 class 的元件會從集合消失反而更綠;popup 關著時 Sun/Moon/Monitor 根本不在 DOM                  | 先做三個 trigger 的**正面存在斷言**,展開 popup 後再收集,regex 改成允許任意前綴                                                                          |
+| `yarn test:parity 2>&1 \| tail -N` 在未開 pipefail 的 zsh 回傳 tail 的 0,Playwright 紅燈仍會繼續往下走(Task 5/6/9/10 同一模式)                                                                                                           | 五處全部改為 `set -o pipefail` 獨立一行在前                                                                                                             |
+| 宣稱 commit E 的 `app/tag-data.json` 會因 fixture 的 `Test` tag 變動 —— 但 fixture 是 `hidden: true`,PR1 只把 `views.listed` 餵給 tag writer,那個 tag **進不去**                                                                         | 改成「必須零 diff,任何 diff 都是可見性政策回歸」,並把它從 commit E 的 `git add` 清單移除                                                                |
 
 另修三個次要項:validator wiring 的 regex 錨定到 deps 物件實字(原本會匹配到 import 行);
 trigger utility 的刪除改用 **class list** 斷言(計算色相等證明不了 —— 未分層 CSS 本來就會蓋掉
