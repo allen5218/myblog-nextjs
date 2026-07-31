@@ -80,6 +80,51 @@ describe('parseColor', () => {
   })
 })
 
+describe('lab()', () => {
+  // CSS lab() 以 D50 為基準白點,不是螢幕慣用的 D65,所以實作在套用 sRGB 矩陣前
+  // 要先用 Bradford 轉換把 D50 的 XYZ 轉成 D65 的 XYZ。這兩條端點測試涵蓋的正是
+  // 這條轉換路徑的頭尾。
+  test('lab 的無彩度端點:黑與白', () => {
+    const black = parseColor('lab(0% 0 0)')
+    expect(black.r).toBeCloseTo(0, 0)
+    expect(black.g).toBeCloseTo(0, 0)
+    expect(black.b).toBeCloseTo(0, 0)
+    expect(black.a).toBe(1)
+
+    const white = parseColor('lab(100% 0 0)')
+    expect(white.r).toBeCloseTo(254.9, 0)
+    expect(white.g).toBeCloseTo(255.0, 0)
+    expect(white.b).toBeCloseTo(255.0, 0)
+    expect(white.a).toBe(1)
+  })
+
+  // 這條專門擋「把 lab() 的三個數字當成 RGB 逐一讀取」這個靜默錯誤。lab() 的
+  // a、b 軸是有正負號、數值可超過 255 的獨立座標,不是通道值本身;
+  // 對照既有的 oklch 逐數字讀取測試,擋的是同一種失效模式。
+  test('lab 不得被當成 RGB 逐數字讀取', () => {
+    const parsed = parseColor('lab(87.73% -86.18 83.18)')
+    for (const channel of [parsed.r, parsed.g, parsed.b]) {
+      expect(channel).toBeGreaterThanOrEqual(0)
+      expect(channel).toBeLessThanOrEqual(255)
+    }
+    expect(parsed).not.toEqual({ r: 87.73, g: -86.18, b: 83.18, a: 1 })
+  })
+
+  test('lab 的 a 軸(綠-紅)真的有作用', () => {
+    const positiveA = parseColor('lab(50% 60 0)')
+    const negativeA = parseColor('lab(50% -60 0)')
+    expect(positiveA).not.toEqual(negativeA)
+  })
+
+  test('lab 的斜線 alpha', () => {
+    expect(parseColor('lab(50% 0 0 / 0.4)').a).toBe(0.4)
+  })
+
+  test('座標數不足時拋錯,不得靜默猜測', () => {
+    expect(() => parseColor('lab(50%)')).toThrow(/Unsupported colou?r/i)
+  })
+})
+
 describe('alpha compositing', () => {
   test('5% 黑疊在白底上', () => {
     const result = compositeOver(parseColor('rgba(0, 0, 0, 0.05)'), parseColor('#fff'))
