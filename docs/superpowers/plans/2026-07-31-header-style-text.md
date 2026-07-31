@@ -1349,7 +1349,7 @@ focus
 ```
 
 > `--color-primary-600` 被單獨覆寫成 `#4db8d1`(青色),白字對它只有 **2.31**,兩個主題都不合格。
-> 改成成對 token 之後是淺 **6.49** / 深 **7.08**。
+> 改成成對 token 之後是淺 **6.49** / 深 **7.09**。
 > **不可只用 `--hux-interactive` 配白字** —— 深色模式會是 **1.94**。
 
 - [ ] **Step 4: 加 navbar token 並正面列舉 consumer**
@@ -1480,7 +1480,7 @@ Expected: 全部通過。
 | 頂欄 brand / 連結 / 圖示,兩主題      | 與改動前**相同**                                                                                                                                                                                                                                                                                                |
 | 桌面 fixed 浮動列(向上捲觸發),兩主題 | 與改動前**相同**,且 hover 時**顏色不變**                                                                                                                                                                                                                                                                        |
 | 展開 ThemeSwitch popup               | 字體/padding 與改動前**相同**。**用 `getComputedStyle` 逐項量**,不要只看截圖:`fontWeight === '600'`、`letterSpacing === '0.35px'`(0.025em × 14px)、`fontSize === '14px'`、`textTransform === 'none'`、`padding === '8px'`。這五項原本由補償規則提供,Step 4b 才剛搬進元件 —— 漏搬時目視幾乎看不出來,量了才會現形 |
-| popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08)                                                                                                                                                                                                                   |
+| popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.09)                                                                                                                                                                                                                   |
 | 手機展開漢堡 popup                   | 同上                                                                                                                                                                                                                                                                                                            |
 
 用 `getComputedStyle` 量實際值,不從 CSS 原始碼推論。**驗證完依 Global Constraints 的關閉流程收工。**
@@ -1516,7 +1516,7 @@ order would leave a commit where the popup renders as 12px uppercase text with
 Popup focus changes on purpose. It was bg-primary-600 with white text, and
 --color-primary-600 is overridden to #4db8d1 in this repo, so the contrast was
 2.31 in both themes. It is now the paired --hux-on-interactive on
---hux-interactive: 6.49 light, 7.08 dark. Using the single token with white
+--hux-interactive: 6.49 light, 7.09 dark. Using the single token with white
 text would have been 1.94 in dark mode, which is why the pair exists.
 
 The fixed navbar keeps a hover token even though it equals its resting colour.
@@ -2938,7 +2938,7 @@ hero 的 8 個色值常數加上導覽列的 6 個,**全部在編碼同一個事
 
 ## 順帶修掉的既有缺陷
 
-- **popup focus 的對比是 2.31**(白字對 `--color-primary-600`,而該 token 被單獨覆寫成青色 `#4db8d1`),兩個主題都不合格。改成成對 token 後是淺 **6.49** / 深 **7.08**
+- **popup focus 的對比是 2.31**(白字對 `--color-primary-600`,而該 token 被單獨覆寫成青色 `#4db8d1`),兩個主題都不合格。改成成對 token 後是淺 **6.49** / 深 **7.09**
 - `.navbar-tools button` / `svg` 會命中 HeadlessUI popup **內部**,原本靠兩組 `[role='menu']` 補償規則抵銷,而 `.is-fixed` 的 descendant 宣告權重更高,補償在浮動狀態失效。改用 `.navbar-tool-trigger` 正面列舉後補償規則整組刪除
 - `series.spec.ts` 自己那份顏色 parser **丟掉 alpha**、且會把 `oklch()` 誤讀成 RGB。統一到 `tests/helpers/color.ts`
 - `:focus` 原本**完全沒有 oracle**:規則宣告 hover+focus,但兩邊測試都只測 hover,只刪 focus arm 全部照樣綠
