@@ -184,7 +184,12 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
   --hux-quote-bg: rgb(245, 245, 245);
-  --series-interactive: #00677d;
+  /* 成對 token:--hux-interactive 是頁面底色上的 accent 前景,
+     --hux-on-interactive 是承載文字的 focus 背景上要用的前景色。
+     同一個值不能兩者兼任 —— 見 --hux-interactive 深色值上白字只有 1.94。 */
+  --hux-interactive: #00677d;
+  --hux-on-interactive: #fff;
+  --series-interactive: var(--hux-interactive);
 }
 
 .dark {
@@ -194,7 +199,9 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(224, 224, 224);
   --hux-border: rgb(68, 68, 68);
   --hux-quote-bg: rgb(58, 58, 58);
-  --series-interactive: #66c7e0;
+  --hux-interactive: #66c7e0;
+  --hux-on-interactive: #2d2d2d;
+  --series-interactive: var(--hux-interactive);
 }
 
 body {
@@ -331,7 +338,12 @@ body {
   background-color: #777;
   background-position: center center;
   background-size: cover;
-  color: #fff;
+  /* hero 顏色 token:目前值等同舊有硬編碼(image hero 永遠是深色照片),
+     之後的 text 模式只需重新賦值這三個變數,不必再逐條覆寫底下八條規則。 */
+  --hero-fg: #fff;
+  --hero-border: rgba(255, 255, 255, 0.8);
+  --hero-link-hover: #66c7e0;
+  color: var(--hero-fg);
 }
 
 .intro-header-home {
@@ -419,12 +431,11 @@ body {
 
 .intro-header-post .series-meta a:hover,
 .intro-header-post .series-meta a:focus {
-  color: #66c7e0;
+  color: var(--hero-link-hover);
 }
 
 .site-heading h1 {
   margin: 0;
-  color: #fff;
   font-size: 50px;
   font-weight: 700;
   line-height: 55px;
@@ -433,7 +444,6 @@ body {
 .site-heading .subheading {
   display: block;
   margin-top: 10px;
-  color: #fff;
   font-size: 18px;
   font-weight: 300;
   line-height: 22px;
@@ -447,7 +457,6 @@ body {
 
 .post-heading h1 {
   margin: 15px 0 24px;
-  color: #fff;
   font-size: 30px;
   font-weight: 700;
   line-height: 33px;
@@ -455,7 +464,6 @@ body {
 
 .post-heading .subheading {
   margin: -5px 0 22px;
-  color: #fff;
   font-size: 17px;
   font-weight: 300;
   line-height: 23.8px;
@@ -465,9 +473,12 @@ body {
   display: block;
 }
 
+/* 這兩個 class 保留明確宣告,不能只靠繼承:該元素同時帶 .post-series-link-top,
+   後者在下面直接宣告 color: #666,直接宣告永遠贏過繼承。少了這行,
+   series 那句話與其連結會在既有 image hero 上變灰。 */
 .post-heading .meta,
 .post-heading .series-meta {
-  color: #fff;
+  color: var(--hero-fg);
   font-size: 16px;
   font-style: italic;
   font-weight: 300;
@@ -493,6 +504,13 @@ body {
   font-weight: 500;
   line-height: 24px;
   padding: 0 10px;
+}
+
+/* 全域的 .tags .tag 用 border shorthand,文章列表卡片、文章內文都在用。把它改成消費
+   hero token 會讓 hero 外變數未定義 → 整條宣告在 computed-value time 失效 →
+   border-style 回到 none,而後面針對列表的規則只覆寫 border-color,補不回 border-style。 */
+.intro-header .tags .tag {
+  border-color: var(--hero-border);
 }
 
 .hux-home-layout {
