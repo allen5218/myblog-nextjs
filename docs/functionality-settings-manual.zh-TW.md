@@ -34,7 +34,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `tags`         | string list |      | 標籤頁、archive 篩選、feed、文章頁首。標籤頁使用 slug 化名稱。                                                                    |
 | `series`       | string      |      | 選填的文章系列名稱;同名文章會收錄到同一個 Series 閱讀頁。                                                                         |
 | `update`       | date        |      | 顯示為更新日期;同時作為 sitemap/SEO 的 `lastmod`。                                                                                |
-| `draft`        | boolean     |      | 草稿,未發佈。production build 排除於**所有**公開入口(見下方「草稿 vs. 隱藏」)。       |
+| `draft`        | boolean     |      | 草稿,未發佈。production build 排除於**所有**公開入口(見下方「草稿 vs. 隱藏」)。                                                   |
 | `subtitle`     | string      |      | 顯示副標;也是 SEO/feed 的 `summary` 後備值。                                                                                      |
 | `images`       | string/list |      | JSON-LD `image` 後備值(順位在 `headerImg` 之後)與 `PostBanner` 版面背景。**不會**用於自動產生的 `og:image`/Twitter 卡片 — 見 §6。 |
 | `authors`      | string list |      | 以檔名引用 `data/authors/*.mdx`;預設 `default`。                                                                                  |
@@ -441,13 +441,14 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 
 ### 環境變數
 
-| 變數                                                                        | 用途                           |
-| --------------------------------------------------------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus 覆寫(有已提交的後備值)  |
-| `BASE_PATH`                                                                 | 選配的子路徑部署前綴           |
-| `EXPORT=1`                                                                  | 靜態匯出輸出                   |
-| `UNOPTIMIZED=1`                                                             | 停用圖片最佳化(與 EXPORT 搭配) |
-| `ANALYZE=true`                                                              | Bundle analyzer                |
+| 變數                                                                        | 用途                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus 覆寫(有已提交的後備值)                                                                                                                                                          |
+| `BASE_PATH`                                                                 | 選配的子路徑部署前綴                                                                                                                                                                   |
+| `EXPORT=1`                                                                  | 靜態匯出輸出                                                                                                                                                                           |
+| `UNOPTIMIZED=1`                                                             | 停用圖片最佳化(與 EXPORT 搭配)                                                                                                                                                         |
+| `ANALYZE=true`                                                              | Bundle analyzer                                                                                                                                                                        |
+| `BLOG_PUBLICATION_MODE`                                                     | 只管 contentlayer 衍生產物(`app/tag-data.json`、`public/search.json`);路由另看 `NODE_ENV`,見「草稿 vs. 隱藏」。未設 = production(fail-closed);`yarn dev` 自動設 `preview`;其餘值拋錯。 |
 
 ### 部署模式
 

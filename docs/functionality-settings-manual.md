@@ -499,13 +499,14 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
 
 ### Environment variables
 
-| Variable                                                                    | Purpose                                      |
-| --------------------------------------------------------------------------- | -------------------------------------------- |
-| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus overrides (committed fallbacks exist) |
-| `BASE_PATH`                                                                 | Optional subpath deployment prefix           |
-| `EXPORT=1`                                                                  | Static export output                         |
-| `UNOPTIMIZED=1`                                                             | Disable image optimization (pair w/ EXPORT)  |
-| `ANALYZE=true`                                                              | Bundle analyzer                              |
+| Variable                                                                    | Purpose                                                                                                                                                                                                                                  |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `NEXT_PUBLIC_GISCUS_REPO` / `_REPOSITORY_ID` / `_CATEGORY` / `_CATEGORY_ID` | giscus overrides (committed fallbacks exist)                                                                                                                                                                                             |
+| `BASE_PATH`                                                                 | Optional subpath deployment prefix                                                                                                                                                                                                       |
+| `EXPORT=1`                                                                  | Static export output                                                                                                                                                                                                                     |
+| `UNOPTIMIZED=1`                                                             | Disable image optimization (pair w/ EXPORT)                                                                                                                                                                                              |
+| `ANALYZE=true`                                                              | Bundle analyzer                                                                                                                                                                                                                          |
+| `BLOG_PUBLICATION_MODE`                                                     | Governs only contentlayer's derived artifacts (`app/tag-data.json`, `public/search.json`); routes read `NODE_ENV` instead — see "Draft vs. hidden". Unset = production (fail-closed); `yarn dev` sets `preview`; any other value throws. |
 
 ### Deployment modes
 
