@@ -546,6 +546,10 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   post/page social-card URL builders.
 - `tests/unit/social-card-font.test.ts` — 1 test confirming the Chiron Sung HK regular/bold
   buffers load for `ImageResponse`.
+- `tests/unit/social-card-render.test.ts` — renders the card to an actual PNG and compares the
+  RGB of a pixel **10px in from the bottom-right corner**. Passing the right opacity value does
+  not prove Satori drew anything: the `inset: 0` shorthand recorded in §6 leaves the overlay
+  with no area and it disappears silently, and the corner pixel is what discriminates.
 - `tests/unit/og-font-text.test.ts` — 3 tests pinning the OG font text-collection coverage
   (posts + dictionaries + fixed UI copy, emoji excluded) and the Vercel-only `hb-shape`-skip
   policy.
@@ -560,6 +564,27 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   triggers, and the paired popup focus tokens must appear only as a pair inside a focus
   branch. **Wiring only**: computed colour, contrast, and breakpoint coverage remain
   Playwright's job, and Playwright is not a required check.
+- `tests/unit/post-publication.test.ts`, `tests/unit/content-outputs.test.ts`,
+  `tests/unit/content-writers.test.ts`, and `tests/unit/route-publication-wiring.test.ts` —
+  the single entrance for publication policy: the reachable/listed truth table under
+  `production` and `preview`, navigation ordering and neighbour lookup (including the `-1`
+  index boundary), derived-output orchestration, the rule that writers must not re-filter
+  their inputs, and the policy wiring of the post page, `/opengraph-image`, and the legacy
+  alias route.
+- `tests/unit/hero-config.test.ts`, `tests/unit/hero-mode.test.ts`, and
+  `tests/unit/hero-rendering.test.tsx` — hero front-matter parsing and coercion (including
+  `headerMask: 0` being a valid mask rather than an absent one), build-time rejection of
+  `headerStyle: text` alongside each conflicting field, surface precedence
+  (keynote > text > css-background > image), and, at the render layer, the text-hero class,
+  the no-inline-style requirement, and mask suppression.
+- `tests/unit/color.test.ts` — goldens for `tests/helpers/color.ts`: hex/rgb/rgba/oklch/lab
+  parsing (every other format throws), compositing a translucent foreground over its
+  background before measuring contrast, and the D50→D65 Bradford endpoints of CSS `lab()`.
+- `tests/unit/legacy-url.test.ts` — legacy URL parameter parsing.
+- `tests/unit/mermaid-shared.test.ts` and `tests/unit/rehype-mermaid.test.ts` — definition
+  normalization, content hashing and filename derivation, `normalizeSvg` (including
+  self-closing a bare `<br>`), both theme configs, and the rehype plugin that turns a fence
+  into dual-theme `<img>` elements.
 - `tests/playwright/blog-parity.spec.ts` — end-to-end contracts for legacy URL behavior,
   hidden-post exclusion, KBar search (cyan active result + legacy navigation),
   KaTeX-without-MathJax, i18n about routes, Hux visual shell parity, post hero/nav geometry,

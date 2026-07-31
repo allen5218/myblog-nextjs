@@ -482,6 +482,9 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   (`subtitle` > preview),以及文章/一般頁社群卡片網址產生器。
 - `tests/unit/social-card-font.test.ts` — 1 個測試,確認 Chiron Sung HK 一般/粗體字體
   buffer 能正確載入給 `ImageResponse` 使用。
+- `tests/unit/social-card-render.test.ts` — 實際把社群卡片渲染成 PNG,取**右下角內縮 10px**
+  的像素比對 RGB。傳進去的 opacity 數值正確不代表 Satori 真的畫得出來 —— §6 記載的
+  `inset: 0` shorthand 會讓整層 overlay 沒有面積而靜默消失,角落像素正是它的鑑別點。
 - `tests/unit/og-font-text.test.ts` — 3 個測試,釘住 OG 字體文字蒐集的涵蓋範圍(文章 +
   字典 + 固定 UI 文案,排除 emoji),以及僅限 Vercel 才能跳過缺少 `hb-shape` 的政策。
 - `tests/unit/series.test.ts` 與 `tests/unit/series-rendering.test.ts` — 系列 identity、
@@ -493,6 +496,23 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   以渲染結果驗三個 navbar trigger 的語意 class,並要求 popup focus 的成對 token 只以
   成對形式出現在 focus 分支。**只守接線**:算出來的顏色、對比度與斷點覆蓋仍然只有
   Playwright 抓得到,而 Playwright 不是必過檢查。
+- `tests/unit/post-publication.test.ts`、`tests/unit/content-outputs.test.ts`、
+  `tests/unit/content-writers.test.ts` 與 `tests/unit/route-publication-wiring.test.ts` —
+  發布政策單一入口:`production`/`preview` 兩種模式下 reachable 與 listed 的真值表、
+  導覽排序與鄰居查找(含索引為 `-1` 的邊界)、衍生產物的 orchestration 與「writer 不得
+  自行再過濾輸入」,以及文章頁、`/opengraph-image`、legacy 別名三個 route 的政策接線。
+- `tests/unit/hero-config.test.ts`、`tests/unit/hero-mode.test.ts` 與
+  `tests/unit/hero-rendering.test.tsx` — hero front matter 的解析與強制轉型(含
+  `headerMask: 0` 是合法遮罩而非未設)、`headerStyle: text` 與各衝突欄位的 build 期拒絕、
+  surface 優先序(keynote > text > css-background > image),以及渲染層的 text hero
+  class、不得產生 inline style 與遮罩抑制。
+- `tests/unit/color.test.ts` — `tests/helpers/color.ts` 的 goldens:hex/rgb/rgba/oklch/lab
+  解析(其餘格式一律拋錯)、半透明前景先合成到背景再量對比,以及 CSS `lab()` 的
+  D50→D65 Bradford 轉換端點。
+- `tests/unit/legacy-url.test.ts` — legacy 網址參數解析。
+- `tests/unit/mermaid-shared.test.ts` 與 `tests/unit/rehype-mermaid.test.ts` — 定義正規化、
+  內容 hash 與檔名推導、`normalizeSvg`(含把裸 `<br>` 補成自閉合)、雙主題設定,以及把
+  fence 轉成雙主題 `<img>` 的 rehype 外掛。
 - `tests/playwright/blog-parity.spec.ts` — 端到端契約:legacy 網址行為、隱藏文章排除、
   KBar 搜尋(青色 active 結果 + legacy 導航)、KaTeX 無 MathJax、i18n about 路由、
   Hux 視覺外殼 parity、文章 hero/導覽幾何、blockquote 長字串換行、MDX 增強器
