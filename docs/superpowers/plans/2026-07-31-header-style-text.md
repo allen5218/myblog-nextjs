@@ -54,9 +54,22 @@ echo "TIMEOUT after 90s"; tail -30 /tmp/blog-server.log; exit 1
 **關閉**:
 
 ```bash
-kill "$(cat /tmp/blog-server.pid)" 2>/dev/null; rm -f /tmp/blog-server.pid
-sleep 1; lsof -ti:3012 || echo "port 3012 free"
+PID=$(cat /tmp/blog-server.pid 2>/dev/null)
+# 先殺子行程再殺 wrapper —— `yarn serve` 只是外殼,真正監聽的是它底下的 next-server,
+# 單殺 wrapper 會留下孤兒繼續佔用 3012。
+[ -n "$PID" ] && { pkill -P "$PID" 2>/dev/null; kill "$PID" 2>/dev/null; }
+rm -f /tmp/blog-server.pid
+sleep 2
+# 收尾:清掉仍在 3012 上的殘留,但**排除** Claude 桌面版自己的 network service
+# (這台機器上它常駐在 3012,不是我們啟動的,誤殺會關掉使用者的應用程式)。
+for p in $(lsof -ti:3012 2>/dev/null); do
+  ps -p "$p" -o command= | grep -q "Claude Helper" || kill -9 "$p"
+done
+lsof -ti:3012 2>/dev/null | while read -r p; do ps -p "$p" -o pid=,command= | cut -c1-60; done
+echo "shutdown done"
 ```
+
+> 只印出 `Claude Helper` 那一行(或什麼都沒有)才算乾淨。
 
 > 三個細節都是必要的:① 迴圈有 **90 秒上限**,啟動失敗時不會永遠等下去;
 > ② 每輪先 `kill -0` 確認程序還活著,server 一崩就立刻印 log 收工,而不是空轉到 timeout;
