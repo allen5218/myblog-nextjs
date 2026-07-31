@@ -44,25 +44,25 @@ discriminated union `HeroSurface`;`components/hux/HuxHero.tsx` 只依 union 渲�
 
 ## File Structure
 
-| 檔案 | 責任 |
-| --- | --- |
-| `tests/helpers/color.ts`(新增) | **唯一**的顏色 parser / compositor / 對比計算。支援 `#hex`、`rgb()`、`rgba()`、`oklch()`,其餘格式**明確拋錯** |
-| `tests/unit/color.test.ts`(新增) | 上者的 golden tests(**必須在 `tests/unit/`** 才會被必過的 `ci` job 執行) |
-| `lib/hero-config.ts`(新增) | `parseHeaderStyle()`、`parseHeroConfiguration()`(唯一 coercion 點)、`validateHeroConfiguration()`、`assertValidHeroConfigurations()` |
-| `lib/hero-mode.ts`(新增) | `resolveHeroSurface()`:parsed config → `HeroSurface` discriminated union |
-| `components/hux/HuxHero.tsx`(修改) | 改用 `resolveHeroSurface`;text 模式**不產生 inline `style`**、不渲染遮罩;加 `intro-header-text` |
-| `layouts/PostLayout.tsx`(修改) | 多解一個 `headerStyle` 並傳給 `HuxHero` |
-| `components/ThemeSwitch.tsx` / `SearchButton.tsx` / `MobileNavMenu.tsx`(修改) | 加 `.navbar-tool-trigger`;popup focus 改成對 token;**刪除** trigger 上的 `text-gray-*` 系列 utility |
-| `css/tailwind.css`(修改) | hero token、navbar token + popup 正規化、`--hux-interactive` 成對 token、text 模式、`:has()` tone |
-| `contentlayer.config.ts`(修改) | `headerStyle` enum 欄位;`onSuccess` 的 `deps` 加 `assertValidHeroConfigurations` |
-| `data/blog/hidden/2026-07-31-header-style-text-test.md`(新增) | 全 ASCII fixture,正文含一條 internal markdown link |
-| `tests/unit/hero-config.test.ts`(新增) | coercion characterization + `parseHeaderStyle` + validator 錯誤路徑 |
-| `tests/unit/hero-mode.test.ts`(新增) | 優先序窮舉表 |
-| `tests/unit/hero-rendering.test.ts`(新增) | `PostLayout → HuxHero` 的 static rendering 契約 |
-| `tests/unit/content-outputs.test.ts`(修改) | 補 validator 注入與失敗時的呼叫數 |
-| `tests/playwright/header-style-text.spec.ts`(新增) | 狀態表 E2E |
-| `tests/playwright/series.spec.ts`(修改) | 改用共用 color helper;註解措辭;補 focus 契約 |
-| `docs/functionality-settings-manual.zh-TW.md` / `.md`、`README.md`(修改) | `headerStyle` + 互斥規則 + OG 策略 |
+| 檔案                                                                          | 責任                                                                                                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `tests/helpers/color.ts`(新增)                                                | **唯一**的顏色 parser / compositor / 對比計算。支援 `#hex`、`rgb()`、`rgba()`、`oklch()`,其餘格式**明確拋錯**                        |
+| `tests/unit/color.test.ts`(新增)                                              | 上者的 golden tests(**必須在 `tests/unit/`** 才會被必過的 `ci` job 執行)                                                             |
+| `lib/hero-config.ts`(新增)                                                    | `parseHeaderStyle()`、`parseHeroConfiguration()`(唯一 coercion 點)、`validateHeroConfiguration()`、`assertValidHeroConfigurations()` |
+| `lib/hero-mode.ts`(新增)                                                      | `resolveHeroSurface()`:parsed config → `HeroSurface` discriminated union                                                             |
+| `components/hux/HuxHero.tsx`(修改)                                            | 改用 `resolveHeroSurface`;text 模式**不產生 inline `style`**、不渲染遮罩;加 `intro-header-text`                                      |
+| `layouts/PostLayout.tsx`(修改)                                                | 多解一個 `headerStyle` 並傳給 `HuxHero`                                                                                              |
+| `components/ThemeSwitch.tsx` / `SearchButton.tsx` / `MobileNavMenu.tsx`(修改) | 加 `.navbar-tool-trigger`;popup focus 改成對 token;**刪除** trigger 上的 `text-gray-*` 系列 utility                                  |
+| `css/tailwind.css`(修改)                                                      | hero token、navbar token + popup 正規化、`--hux-interactive` 成對 token、text 模式、`:has()` tone                                    |
+| `contentlayer.config.ts`(修改)                                                | `headerStyle` enum 欄位;`onSuccess` 的 `deps` 加 `assertValidHeroConfigurations`                                                     |
+| `data/blog/hidden/2026-07-31-header-style-text-test.md`(新增)                 | 全 ASCII fixture,正文含一條 internal markdown link                                                                                   |
+| `tests/unit/hero-config.test.ts`(新增)                                        | coercion characterization + `parseHeaderStyle` + validator 錯誤路徑                                                                  |
+| `tests/unit/hero-mode.test.ts`(新增)                                          | 優先序窮舉表                                                                                                                         |
+| `tests/unit/hero-rendering.test.ts`(新增)                                     | `PostLayout → HuxHero` 的 static rendering 契約                                                                                      |
+| `tests/unit/content-outputs.test.ts`(修改)                                    | 補 validator 注入與失敗時的呼叫數                                                                                                    |
+| `tests/playwright/header-style-text.spec.ts`(新增)                            | 狀態表 E2E                                                                                                                           |
+| `tests/playwright/series.spec.ts`(修改)                                       | 改用共用 color helper;註解措辭;補 focus 契約                                                                                         |
+| `docs/functionality-settings-manual.zh-TW.md` / `.md`、`README.md`(修改)      | `headerStyle` + 互斥規則 + OG 策略                                                                                                   |
 
 **Commit 對應:** Task 1–4 → commit A;Task 5 → B;Task 6 → C;Task 7 → D;Task 8–9 → E;
 Task 10 → F;Task 11 → G;Task 12 開 PR。
@@ -92,10 +92,12 @@ Expected: 找得到 `assertValidHeroConfigurations?: (posts: readonly T[]) => vo
 ## Task 1: 顏色 helper 與 golden tests
 
 **Files:**
+
 - Create: `tests/helpers/color.ts`
 - Test: `tests/unit/color.test.ts`(新增)
 
 **Interfaces:**
+
 - Consumes: 無
 - Produces:
   - `type Rgb = { r: number; g: number; b: number; a: number }`
@@ -296,8 +298,7 @@ function parseOklch(value: string): Rgb {
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ].map((channel) => {
     const clamped = clamp01(channel)
-    const encoded =
-      clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055
+    const encoded = clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055
     return clamp01(encoded) * 255
   })
 
@@ -377,10 +378,12 @@ Expected: PASS(16 tests)
 ## Task 2: `lib/hero-config.ts` 的 parse 管線
 
 **Files:**
+
 - Create: `lib/hero-config.ts`
 - Test: `tests/unit/hero-config.test.ts`(新增)
 
 **Interfaces:**
+
 - Consumes: 無
 - Produces:
   - `type RawHeroConfiguration` / `type ParsedHeroConfiguration`
@@ -524,9 +527,7 @@ export type ParsedHeroConfiguration = {
 export function parseHeaderStyle(value: unknown): 'text' | null {
   if (value === undefined || value === null) return null
   if (value === 'text') return 'text'
-  throw new Error(
-    `headerStyle must be "text" when present (received ${JSON.stringify(value)})`
-  )
+  throw new Error(`headerStyle must be "text" when present (received ${JSON.stringify(value)})`)
 }
 
 function parseOptionalString(value: unknown): string | null {
@@ -578,10 +579,12 @@ Expected: PASS(12 tests)
 ## Task 3: `lib/hero-mode.ts` 的優先序解析
 
 **Files:**
+
 - Create: `lib/hero-mode.ts`
 - Test: `tests/unit/hero-mode.test.ts`(新增)
 
 **Interfaces:**
+
 - Consumes: Task 2 的 `ParsedHeroConfiguration`;既有的 `resolveHeroIframeSrc`(`lib/iframe.ts`)
 - Produces:
   - `type HeroMode` / `type HeroSurface`
@@ -628,8 +631,9 @@ describe('hero mode priority: keynote > text > css-background > image', () => {
   })
 
   test('headerBgCss 勝過 headerImg,且尾隨分號已清掉', () => {
-    expect(surfaceOf({ headerBgCss: 'linear-gradient(a, b);', headerImg: '/img/a.jpg' }).mode)
-      .toEqual({ kind: 'css-background', background: 'linear-gradient(a, b)' })
+    expect(
+      surfaceOf({ headerBgCss: 'linear-gradient(a, b);', headerImg: '/img/a.jpg' }).mode
+    ).toEqual({ kind: 'css-background', background: 'linear-gradient(a, b)' })
   })
 
   test('不在允許來源的 iframe 不構成 keynote', () => {
@@ -762,11 +766,13 @@ Expected: PASS(10 tests)
 ## Task 4: `HuxHero` 接線與 static characterization(commit A)
 
 **Files:**
+
 - Modify: `components/hux/HuxHero.tsx`
 - Modify: `layouts/PostLayout.tsx`
 - Test: `tests/unit/hero-rendering.test.ts`(新增)
 
 **Interfaces:**
+
 - Consumes: Task 2/3 的全部 exports
 - Produces: 無新 API(元件內部改用 union 渲染)
 
@@ -821,14 +827,18 @@ describe('image hero static rendering', () => {
 })
 
 describe('text hero static rendering', () => {
-  test('帶 intro-header-text、完全沒有 style 屬性、沒有遮罩', () => {
-    const html = render({ title: 'Text Post', headerStyle: 'text', headerMask: 0.6 })
+  test('帶 intro-header-text、完全沒有 style 屬性', () => {
+    const html = render({ title: 'Text Post', headerStyle: 'text' })
     expect(html).toContain('intro-header-text')
     // inline style 贏過任何 class 規則,純 CSS 蓋不掉 backgroundImage 的 fallback,
     // 所以 text 模式必須讓元件根本不產生 style 屬性。
     expect(html).not.toContain('style=')
-    expect(html).not.toContain('header-mask')
   })
+
+  // ⚠️ 這裡**刻意不斷言** text + headerMask 沒有遮罩。commit A 是等值重構,遮罩行為
+  // 逐項複製現況(不分模式),所以此時 text + mask **仍然會**渲染遮罩。抑制遮罩是行為
+  // 改變,連同它的斷言一起放在 Task 8。在這裡寫 not.toContain('header-mask') 會讓
+  // commit A 不可能全綠。
 
   test('圖片模式仍然帶 inline style —— 證明上一條有鑑別力', () => {
     expect(render({ title: 'Image Post' })).toContain('style=')
@@ -1004,11 +1014,20 @@ Expected: 全部通過,且 `git diff --stat css/` **無輸出**(commit A 不碰 
 - [ ] **Step 7: production 目視確認零像素變動**
 
 ```bash
-yarn build && yarn serve -H 127.0.0.1 -p 3012 &
+lsof -ti:3012 && kill $(lsof -ti:3012); yarn build
 ```
 
+```bash
+yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
+until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
+```
+
+> **build 必須在前景跑完再啟動 server。** zsh 的 `A && B &` 會把**整個 AND-list** 丟進背景,
+> 於是 `yarn build` 在背景跑,而下一個 `yarn test:parity` 會依 `playwright.config.ts` 的
+> `webServer` 再啟一次 build —— 兩個 contentlayer 同時跑會被 lockfile 擋住。
+
 比對圖片文章、keynote 文章、首頁、archive 的 hero 外觀與改動前一致。
-**驗證完必須 `kill $(lsof -ti:3012)`。**
+**驗證完必須 `kill $(lsof -ti:3012)` 並確認 `lsof -ti:3012` 為空。**
 
 - [ ] **Step 8: Commit(commit A)**
 
@@ -1043,10 +1062,12 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 5: hero 顏色 token(commit B)
 
 **Files:**
+
 - Modify: `css/tailwind.css`
 - Test: `tests/playwright/header-style-text.spec.ts` 尚未存在;本 task 用既有 parity 套件把關
 
 **Interfaces:**
+
 - Consumes: 無
 - Produces: CSS 變數 `--hero-fg`、`--hero-border`、`--hero-link-hover`(供 Task 8 的 text 模式賦值)
 
@@ -1079,10 +1100,10 @@ specificity 高低都無關**;繼承只在該元素完全沒有 `color` 宣告�
 在 `css/tailwind.css` 的 `.intro-header`(327)區塊中,把 `color: #fff;` 換成:
 
 ```css
-  --hero-fg: #fff;
-  --hero-border: rgba(255, 255, 255, 0.8);
-  --hero-link-hover: #66c7e0;
-  color: var(--hero-fg);
+--hero-fg: #fff;
+--hero-border: rgba(255, 255, 255, 0.8);
+--hero-link-hover: #66c7e0;
+color: var(--hero-fg);
 ```
 
 刪除下列四條規則裡的 `color: #fff;`(其餘宣告保留):
@@ -1095,14 +1116,14 @@ specificity 高低都無關**;繼承只在該元素完全沒有 `color` 宣告�
 把 `.post-heading .meta, .post-heading .series-meta`(468-469)的 `color: #fff;` 改成:
 
 ```css
-  color: var(--hero-fg);
+color: var(--hero-fg);
 ```
 
 把 `.intro-header-post .series-meta a:hover, .intro-header-post .series-meta a:focus`(420-422)
 的 `color: #66c7e0;` 改成:
 
 ```css
-  color: var(--hero-link-hover);
+color: var(--hero-link-hover);
 ```
 
 > 這一條是 `--hero-link-hover` 的**唯一 consumer**,必須明列否則它是死 token。
@@ -1152,8 +1173,15 @@ specificity 高低都無關**;繼承只在該元素完全沒有 `color` 宣告�
 - [ ] **Step 5: 檢查與零像素驗收**
 
 ```bash
-yarn eslint app components lib layouts scripts && yarn build && yarn serve -H 127.0.0.1 -p 3012 &
+yarn eslint app components lib layouts scripts && yarn build
 ```
+
+```bash
+yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
+until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
+```
+
+> build 在前景跑完再啟 server。`A && B &` 在 zsh 會把整個 AND-list 背景化,造成並行 build。
 
 比對範圍:**圖片文章、首頁、archive、series、about、404、offline、文章列表卡片**,兩個主題。
 任一處有位移就停手 —— 等值替換不等值。
@@ -1202,10 +1230,12 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 6: navbar token 與 popup cascade 正規化(commit C)
 
 **Files:**
+
 - Modify: `css/tailwind.css`
 - Modify: `components/ThemeSwitch.tsx`、`components/SearchButton.tsx`、`components/MobileNavMenu.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 5 的 `--hux-interactive` / `--hux-on-interactive`
 - Produces: `--navbar-fg` / `--navbar-fg-hover`(供 Task 8 的 `:has()` tone 賦值)、
   共用語意 class `.navbar-tool-trigger`
@@ -1243,14 +1273,14 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 改成:
 
 ```tsx
-          className="h-6 w-6"
+className = 'h-6 w-6'
 ```
 
 `components/ThemeSwitch.tsx` 的三個圖示元件(20、34、48 行)className
 `group:hover:text-gray-100 h-6 w-6` 改成:
 
 ```tsx
-    className="h-6 w-6"
+className = 'h-6 w-6'
 ```
 
 以及 67 行外層 `<div>` 的 `hover:text-primary-500 dark:hover:text-primary-400 flex items-center justify-center`
@@ -1340,35 +1370,35 @@ focus
 桌面斷點內的 `.navbar-links a, .navbar-tools button { padding: 20px; }`(1522-1525)改成:
 
 ```css
-  .navbar-links a,
-  .navbar-tool-trigger {
-    padding: 20px;
-  }
+.navbar-links a,
+.navbar-tool-trigger {
+  padding: 20px;
+}
 ```
 
 `.navbar-custom.is-fixed` 的兩組後代顏色宣告(1570-1575、1582-1587)整組**刪除**,改成在
 `.navbar-custom.is-fixed`(1557)與 `.dark .navbar-custom.is-fixed`(1577)區塊內賦值:
 
 ```css
-  .navbar-custom.is-fixed {
-    position: fixed;
-    top: -61px;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-bottom: 1px solid #f2f2f2;
-    transition: transform 0.3s;
-    --navbar-fg: #2d2d2d;
-    /* 等值:複製「fixed 狀態 hover 不變色」的現況 */
-    --navbar-fg-hover: #2d2d2d;
-  }
+.navbar-custom.is-fixed {
+  position: fixed;
+  top: -61px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #f2f2f2;
+  transition: transform 0.3s;
+  --navbar-fg: #2d2d2d;
+  /* 等值:複製「fixed 狀態 hover 不變色」的現況 */
+  --navbar-fg-hover: #2d2d2d;
+}
 ```
 
 ```css
-  .dark .navbar-custom.is-fixed {
-    background-color: rgba(45, 45, 45, 0.9);
-    border-bottom-color: #535353;
-    --navbar-fg: #fff;
-    --navbar-fg-hover: #fff;
-  }
+.dark .navbar-custom.is-fixed {
+  background-color: rgba(45, 45, 45, 0.9);
+  border-bottom-color: #535353;
+  --navbar-fg: #fff;
+  --navbar-fg-hover: #fff;
+}
 ```
 
 > **`--navbar-fg-hover` 若漏掉就不是等值替換。** 目前淺色 fixed navbar 文字 hover 時仍是深色,
@@ -1387,18 +1417,23 @@ Expected: 全部通過。
 - [ ] **Step 8: production 逐項截圖說明變動**
 
 ```bash
-yarn build && yarn serve -H 127.0.0.1 -p 3012 &
+yarn build
+```
+
+```bash
+yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
+until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
 ```
 
 必須逐一確認並說明:
 
-| 位置 | 預期 |
-| --- | --- |
-| 頂欄 brand / 連結 / 圖示,兩主題 | 與改動前**相同** |
-| 桌面 fixed 浮動列(向上捲觸發),兩主題 | 與改動前**相同**,且 hover 時**顏色不變** |
-| 展開 ThemeSwitch popup | 字體/padding 與改動前**相同**(補償規則已由元件契約接手) |
-| popup focus 態 | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08) |
-| 手機展開漢堡 popup | 同上 |
+| 位置                                 | 預期                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| 頂欄 brand / 連結 / 圖示,兩主題      | 與改動前**相同**                                                                              |
+| 桌面 fixed 浮動列(向上捲觸發),兩主題 | 與改動前**相同**,且 hover 時**顏色不變**                                                      |
+| 展開 ThemeSwitch popup               | 字體/padding 與改動前**相同**(補償規則已由元件契約接手)                                       |
+| popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08) |
+| 手機展開漢堡 popup                   | 同上                                                                                          |
 
 用 `getComputedStyle` 量實際值,不從 CSS 原始碼推論。**驗證完 `kill $(lsof -ti:3012)`。**
 
@@ -1451,11 +1486,13 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 7: build-time validator 與 seam 注入(commit D)
 
 **Files:**
+
 - Modify: `lib/hero-config.ts`
 - Modify: `contentlayer.config.ts`(只加 `deps` 的一個鍵)
 - Test: `tests/unit/hero-config.test.ts`(追加)、`tests/unit/content-outputs.test.ts`(追加)
 
 **Interfaces:**
+
 - Consumes: Task 2 的 parse 管線;PR1 既有的 `runContentDerivedOutputs`
 - Produces:
   - `validateHeroConfiguration(raw: RawHeroConfiguration, sourceFilePath: string): void`
@@ -1534,7 +1571,9 @@ describe('assertValidHeroConfigurations', () => {
 
   test('全部合法時不拋錯', () => {
     expect(() =>
-      assertValidHeroConfigurations([{ _raw: { sourceFilePath: 'blog/ok.md' }, headerImg: '/a.jpg' }])
+      assertValidHeroConfigurations([
+        { _raw: { sourceFilePath: 'blog/ok.md' }, headerImg: '/a.jpg' },
+      ])
     ).not.toThrow()
   })
 })
@@ -1550,9 +1589,9 @@ describe('hero validation gates every derived output', () => {
       throw new Error('invalid hero configuration')
     })
 
-    await expect(
-      runContentDerivedOutputs([normal], 'production', d)
-    ).rejects.toThrow('invalid hero configuration')
+    await expect(runContentDerivedOutputs([normal], 'production', d)).rejects.toThrow(
+      'invalid hero configuration'
+    )
 
     expect(d.collectSeries).not.toHaveBeenCalled()
     expect(d.createTagCount).not.toHaveBeenCalled()
@@ -1563,8 +1602,12 @@ describe('hero validation gates every derived output', () => {
 describe('contentlayer config injects the hero validator', () => {
   const source = readFileSync('./contentlayer.config.ts', 'utf8')
 
-  test('deps 帶著 assertValidHeroConfigurations', () => {
-    expect(source).toMatch(/assertValidHeroConfigurations[,\s}]/)
+  // 必須錨定在 deps 物件實字上。只寫 /assertValidHeroConfigurations[,\s}]/ 會連
+  // import 那一行一起匹配 —— 刪掉 deps 注入之後 import 還在,斷言照樣綠。
+  test('deps 物件實字裡帶著 assertValidHeroConfigurations', () => {
+    expect(source).toMatch(
+      /runContentDerivedOutputs\([\s\S]*?\{[^}]*assertValidHeroConfigurations[^}]*\}/
+    )
   })
 
   // 這條擋住「順手把 seam 換成舊簽章」——那會讓 tag/search 重新收到未過濾的 allBlogs。
@@ -1592,10 +1635,7 @@ const LAYOUTS_WITHOUT_HERO = ['PostSimple', 'PostBanner']
  * build 時的互斥組合閘門。收 raw frontmatter 而非 parsed object,是因為它必須連
  * 「headerStyle 拼錯」這種 parse 期錯誤一起回報,並附上檔名。
  */
-export function validateHeroConfiguration(
-  raw: RawHeroConfiguration,
-  sourceFilePath: string
-): void {
+export function validateHeroConfiguration(raw: RawHeroConfiguration, sourceFilePath: string): void {
   let config: ParsedHeroConfiguration
   try {
     config = parseHeroConfiguration(raw)
@@ -1647,7 +1687,9 @@ import { assertValidHeroConfigurations } from './lib/hero-config'
 把 `onSuccess`(373-380)的 `deps` 物件加一個鍵 —— **其餘一字不改**:
 
 ```ts
-      { assertValidHeroConfigurations, collectSeries, createTagCount, createSearchIndex }
+{
+  ;(assertValidHeroConfigurations, collectSeries, createTagCount, createSearchIndex)
+}
 ```
 
 - [ ] **Step 5: 跑測試確認通過**
@@ -1708,6 +1750,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 8: 原子功能實作(commit E 的產品端)
 
 **Files:**
+
 - Modify: `contentlayer.config.ts`(`headerStyle` 欄位)
 - Modify: `css/tailwind.css`(text surface + navbar tone)
 - Modify: `lib/hero-mode.ts`(text 模式抑制遮罩)
@@ -1735,7 +1778,7 @@ tone 在下個 commit,中間會有一個 production 狀態是**白字白底**。
 `headerStyle={headerStyle as 'text' | undefined}` 簡化為:
 
 ```tsx
-          headerStyle={headerStyle}
+headerStyle = { headerStyle }
 ```
 
 若 Task 4 用了 `(content as CoreContent<Blog> & { headerStyle?: 'text' })`,改回直接從
@@ -1746,14 +1789,14 @@ tone 在下個 commit,中間會有一個 production 狀態是**白字白底**。
 `lib/hero-mode.ts` 的 `resolveHeroSurface`,把 text 那一行改成:
 
 ```ts
-  // text 模式強制沒有遮罩:沒有底圖就沒有東西需要壓暗,而遮罩會在頁面底色上疊一層灰。
-  if (config.headerStyle === 'text') return { mode: { kind: 'text' }, maskOpacity: null }
+// text 模式強制沒有遮罩:沒有底圖就沒有東西需要壓暗,而遮罩會在頁面底色上疊一層灰。
+if (config.headerStyle === 'text') return { mode: { kind: 'text' }, maskOpacity: null }
 ```
 
 在 `tests/unit/hero-mode.test.ts` 把 commit A 那條 text + mask 的斷言**改成**:
 
 ```ts
-    expect(surfaceOf({ headerStyle: 'text', headerMask: 0.6 }).maskOpacity).toBeNull()
+expect(surfaceOf({ headerStyle: 'text', headerMask: 0.6 }).maskOpacity).toBeNull()
 ```
 
 並把該 describe 的名稱從 `mask opacity is unchanged in commit A` 改成
@@ -1830,11 +1873,11 @@ Create `data/blog/hidden/2026-07-31-header-style-text-test.md`:
 ```markdown
 ---
 layout: post
-title: "Header Style Text Test"
-subtitle: "A hero with no image, no gradient and no mask"
+title: 'Header Style Text Test'
+subtitle: 'A hero with no image, no gradient and no mask'
 date: 2026-07-31
-author: "Claude"
-tags: ["Test"]
+author: 'Claude'
+tags: ['Test']
 headerStyle: text
 hidden: true
 ---
@@ -1848,10 +1891,45 @@ so this page touches exactly one bucket and regenerates no font artifacts.
 The link below is required, not decorative. The SPA navigation test needs an internal link
 to click, and this fixture has no pager and no series because hidden posts are excluded from
 both: [read the OpenWiki article](/2026/07/25/openwiki-tame-agents-md/).
+
+The filler that follows is also required. The navbar has three scroll states, and reaching
+the fixed one needs the document to be taller than the viewport by a wide margin. A short
+fixture silently degrades those tests: the page cannot scroll past the threshold, the navbar
+never gains `is-fixed`, and the assertions pass against the ordinary top-of-page rule instead
+of the state they were written for.
+
+Filler paragraph one. This text exists purely to give the document height, and every
+character in it is printable ASCII so the font subset gains nothing. The quick brown fox
+jumps over the lazy dog, and does so repeatedly, because repetition is what produces pixels.
+
+Filler paragraph two. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph three. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph four. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph five. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph six. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph seven. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
+
+Filler paragraph eight. The quick brown fox jumps over the lazy dog. Pack my box with five
+dozen liquor jugs. How vexingly quick daft zebras jump. Sphinx of black quartz, judge my vow.
 ```
 
-> **執行時必須核對那條連結指向的文章仍然存在**:
-> `ls data/blog/2026-07-25-openwiki-tame-agents-md.md`。不存在就換成 `data/blog/` 裡任一篇。
+> **執行時必須核對兩件事:**
+>
+> 1. 那條連結指向的文章仍然存在:`ls data/blog/2026-07-25-openwiki-tame-agents-md.md`。
+> 2. **fixture 夠高**。build 後在 375×812 與 1280×900 兩個 viewport 量
+>    `document.documentElement.scrollHeight - window.innerHeight`,兩者都必須 **> 600**。
+>    不夠就再加 filler 段落 —— Task 9 的捲動測試有前置斷言會擋住,但在這裡先確認比較省時間。
 
 - [ ] **Step 7: 補 static rendering 斷言**
 
@@ -1860,7 +1938,9 @@ Append to `tests/unit/hero-rendering.test.tsx`:
 ```tsx
 describe('text hero suppresses the mask', () => {
   test('即使明確給了 headerMask 也不渲染遮罩', () => {
-    expect(render({ title: 'T', headerStyle: 'text', headerMask: 0.6 })).not.toContain('header-mask')
+    expect(render({ title: 'T', headerStyle: 'text', headerMask: 0.6 })).not.toContain(
+      'header-mask'
+    )
   })
 
   test('keynote 仍然渲染遮罩 —— 證明抑制是 text 專屬的', () => {
@@ -1907,24 +1987,34 @@ Task 9 補完 E2E 測試後一起 commit。
 ## Task 9: text hero 的 E2E 與 commit E
 
 **Files:**
+
 - Create: `tests/playwright/header-style-text.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 8 的 fixture(`/2026/07/31/header-style-text-test/`)、Task 1 的 color helper
 - Produces: 無
 
 **狀態表(不可寫成笛卡兒積)** —— 斷言並非每格都適用,硬套會逼出 `if (isVisible)` /
 `.count()` 防衛式判斷,那是假綠溫床:
 
-| 狀態 | 驗證 | 不適用 |
-| --- | --- | --- |
-| mobile / top | brand、ThemeSwitch 圖示、`.icon-bar`、hero 全部元素 | `.navbar-links`(`display:none`) |
-| mobile / near-top-with-`is-fixed` | navbar 仍套 text tone | hero(已捲出) |
-| mobile / 展開漢堡 + focus `Search` | popup focus 對比 ≥ 4.5 | — |
-| desktop / top | brand `===` body 色、`.navbar-links`、文字版 ThemeSwitch、搜尋 SVG、hero 全部元素 | `.icon-bar`(`display:none`) |
-| desktop / top + 展開 ThemeSwitch | popup focus 對比 ≥ 4.5、focus surface 對 panel ≥ 3:1 | — |
-| desktop / fixed-visible | fixed 前景、**hover 等值**、展開 ThemeSwitch 的 popup 對比 | 「brand `===` body 色」**刻意不成立** |
-| desktop / fixed-hidden(`top:-61px`) | 只驗 class/state,**不做 hover** | 元素不可見,hover 會失敗 |
+| 狀態                               | 驗證(每一項都必須有對應斷言)                                                                                                 | 不適用                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| mobile / top                       | `.icon-bar` 的 **background**、hero 的 `h1`/`.subheading`/`.meta`                                                            | `.navbar-links`(`display:none`)       |
+| mobile / near-top-with-`is-fixed`  | navbar 仍套 text tone;**前置斷言 `is-fixed` 仍在且 `scrollY === 5`**                                                         | hero(已捲出)                          |
+| mobile / 展開漢堡 + focus `Search` | popup focus 對比 ≥ 4.5                                                                                                       | —                                     |
+| desktop / top                      | `.navbar-brand`、`.navbar-links a`、`.theme-switch-text`、trigger SVG、hero 的 `h1`/`.subheading`/`.meta` 全部 `===` body 色 | `.icon-bar`(`display:none`)           |
+| desktop / top + 展開 ThemeSwitch   | popup focus 對比 ≥ 4.5、focus surface 對 panel ≥ 3:1                                                                         | —                                     |
+| desktop / fixed-visible            | 前景 `=== rgb(45,45,45)`、**hover 等值**                                                                                     | 「brand `===` body 色」**刻意不成立** |
+| desktop / fixed-hidden             | `is-fixed` 有、`is-visible` 無、`top === '-61px'`,**不做 hover**                                                             | 元素不可見,hover 會失敗               |
+
+**「hero 全部元素」不是修辭。** #64/#65 連續兩次只斷言父層或只斷言部分屬性,child 的顏色與
+字重照樣漂移到 production,#66 才補上。這裡每個 consumer 都要逐一列進 selector 陣列,
+而且**圖片文章的對照組要跑同一組 selector** —— 沒有對照組就證明不了斷言有鑑別力。
+
+**捲動狀態一律用 `scrollTo()` helper**,它內含「文件夠不夠高」的前置斷言。
+用 `page.mouse.wheel()` + `waitForTimeout()` 的話,fixture 不夠高時捲動量會被夾住,
+測試會**靜默退化**成在測 top 狀態 —— 而 `@media (max-width: 767px)` 那條被刪掉照樣綠。
 
 - [ ] **Step 1: 寫測試**
 
@@ -1937,6 +2027,12 @@ import { contrastOf, contrastRatio, flattenLayers, parseColor } from '../helpers
 const textPost = '/2026/07/31/header-style-text-test/'
 const imagePost = '/2026/07/25/openwiki-tame-agents-md/'
 
+/**
+ * ⚠️ **必須在 goto 之後呼叫。** class 是設在當前文件的 <html> 上,導航會換掉整份文件。
+ * 而且光靠 emulateMedia 不夠:siteMetadata.theme 是 'dark',next-themes 的 defaultTheme
+ * 因此是明確值而不是 'system',新 profile 一律解析成深色 —— 兩輪都會變成在測深色,
+ * 而「切換主題必須變色」那條會直接失敗。這也是 series.spec.ts 既有的呼叫順序。
+ */
 async function setTheme(page: Page, theme: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: theme })
   await page.locator('html').evaluate((html, value) => {
@@ -1944,55 +2040,113 @@ async function setTheme(page: Page, theme: 'light' | 'dark') {
   }, theme)
 }
 
+async function open(page: Page, path: string, theme: 'light' | 'dark') {
+  await page.goto(path)
+  await setTheme(page, theme)
+}
+
 const colorOf = (page: Page, selector: string, property = 'color') =>
-  page.locator(selector).first().evaluate(
-    (element, prop) => getComputedStyle(element).getPropertyValue(prop),
-    property
+  page
+    .locator(selector)
+    .first()
+    .evaluate((element, prop) => getComputedStyle(element).getPropertyValue(prop), property)
+
+/** 捲到指定位置並等待生效。前置斷言確保文件真的夠高,否則測試會靜默退化成 top 狀態。 */
+async function scrollTo(page: Page, y: number) {
+  const maxScroll = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight
   )
+  expect(
+    maxScroll,
+    `fixture 不夠高(可捲 ${maxScroll}px),捲不到 ${y}px —— 測試會靜默退化成 top 狀態。請加 filler。`
+  ).toBeGreaterThan(y + 100)
+
+  await page.evaluate((target) => window.scrollTo(0, target), y)
+  await page.waitForFunction((target) => Math.abs(window.scrollY - target) <= 1, y)
+}
+
+// hero 內每個顏色 consumer 都要驗 —— 只驗 h1 正是 #64/#65 踩過的坑:
+// 父層看似正確,child 的顏色與字重仍然漂移。
+const HERO_CONSUMERS = [
+  '.intro-header-text h1',
+  '.intro-header-text .subheading',
+  '.intro-header-text .meta',
+]
+
+// 導覽列的 consumer 同理。.icon-bar 讀的是 background 不是 color。
+const NAVBAR_TEXT_CONSUMERS = ['.navbar-brand', '.navbar-links a']
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`${theme}:text hero 的前景關係與圖片文章相反`, async ({ page }) => {
-    await setTheme(page, theme)
-    await page.goto(textPost)
+  test(`${theme}:text hero 的每個 consumer 都等於 body 色,圖片文章則都是白色`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await open(page, textPost, theme)
 
     const bodyColor = await colorOf(page, 'body')
-    expect(await colorOf(page, '.intro-header-text h1')).toBe(bodyColor)
-    // 導覽列在 text 文章跟著 body 文字色。
-    expect(await colorOf(page, '.navbar-brand')).toBe(bodyColor)
+    for (const selector of [...HERO_CONSUMERS, ...NAVBAR_TEXT_CONSUMERS]) {
+      expect(await colorOf(page, selector), selector).toBe(bodyColor)
+    }
+    // ThemeSwitch 桌面是文字版,也必須跟著 token。
+    expect(await colorOf(page, '.theme-switch-text')).toBe(bodyColor)
+    expect(await colorOf(page, '.navbar-tool-trigger svg')).toBe(bodyColor)
 
-    // 對照組:圖片文章必須是白色 —— 證明上面兩條有鑑別力。
-    await page.goto(imagePost)
-    expect(await colorOf(page, '.intro-header-post h1')).toBe('rgb(255, 255, 255)')
-    expect(await colorOf(page, '.navbar-brand')).toBe('rgb(255, 255, 255)')
+    // 對照組:圖片文章的同一組 selector 必須是白色 —— 證明上面每一條都有鑑別力。
+    await open(page, imagePost, theme)
+    for (const selector of [
+      '.intro-header-post h1',
+      '.intro-header-post .subheading',
+      '.intro-header-post .meta',
+      ...NAVBAR_TEXT_CONSUMERS,
+    ]) {
+      expect(await colorOf(page, selector), selector).toBe('rgb(255, 255, 255)')
+    }
   })
 
-  test(`${theme}:text hero 沒有背景圖也沒有遮罩,padding 是 85/20`, async ({ page }) => {
-    await setTheme(page, theme)
-    await page.goto(textPost)
+  test(`${theme}:手機的 .icon-bar 與 hero consumer 一樣跟著 token`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await open(page, textPost, theme)
+
+    const bodyColor = await colorOf(page, 'body')
+    // .icon-bar 讀的是 background,漏掉它等於漏掉手機唯一的導覽視覺元素。
+    expect(await colorOf(page, '.icon-bar', 'background-color')).toBe(bodyColor)
+    for (const selector of HERO_CONSUMERS) {
+      expect(await colorOf(page, selector), selector).toBe(bodyColor)
+    }
+
+    await open(page, imagePost, theme)
+    expect(await colorOf(page, '.icon-bar', 'background-color')).toBe('rgb(255, 255, 255)')
+  })
+
+  test(`${theme}:text hero 沒有背景圖也沒有遮罩,桌面 padding 是 85/20`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await open(page, textPost, theme)
 
     expect(await colorOf(page, '.intro-header-text', 'background-image')).toBe('none')
     await expect(page.locator('.intro-header-text .header-mask')).toHaveCount(0)
 
-    await page.setViewportSize({ width: 1280, height: 900 })
     const content = page.locator('.intro-header-text .intro-header-content')
     expect(await content.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('85px')
     expect(await content.evaluate((el) => getComputedStyle(el).paddingBottom)).toBe('20px')
 
-    // 對照組:圖片文章仍有背景圖。
-    await page.goto(imagePost)
+    // 對照組:圖片文章仍有背景圖,且桌面 padding 是 150。
+    await open(page, imagePost, theme)
     expect(await colorOf(page, '.intro-header-post', 'background-image')).not.toBe('none')
+    expect(
+      await page
+        .locator('.intro-header-post .intro-header-content')
+        .evaluate((el) => getComputedStyle(el).paddingTop)
+    ).toBe('150px')
   })
 }
 
 test('切換主題時 text hero 的顏色必須跟著變', async ({ page }) => {
-  await setTheme(page, 'light')
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
   const lightColor = await colorOf(page, '.intro-header-text h1')
 
+  // 同一份文件上切換,不重新導航 —— 這才是使用者實際會做的事。
   await setTheme(page, 'dark')
   const darkColor = await colorOf(page, '.intro-header-text h1')
 
-  // 抄了硬值的話這條會紅。
+  // 抄了硬值(例如把 var(--hux-text) 改回 #404040)的話這條會紅。
   expect(darkColor).not.toBe(lightColor)
 })
 
@@ -2025,8 +2179,7 @@ test('hero 外的 tag 邊框仍然完整 —— 不只是 border-color', async (
 
 test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
-    await setTheme(page, theme)
-    await page.goto(textPost)
+    await open(page, textPost, theme)
     const tag = page.locator('.intro-header-text .tags .tag').first()
     await expect(tag).toBeVisible()
 
@@ -2042,7 +2195,9 @@ test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ pa
     const hovered = await read()
 
     // 契約一:可讀性 —— 文字對合成後的有效背景。
-    expect(contrastOf(hovered.color, [hovered.background, hovered.page])).toBeGreaterThanOrEqual(4.5)
+    expect(contrastOf(hovered.color, [hovered.background, hovered.page])).toBeGreaterThanOrEqual(
+      4.5
+    )
 
     // 契約二:方向性 —— 合成後實際差異只有 1.12:1 / 1.29:1,本來就不該以 4.5 判定。
     const restingLuminance = flattenLayers([resting.background, resting.page])
@@ -2055,29 +2210,43 @@ test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ pa
   }
 })
 
-test('桌面浮動導覽列的 hover 必須完全不變色', async ({ page }) => {
+test('桌面 fixed-visible:前景正確,且 hover 必須完全不變色', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
 
-  // fixed navbar 向下捲時停在 top:-61px,必須先向上捲取得 is-visible 才可見,
-  // 否則 hover() 會因不可見而失敗(不是因為顏色錯)。
-  await page.mouse.wheel(0, 1200)
-  await page.waitForTimeout(400)
-  await page.mouse.wheel(0, -300)
+  // Header.tsx:向下捲且 scrollY > headerHeight(61) 才加 is-fixed;
+  // 之後向上捲且 scrollY > 0 才加 is-visible。scrollY 一旦回到 0 就整組移除。
+  await scrollTo(page, 500)
+  await scrollTo(page, 400)
   await expect(page.locator('.navbar-custom.is-fixed.is-visible')).toBeVisible()
 
   const brand = page.locator('.navbar-brand')
   const resting = await brand.evaluate((el) => getComputedStyle(el).color)
-  await brand.hover()
-  const hovered = await brand.evaluate((el) => getComputedStyle(el).color)
+  // fixed 有自己的實心底,所以 text tone 刻意**不**套用 —— 此時不等於 body 色。
+  expect(resting).toBe('rgb(45, 45, 45)')
 
+  await brand.hover()
   // 直接斷言相等比「對比合格」強 —— 後者抓不到 #2d2d2d 漂到 #333。
-  expect(hovered).toBe(resting)
+  expect(await brand.evaluate((el) => getComputedStyle(el).color)).toBe(resting)
 })
 
-test('頂端狀態的 hover 必須真的變色 —— 否則 consumer 不存在時上一條也會綠', async ({ page }) => {
+test('桌面 fixed-hidden:只驗 class 與位置,不做 hover(元素不可見)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
+
+  await scrollTo(page, 500)
+  const navbar = page.locator('.navbar-custom')
+  await expect(navbar).toHaveClass(/is-fixed/)
+  await expect(navbar).not.toHaveClass(/is-visible/)
+  // 藏在視窗上緣。hover() 在這個狀態會因不可見而失敗,那是環境問題不是顏色問題。
+  expect(await navbar.evaluate((el) => getComputedStyle(el).top)).toBe('-61px')
+})
+
+test('桌面 top 狀態的 hover 必須真的變色 —— 否則 consumer 不存在時 fixed 那條也會綠', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await open(page, textPost, 'light')
 
   const brand = page.locator('.navbar-brand')
   const resting = await brand.evaluate((el) => getComputedStyle(el).color)
@@ -2085,17 +2254,22 @@ test('頂端狀態的 hover 必須真的變色 —— 否則 consumer 不存在�
   expect(await brand.evaluate((el) => getComputedStyle(el).color)).not.toBe(resting)
 })
 
-test('手機捲回接近頂端時導覽列仍可讀', async ({ page }) => {
+test('手機 near-top-with-is-fixed:導覽列仍套 text tone 且可讀', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
 
-  await page.mouse.wheel(0, 1500)
-  await page.waitForTimeout(300)
-  await page.mouse.wheel(0, -1490)
-  await page.waitForTimeout(300)
+  // 手機沒有 fixed 的視覺狀態(那組規則全在 min-width:768px 內),導覽列始終是
+  // position:absolute 的透明疊層。這個狀態就是規範說的「捲回接近頂端」:
+  // scrollY 僅數 px、導覽列已部分可見,而 is-fixed 尚未被移除(移除只發生在 scrollY === 0)。
+  await scrollTo(page, 500)
+  await scrollTo(page, 5)
 
-  const brand = page.locator('.navbar-brand')
-  const measured = await brand.evaluate((el) => ({
+  // 前置斷言:沒有這兩條的話,scrollY 被夾到 0 會讓 is-fixed 消失,
+  // 測試就變成在測一般的 top 規則,@media (max-width:767px) 那條被刪掉也照樣綠。
+  await expect(page.locator('.navbar-custom')).toHaveClass(/is-fixed/)
+  expect(await page.evaluate(() => window.scrollY)).toBe(5)
+
+  const measured = await page.locator('.navbar-brand').evaluate((el) => ({
     color: getComputedStyle(el).color,
     page: getComputedStyle(document.body).backgroundColor,
   }))
@@ -2104,9 +2278,8 @@ test('手機捲回接近頂端時導覽列仍可讀', async ({ page }) => {
 
 for (const theme of ['light', 'dark'] as const) {
   test(`${theme}:桌面展開 ThemeSwitch 的 focus 態對比`, async ({ page }) => {
-    await setTheme(page, theme)
     await page.setViewportSize({ width: 1280, height: 900 })
-    await page.goto(textPost)
+    await open(page, textPost, theme)
 
     await page.locator('.theme-switch-button').click()
     const item = page.locator('[role="menu"] button').first()
@@ -2122,7 +2295,9 @@ for (const theme of ['light', 'dark'] as const) {
     })
 
     // 文字對 focus 背景(WCAG 1.4.3)。
-    expect(contrastOf(measured.color, [measured.background, measured.panel])).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrastOf(measured.color, [measured.background, measured.panel])
+    ).toBeGreaterThanOrEqual(4.5)
     // focus surface 對 panel(WCAG 1.4.11)—— 只量前者會漏掉「focus 指示器本身看不出來」。
     expect(contrastOf(measured.background, [measured.panel])).toBeGreaterThanOrEqual(3)
   })
@@ -2130,7 +2305,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('手機展開漢堡後 Search 按鈕的 focus 態對比', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
 
   await page.locator('.navbar-toggle').click()
   // 必須明確 focus Search 按鈕 —— 其他選單項是 <a>,抓不到 button 相關的回歸。
@@ -2145,7 +2320,9 @@ test('手機展開漢堡後 Search 按鈕的 focus 態對比', async ({ page }) 
       panel: getComputedStyle(panel).backgroundColor,
     }
   })
-  expect(contrastOf(measured.color, [measured.background, measured.panel])).toBeGreaterThanOrEqual(4.5)
+  expect(contrastOf(measured.color, [measured.background, measured.panel])).toBeGreaterThanOrEqual(
+    4.5
+  )
 })
 
 test('SPA 導覽:text → 圖片 → 上一頁,樣式都要跟著切換', async ({ page }) => {
@@ -2159,7 +2336,9 @@ test('SPA 導覽:text → 圖片 → 上一頁,樣式都要跟著切換', async 
   await page.locator('article .prose a[href^="/2026/"]').first().click()
   await page.waitForURL(imagePost)
 
-  expect(await page.evaluate(() => (window as unknown as { __spaMarker?: boolean }).__spaMarker)).toBe(true)
+  expect(
+    await page.evaluate(() => (window as unknown as { __spaMarker?: boolean }).__spaMarker)
+  ).toBe(true)
   expect(await colorOf(page, '.intro-header-post h1')).toBe('rgb(255, 255, 255)')
   expect(await colorOf(page, '.intro-header-post', 'background-image')).not.toBe('none')
 
@@ -2169,28 +2348,112 @@ test('SPA 導覽:text → 圖片 → 上一頁,樣式都要跟著切換', async 
   expect(await colorOf(page, '.intro-header-text h1')).toBe(await colorOf(page, 'body'))
 })
 
-test('trigger 的 SVG 顏色由 token 決定,元件不得自帶顏色', async ({ page }) => {
+// ⚠️ 計算色相等**證明不了** utility 已被刪除:.navbar-tool-trigger svg 是未分層規則,
+// 本來就會壓過 layered 的 text-gray-*,兩種寫法量到的顏色完全相同。要抓「元件留著
+// 顏色 utility」這個突變,只能直接看 class list。
+test('trigger 元件不得自帶顏色 utility', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto(textPost)
+  await open(page, textPost, 'light')
 
-  const svgColor = await page
-    .locator('.navbar-tool-trigger svg')
-    .first()
-    .evaluate((el) => getComputedStyle(el).color)
+  const classNames = await page
+    .locator('.navbar-tool-trigger, .navbar-tool-trigger svg')
+    .evaluateAll((elements) => elements.map((el) => el.getAttribute('class') ?? ''))
+
+  expect(classNames.length).toBeGreaterThan(0)
+  for (const className of classNames) {
+    expect(className, className).not.toMatch(/(^|\s)(dark:)?(hover:)?text-gray-\d/)
+    expect(className, className).not.toMatch(/(^|\s)(dark:)?hover:text-primary-\d/)
+  }
+})
+
+test('trigger 的 SVG 顏色確實跟著 --navbar-fg', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await open(page, textPost, 'light')
+
+  const svgColor = await colorOf(page, '.navbar-tool-trigger svg')
   const navbarFg = await page
     .locator('.navbar-custom')
     .evaluate((el) => getComputedStyle(el).getPropertyValue('--navbar-fg').trim())
 
   expect(parseColor(svgColor)).toEqual(parseColor(navbarFg))
 })
+
+// ── text hero 的 series 連結:CSS consumer harness ──────────────────────────
+// hidden fixture 進不了系列(series 收集會跳過 listed === false),所以真實 text
+// fixture 頁面上**沒有 .series-meta 元素**。注入同形元素補這一層。
+//
+// 注入位置必須是 .intro-header-text .post-heading 內 —— 放在 hero 任意位置的話
+// 選擇器根本不匹配。class list 必須完整:省略 .post-series-link-top 會製造
+// production 不存在的 cascade。
+//
+// oracle 分工:刪掉 hero 專屬 consumer **不會**讓這裡變紅(--hero-link-hover 就是
+// --series-interactive,遞補後同值),那由既有的 image-series E2E 負責。
+// 這個 harness 專門守「--hero-link-hover 沒被改回硬編碼 #66c7e0」——
+// 那個值對淺色底的對比只有 1.94。
+async function injectSeriesHarness(page: Page) {
+  await page.locator('.intro-header-text .post-heading').evaluate((heading) => {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'post-series-link post-series-link-top series-meta'
+    const link = document.createElement('a')
+    link.href = '/series/harness/'
+    link.textContent = 'harness series'
+    wrapper.append(link)
+    heading.append(wrapper)
+  })
+  return page.locator('.intro-header-text .series-meta a')
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}:text hero 的 series 連結 hover 可讀且真的變色`, async ({ page }) => {
+    await open(page, textPost, theme)
+    const link = await injectSeriesHarness(page)
+
+    const read = () =>
+      link.evaluate((el) => ({
+        color: getComputedStyle(el).color,
+        page: getComputedStyle(document.body).backgroundColor,
+      }))
+
+    const resting = await read()
+    await link.hover()
+    const hovered = await read()
+
+    expect(hovered.color).not.toBe(resting.color)
+    // 改回硬編碼 #66c7e0 的話,淺色這一輪會是 1.94。
+    expect(contrastOf(hovered.color, [hovered.page])).toBeGreaterThanOrEqual(4.5)
+  })
+
+  test(`${theme}:text hero 的 series 連結 focus 可讀且真的變色`, async ({ page }) => {
+    await open(page, textPost, theme)
+    const link = await injectSeriesHarness(page)
+
+    const resting = await link.evaluate((el) => getComputedStyle(el).color)
+    // 用鍵盤 focus。規則同時宣告 hover 與 focus,只測 hover 的話刪掉 focus arm 照樣綠。
+    await link.focus()
+    const focused = await link.evaluate((el) => ({
+      color: getComputedStyle(el).color,
+      page: getComputedStyle(document.body).backgroundColor,
+    }))
+
+    expect(focused.color).not.toBe(resting)
+    expect(contrastOf(focused.color, [focused.page])).toBeGreaterThanOrEqual(4.5)
+  })
+}
 ```
 
 - [ ] **Step 2: 跑 production build 與新測試**
 
 ```bash
-lsof -ti:3012 || echo free
-yarn build && yarn playwright test tests/playwright/header-style-text.spec.ts 2>&1 | tail -25
+lsof -ti:3012 && kill $(lsof -ti:3012); yarn build
 ```
+
+```bash
+yarn playwright test tests/playwright/header-style-text.spec.ts 2>&1 | tail -30
+```
+
+> 兩段分開跑。`yarn build && yarn playwright ... &` 之類的寫法在 zsh 會把整個 AND-list
+> 背景化,而 `playwright.config.ts` 的 `webServer` 又會自己跑一次 build —— 兩個 contentlayer
+> 同時執行會被 lockfile 擋住。這裡讓 build 在前景跑完,webServer 的重建就是增量的。
 
 Expected: 全部 PASS。若 `.post-preview .tags .tag` 找不到,先確認首頁確實有帶 tag 的文章卡片;
 **不要**改成 count-based 跳過(那是假綠)。
@@ -2253,10 +2516,12 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 10: `series.spec.ts` 統一與教訓記錄(commit F)
 
 **Files:**
+
 - Modify: `tests/playwright/series.spec.ts`
 - Modify: `AGENTS.md`
 
 **Interfaces:**
+
 - Consumes: Task 1 的 color helper
 - Produces: 無
 
@@ -2292,8 +2557,9 @@ import { contrastOf, contrastRatio, parseColor } from '../helpers/color'
 ```ts
 test('image hero 的 series 連結 focus 色在兩個主題必須相同', async ({ page }) => {
   const measure = async (theme: 'light' | 'dark') => {
+    // goto 先、setTheme 後 —— 這是本檔既有的順序,反過來的話 class 會被導航沖掉。
+    await page.goto('/2026/07/25/openwiki-tame-agents-md/')
     await setTheme(page, theme)
-    await page.goto(`/${articlePath}/`)
     const link = page.locator('.intro-header-post .series-meta a').first()
     await link.focus()
     return link.evaluate((el) => getComputedStyle(el).color)
@@ -2303,8 +2569,12 @@ test('image hero 的 series 連結 focus 色在兩個主題必須相同', async 
 })
 ```
 
-> `articlePath` 用該檔既有的常數。這條的鑑別力來自「hero 永遠是深色照片,所以 focus 色不隨
-> 主題翻轉」;`--hero-link-hover` 被改回硬編碼或 focus arm 被刪掉都會讓它紅。
+> **路徑必須寫成字面值** —— 這個檔案沒有 `articlePath` 常數,文章路徑是在既有測試裡逐處
+> 硬編碼的(例如第 89 行)。執行時確認該路徑仍存在。
+>
+> 這條的鑑別力來自「**這個 fixture 的** hero 是深色照片,所以 focus 色不隨主題翻轉」;
+> hero 專屬 consumer 被刪掉(遞補到隨主題翻轉的 `--series-interactive`)或 focus arm
+> 被刪掉,都會讓它紅。
 
 - [ ] **Step 4: 記錄教訓到 `AGENTS.md`**
 
@@ -2318,6 +2588,18 @@ test('image hero 的 series 連結 focus 色在兩個主題必須相同', async 
   任何 enum 欄位都必須另外寫執行期 parser,例如 `lib/hero-config.ts` 的 `parseHeaderStyle`。
 - **顏色斷言一律用 `tests/helpers/color.ts`**,不要在 spec 裡自己寫 parser。半透明色必須沿
   祖先鏈合成到第一個不透明背景;`oklch()` 要真的轉換,用數字 regex 讀會靜默算錯。
+- **Playwright 切主題必須 `goto` 先、`setTheme` 後。** class 設在當前文件的 `<html>` 上,
+  導航會換掉整份文件。而且**光靠 `emulateMedia` 不夠** —— `siteMetadata.theme` 是 `'dark'`,
+  next-themes 的 `defaultTheme` 因此是明確值而非 `'system'`,新 profile 一律解析成深色。
+  順序寫反時「兩個主題各跑一輪」會**靜默變成跑兩輪深色**,而不是報錯。
+- **捲動狀態的測試必須有前置斷言**:先確認文件高度足夠(`scrollHeight - innerHeight`),
+  再斷言 `window.scrollY` 與 `is-fixed` / `is-visible` class 確實到位。fixture 不夠高時
+  捲動量會被夾住,測試**靜默退化**成在測 top 狀態 —— 手機那條 `@media (max-width: 767px)`
+  的 override 被刪掉照樣綠。`Header.tsx` 只在 `scrollY === 0` 時移除 `is-fixed`,所以
+  「捲回接近頂端」要用小的非零 offset(例如 5px),不是回捲到底。
+- **`A && B &` 在 zsh 會把整個 AND-list 背景化。** `yarn build && yarn serve ... &` 會讓
+  build 在背景跑,而 Playwright 的 `webServer` 又會啟一次自己的 build —— 兩個 contentlayer
+  同時跑會被 lockfile 擋住。build 一律前景跑完,只把 server 放背景並輪詢等 port ready。
 
 - [ ] **Step 5: 檢查**
 
@@ -2352,15 +2634,19 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 11: OpenWiki 重生成(commit G)
 
 **Files:**
+
 - Modify: `openwiki/**`(生成產物,**不得手改**)
 
 - [ ] **Step 1: 從已提交的狀態建乾淨 worktree**
 
 ```bash
-SP=/private/tmp/claude-501/-Users-allen-Dev-blog-Refactoring-myblog-nextjs/scratchpad
+SP=$(mktemp -d)
 git worktree add --detach "$SP/openwiki-pr2" HEAD
 git -C "$SP/openwiki-pr2" status --short
 ```
+
+> 用 `mktemp -d` 而不是寫死路徑 —— session 專屬的暫存目錄不保證存在。
+> **`$SP` 必須在後續步驟的同一個 shell 中保持有效**;跨呼叫時改用完整路徑。
 
 Expected: 第二個指令**無輸出**(worktree 乾淨)。
 
@@ -2497,6 +2783,26 @@ Task 2/7 覆蓋,resolver 與 renderer 共 4 條由 Task 3/4/8 覆蓋,CSS 與導�
    與文章正文都沒有 tag producer,所以不要為不存在的 locator 寫 count-based 跳過。
 4. **commit E 的 `app/tag-data.json` 可能變動**(fixture 帶 `Test` tag)。這是預期內的產物變動,
    與 commit A/B/D 的零像素要求不衝突。
+5. **`ContentOutputDeps` 的 `assertValidHeroConfigurations` 維持 optional。** PR1 這樣定義是
+   因為當時沒有實作可注入。PR2 落地後它就永遠會被注入,理論上可以收緊成 required —— 但那會
+   改到 PR1 剛穩定下來的公開型別,而現有的「validator 拋錯時三個 writer 呼叫數為 0」加上
+   config wiring 的錨定斷言已經覆蓋了「忘記注入」這個突變。**列為後續改善,不在本 PR。**
+
+**外部審查(2026-07-31)後修正的七項,記錄在此避免再犯:**
+
+| 問題                                                                                                   | 修正                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Task 4 要求 text 模式無遮罩,但抑制遮罩排在 Task 8 → commit A 不可能全綠                                | Task 4 的 text 測試不再設 `headerMask`;抑制斷言留在 Task 8                                                                    |
+| 規範要求的 text-Series harness 整段漏掉,而 Self-Review 宣稱有                                          | Task 9 補上 `injectSeriesHarness`,hover 與 focus 各一輪 × 兩主題                                                              |
+| `setTheme` 在 `goto` 之前呼叫 → class 被導航沖掉;`defaultTheme` 是 `dark`,兩輪其實都在測深色           | 新增 `open(page, path, theme)`,強制 goto 先、setTheme 後                                                                      |
+| fixture 太短,捲不到 fixed threshold;mobile 回捲會夾到 0 而移除 `is-fixed`                              | fixture 加 ASCII filler;`scrollTo()` 內含高度前置斷言;狀態用明確 offset 與 class 前置斷言                                     |
+| 狀態表寫「全部元素」,測試只驗 `h1` 與 brand                                                            | 改成明列 selector 陣列,含 `.subheading`、`.meta`、`.navbar-links a`、`.theme-switch-text`、`.icon-bar`,並補 fixed-hidden 狀態 |
+| Task 10 用了不存在的 `articlePath` 常數                                                                | 改成字面路徑                                                                                                                  |
+| `yarn build && yarn serve ... &` 在 zsh 會把整個 AND-list 背景化,與 Playwright 的 webServer 並行 build | build 前景跑完,只把 server 放背景並輪詢等待 ready                                                                             |
+
+另修三個次要項:validator wiring 的 regex 錨定到 deps 物件實字(原本會匹配到 import 行);
+trigger utility 的刪除改用 **class list** 斷言(計算色相等證明不了 —— 未分層 CSS 本來就會蓋掉
+utility);OpenWiki worktree 改用 `mktemp -d`。
 
 **Type consistency:** `RawHeroConfiguration`、`ParsedHeroConfiguration`、`HeroMode`、
 `HeroSurface`、`Rgb` 五個型別在 Task 1/2/3 定義,Task 4/7/8/9 使用時名稱與參數順序一致。
