@@ -10,8 +10,8 @@ Blog posts are Markdown/MDX files under `data/blog/`; author profiles are MDX un
 | --- | --- |
 | `title`, `date` | Required; identify the post and derive its legacy URL. |
 | `tags` | Drives tag pages, tag counts, tag feeds, and search metadata. |
-| `draft` | Excluded from production-facing derived outputs such as feeds. |
-| `hidden` | Sets computed `listed: false`; excludes the post from listing/search/tag count surfaces. |
+| `draft` | In production, excluded from public post routes/OG/legacy aliases and from derived tag/search outputs; preview development retains it in both views. |
+| `hidden` | Sets computed `listed: false`; remains directly reachable but is excluded from listing/search/tag count surfaces and pager navigation. |
 | `update`, `subtitle`, `images`, `canonicalUrl` | Feed/metadata/preview support; `update` becomes `lastmod` when available. |
 | `headerImg`, `headerBgCss`, `headerMask` | Hux hero and social-card presentation. |
 | `series` | Optional collection name. Visible, non-draft posts with the same normalized name form an oldest-to-newest static reading path; the post links to it in the hero and after its body. Blank/missing values are ignored. Nonblank values must normalize to a non-empty `github-slugger` slug and distinct names may not collapse to the same slug, or Contentlayer generation fails. |
@@ -43,9 +43,9 @@ Mermaid must precede Prism: Prism rewrites code markup, after which the Mermaid 
 
 | Output | Producer | Inclusion rule |
 | --- | --- | --- |
-| canonical route/metadata | App post route plus Contentlayer computed fields | every generated post route |
-| `app/tag-data.json` | Contentlayer `onSuccess` | tags from listed posts; drafts additionally excluded in production |
-| `public/search.json` | Contentlayer `onSuccess` | listed posts |
+| canonical route/metadata | App post route plus Contentlayer computed fields | the route's `NODE_ENV`-selected reachable view: drafts are excluded outside development; hidden posts remain reachable |
+| `app/tag-data.json` | Contentlayer `onSuccess` | tags from the `BLOG_PUBLICATION_MODE`-selected listed view: hidden posts stay excluded; production excludes drafts |
+| `public/search.json` | Contentlayer `onSuccess` | the same mode-selected listed view as tag data |
 | `feed.xml`, `tags/<tag>/feed.xml` | [`scripts/rss.mjs`](../../scripts/rss.mjs) after Next build | only non-draft, listed posts; fields are XML-escaped |
 | sitemap | [`app/sitemap.ts`](../../app/sitemap.ts) | canonical posts, core hubs, and series index/detail pages; not pagination combinations. A collection’s `lastModified` is its latest member `lastmod` or date. |
 | post Open Graph PNG | post `opengraph-image` route + shared social-card renderer | derived from post metadata/header configuration |
@@ -57,6 +57,10 @@ Mermaid must precede Prism: Prism rewrites code markup, after which the Mermaid 
 Legacy compatibility is end-to-end. A route must agree with generated `legacyPath`, `url`, post lookup/redirect behavior, RSS URL, sitemap entry, social metadata, and Giscus `pathname` mapping. Changing date/slug semantics can break inbound links and disconnect existing discussion threads.
 
 The current homepage is the first paginated list. `/blog` and legacy list pagination redirect to `/` or `/pageN/` in server-capable deployments. Do not introduce a second home/list interpretation or reuse a conflicting root dynamic segment without checking the post route.
+
+### Publication policy boundary
+
+[`lib/post-publication.ts`](../../lib/post-publication.ts) is the shared policy for production reachability and listing. `reachable` excludes only production drafts; `listed` further excludes `hidden: true` and `listed: false`. Routes and per-post OG images select their mode from `NODE_ENV` (`development` is preview; all other values are production), whereas Contentlayer passes `resolvePublicationMode(process.env.BLOG_PUBLICATION_MODE)` only to its tag/search output orchestration ([`contentlayer.config.ts`](../../contentlayer.config.ts), [`lib/content-outputs.ts`](../../lib/content-outputs.ts)). `yarn dev` supplies `preview` to its Contentlayer build and watcher ([`scripts/dev.mjs`](../../scripts/dev.mjs)); normal production builds rely on the unset, fail-closed production default. Do not set `BLOG_PUBLICATION_MODE` independently of the standard entry points: it cannot make routes previewable and can make the generated tag/search artifacts disagree with public route visibility.
 
 ## Change-oriented source map
 
