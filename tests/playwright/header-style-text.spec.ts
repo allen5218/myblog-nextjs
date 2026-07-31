@@ -48,7 +48,10 @@ async function scrollTo(page: Page, y: number) {
   // 真的跑過一輪才會更新 is-fixed/is-visible;background-to-back 呼叫 scrollTo 若不等這一拍,
   // 兩次 instant 跳轉可能被瀏覽器合併成同一輪派送,直接跳過中間閾值,is-fixed 永遠不會被加上。
   await page.evaluate(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
   )
 }
 
@@ -77,12 +80,16 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await colorOf(page, '.navbar-tool-trigger svg')).toBe(bodyColor)
 
     // 對照組:圖片文章的同一組 selector 必須是白色 —— 證明上面每一條都有鑑別力。
+    // .theme-switch-text 與 .navbar-tool-trigger svg 也要在這裡驗證,否則把其中任一個
+    // 硬編碼成 var(--hux-text) 時,整個 suite 仍然全綠,而圖片文章實際上會變成暗色壓在照片上。
     await open(page, imagePost, theme)
     for (const selector of [
       '.intro-header-post h1',
       '.intro-header-post .subheading',
       '.intro-header-post .meta',
       ...NAVBAR_TEXT_CONSUMERS,
+      '.theme-switch-text',
+      '.navbar-tool-trigger svg',
     ]) {
       expect(await colorOf(page, selector), selector).toBe('rgb(255, 255, 255)')
     }
@@ -108,6 +115,10 @@ for (const theme of ['light', 'dark'] as const) {
     await open(page, textPost, theme)
 
     expect(await colorOf(page, '.intro-header-text', 'background-image')).toBe('none')
+    // 這條專門釘住 shorthand 本身 —— `background: none` 同時歸零 background-image 與
+    // background-color。只驗 background-image 抓不到把它誤改成 `background-image: none`
+    // 的退化:那樣 background-color 就不再被重置,#777 底色會回到標題後面。
+    expect(await colorOf(page, '.intro-header-text', 'background-color')).toBe('rgba(0, 0, 0, 0)')
     await expect(page.locator('.intro-header-text .header-mask')).toHaveCount(0)
 
     const content = page.locator('.intro-header-text .intro-header-content')
