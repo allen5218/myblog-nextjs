@@ -3,10 +3,10 @@ import Link from '@/components/Link'
 import PostSeriesLink from '@/components/hux/PostSeriesLink'
 import type { SeriesPost } from '@/lib/series'
 import { formatHuxDate } from '../../lib/hux-date'
-import { resolveHeroIframeSrc } from '@/lib/iframe'
+import { parseHeroConfiguration } from '@/lib/hero-config'
+import { resolveHeroSurface } from '@/lib/hero-mode'
 
-type HuxHeroProps = {
-  variant?: 'archive' | 'home' | 'post'
+type HuxHeroBaseProps = {
   title: string
   subtitle?: string
   author?: string
@@ -20,11 +20,15 @@ type HuxHeroProps = {
   iframe?: string
 }
 
-function resolveHeaderImage(src?: string) {
-  if (!src) return '/img/home-bg.avif'
-  if (src.startsWith('http') || src.startsWith('/')) return src
-  return `/${src}`
-}
+/**
+ * 首頁與 archive 不支援 text 模式(兩者都寫死 headerImg),用 headerStyle?: never
+ * 把「非目標」的組合從型別上封死,而不是靠註解約束。
+ */
+type HuxHeroProps = HuxHeroBaseProps &
+  (
+    | { variant: 'home' | 'archive'; headerStyle?: never }
+    | { variant?: 'post'; headerStyle?: 'text' }
+  )
 
 export default function HuxHero({
   variant = 'post',
@@ -39,49 +43,53 @@ export default function HuxHero({
   headerBgCss,
   headerMask,
   iframe,
+  headerStyle,
 }: HuxHeroProps) {
-  const maskOpacity = headerMask == null || headerMask === '' ? undefined : Number(headerMask)
-  const iframeSrc = resolveHeroIframeSrc(iframe)
-  const hasIframe = Boolean(iframeSrc)
-  // frontmatter 的 headerBgCss 常帶著從 CSS 片段複製貼上留下的尾隨分號(如
-  // "linear-gradient(...);");當成純 HTML style 屬性字串沒問題,但 React 走
-  // client 端渲染(SPA 導覽、非 SSR hydration)時是透過 CSSOM setter 賦值,分號
-  // 會讓整個值被判定無效而整個跳過不套用 —— 這正是「站內連結進來背景消失、重新
-  // 整理才正常」的成因,先在這裡把它清乾淨,不管資料來源有沒有分號都能用。
-  const cleanedBgCss = headerBgCss?.trim().replace(/;+\s*$/, '')
-  const style = hasIframe
-    ? undefined
-    : cleanedBgCss
-      ? { background: cleanedBgCss }
-      : {
-          backgroundColor: headerImg ? undefined : '#2D2D2D',
-          backgroundImage: `url(${resolveHeaderImage(headerImg)})`,
-        }
+  const { mode, maskOpacity } = resolveHeroSurface(
+    parseHeroConfiguration({ headerStyle, headerImg, headerBgCss, headerMask, iframe })
+  )
+
+  // text 模式必須完全不產生 style —— inline style 贏過任何 class 規則,
+  // 純 CSS 蓋不掉 backgroundImage 的 fallback。
+  const style =
+    mode.kind === 'keynote' || mode.kind === 'text'
+      ? undefined
+      : mode.kind === 'css-background'
+        ? { background: mode.background }
+        : {
+            backgroundColor: mode.fallbackColor ?? undefined,
+            backgroundImage: `url(${mode.url})`,
+          }
+
+  const variantClass =
+    variant === 'home'
+      ? 'intro-header-home'
+      : variant === 'archive'
+        ? 'intro-header-archive'
+        : 'intro-header-post'
+
+  const modeClass =
+    mode.kind === 'keynote'
+      ? 'intro-header-keynote'
+      : mode.kind === 'text'
+        ? 'intro-header-text'
+        : ''
 
   return (
-    <header
-      className={`hux-full-bleed intro-header ${
-        variant === 'home'
-          ? 'intro-header-home'
-          : variant === 'archive'
-            ? 'intro-header-archive'
-            : 'intro-header-post'
-      } ${hasIframe ? 'intro-header-keynote' : ''}`}
-      style={style}
-    >
-      {maskOpacity !== undefined && !Number.isNaN(maskOpacity) && (
+    <header className={`hux-full-bleed intro-header ${variantClass} ${modeClass}`} style={style}>
+      {maskOpacity !== null && (
         <div className="header-mask" style={{ backgroundColor: `rgba(0, 0, 0, ${maskOpacity})` }} />
       )}
-      {hasIframe && (
+      {mode.kind === 'keynote' && (
         <iframe
           className="keynote-frame"
-          src={iframeSrc}
+          src={mode.iframeSrc}
           title={title}
           loading="lazy"
           allowFullScreen
         />
       )}
-      <div className={hasIframe ? 'sr-only' : 'intro-header-content'}>
+      <div className={mode.kind === 'keynote' ? 'sr-only' : 'intro-header-content'}>
         {variant === 'home' || variant === 'archive' ? (
           <div className="site-heading">
             <h1>{title}</h1>
