@@ -29,7 +29,40 @@ discriminated union `HeroSurface`;`components/hux/HuxHero.tsx` 只依 union 渲�
 - 必過 CI 只跑:`yarn contentlayer2 build`、`yarn eslint app components lib layouts scripts`、
   `yarn tsc --noEmit`、`yarn test:unit`。**Playwright 不是 gate**,出貨前手動跑 `yarn test:parity`。
 - 互動驗證**一律用 production build**,不得用 dev server。production server 綁 `127.0.0.1:3012`,
-  **驗證完必須關閉該程序**(`lsof -ti:3012`)。
+  **驗證完必須關閉該程序**。用下面的標準流程,不要自己臨場拼指令。
+
+### 啟動與關閉 production server(標準流程)
+
+**啟動**(build 必須先在**前景**跑完 —— zsh 的 `A && B &` 會把整個 AND-list 背景化,
+造成它與 Playwright 的 `webServer` 並行 build 而撞 lockfile):
+
+```bash
+yarn build
+```
+
+```bash
+yarn serve -H 127.0.0.1 -p 3012 > /tmp/blog-server.log 2>&1 &
+echo $! > /tmp/blog-server.pid
+for _ in $(seq 1 90); do
+  kill -0 "$(cat /tmp/blog-server.pid)" 2>/dev/null || { echo "SERVER DIED"; tail -30 /tmp/blog-server.log; exit 1; }
+  curl -sf -o /dev/null http://127.0.0.1:3012/ && { echo "ready (pid $(cat /tmp/blog-server.pid))"; exit 0; }
+  sleep 1
+done
+echo "TIMEOUT after 90s"; tail -30 /tmp/blog-server.log; exit 1
+```
+
+**關閉**:
+
+```bash
+kill "$(cat /tmp/blog-server.pid)" 2>/dev/null; rm -f /tmp/blog-server.pid
+sleep 1; lsof -ti:3012 || echo "port 3012 free"
+```
+
+> 三個細節都是必要的:① 迴圈有 **90 秒上限**,啟動失敗時不會永遠等下去;
+> ② 每輪先 `kill -0` 確認程序還活著,server 一崩就立刻印 log 收工,而不是空轉到 timeout;
+> ③ 關閉用**自己記下的 PID**,不是 `kill $(lsof -ti:3012)` —— 後者會誤殺任何剛好占用該埠的
+> 程序(例如另一個 session 的 dev server)。PID 寫檔是因為 shell 變數**不跨 Bash 呼叫保存**。
+
 - `vitest` 只收 `tests/unit/**/*.test.ts`。單元測試風格:
   `import { describe, expect, test } from 'vitest'`,相對路徑 import,工廠函式建 fixture。
 - **所有新 CSS 規則必須留在未分層區**(不得放進 `@layer`)。未分層作者樣式贏過任何 `@layer`
@@ -178,6 +211,14 @@ describe('parseColor', () => {
     expect(() => parseColor('color(display-p3 1 0 0)')).toThrow(/Unsupported colou?r/i)
     expect(() => parseColor('red')).toThrow(/Unsupported colou?r/i)
   })
+
+  // 只有 3/4/6/8 位是合法 hex 長度。用 {3,8} 的話 5 位值會被收下,
+  // 而切割邏輯會用 size=2 去讀它,靜默算出一個看似合理的錯誤顏色。
+  test('非法長度的 hex 必須拋錯,不得靜默切錯', () => {
+    expect(() => parseColor('#12345')).toThrow(/Unsupported colou?r/i)
+    expect(() => parseColor('#1234567')).toThrow(/Unsupported colou?r/i)
+    expect(() => parseColor('#12')).toThrow(/Unsupported colou?r/i)
+  })
 })
 
 describe('alpha compositing', () => {
@@ -309,7 +350,9 @@ function parseOklch(value: string): Rgb {
 
 export function parseColor(value: string): Rgb {
   const normalized = value.trim().toLowerCase()
-  if (/^#[0-9a-f]{3,8}$/.test(normalized)) return parseHex(normalized)
+  // 只有 3/4/6/8 位是合法的 hex 長度。寫成 {3,8} 會收下 #12345 這種 5 位值,
+  // 而 parseHex 會用 size=2 去切它,靜默算出一個看似合理的錯誤顏色。
+  if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(normalized)) return parseHex(normalized)
   if (normalized.startsWith('rgb')) return parseRgb(normalized)
   if (normalized.startsWith('oklch')) return parseOklch(normalized)
   throw new Error(`Unsupported color: ${value}`)
@@ -1013,21 +1056,10 @@ Expected: 全部通過,且 `git diff --stat css/` **無輸出**(commit A 不碰 
 
 - [ ] **Step 7: production 目視確認零像素變動**
 
-```bash
-lsof -ti:3012 && kill $(lsof -ti:3012); yarn build
-```
-
-```bash
-yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
-until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
-```
-
-> **build 必須在前景跑完再啟動 server。** zsh 的 `A && B &` 會把**整個 AND-list** 丟進背景,
-> 於是 `yarn build` 在背景跑,而下一個 `yarn test:parity` 會依 `playwright.config.ts` 的
-> `webServer` 再啟一次 build —— 兩個 contentlayer 同時跑會被 lockfile 擋住。
+依 Global Constraints 的「啟動與關閉 production server(標準流程)」啟動。
 
 比對圖片文章、keynote 文章、首頁、archive 的 hero 外觀與改動前一致。
-**驗證完必須 `kill $(lsof -ti:3012)` 並確認 `lsof -ti:3012` 為空。**
+**驗證完依同一節的關閉流程收工。**
 
 - [ ] **Step 8: Commit(commit A)**
 
@@ -1173,15 +1205,10 @@ color: var(--hero-link-hover);
 - [ ] **Step 5: 檢查與零像素驗收**
 
 ```bash
-yarn eslint app components lib layouts scripts && yarn build
+yarn eslint app components lib layouts scripts
 ```
 
-```bash
-yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
-until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
-```
-
-> build 在前景跑完再啟 server。`A && B &` 在 zsh 會把整個 AND-list 背景化,造成並行 build。
+然後依 Global Constraints 的「啟動與關閉 production server(標準流程)」啟動。
 
 比對範圍:**圖片文章、首頁、archive、series、about、404、offline、文章列表卡片**,兩個主題。
 任一處有位移就停手 —— 等值替換不等值。
@@ -1192,8 +1219,17 @@ until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
 yarn test:parity 2>&1 | tail -10
 ```
 
-Expected: 全綠(基準:PR1 合併時是 80 passed)。`series.spec.ts` 既有的「兩主題 hover 同色」
-就是 `--hero-link-hover` 的守門員。**驗證完 `kill $(lsof -ti:3012)`。**
+Expected: 全綠(基準:PR1 合併時是 80 passed)。
+
+> **這一步守得住什麼、守不住什麼,必須講清楚。** `series.spec.ts` 既有的「兩主題 hover 同色」
+> 只守住 **hero 專屬 consumer 沒被刪除** —— 刪掉之後會遞補到隨主題翻轉的 `--series-interactive`,
+> 兩主題不再同色,測試變紅。
+> 它**守不住** `--hero-link-hover` 被改回硬編碼 `#66c7e0`:在 image hero 上那個值本來就是對的,
+> 兩主題仍然同色,照樣全綠。**真正守住硬編碼的是 Task 9 的 text harness**(`#66c7e0` 對淺色底
+> 只有 1.94)。也就是說 **commit B 落地時,`--hero-link-hover` 還沒有防硬編碼的 oracle**,
+> 那個保護隨 Task 9 一起到位。這是刻意接受的順序,不是遺漏。
+
+**驗證完關閉 server**(見下方「啟動與關閉 production server」的標準流程)。
 
 - [ ] **Step 7: Commit(commit B)**
 
@@ -1416,16 +1452,7 @@ Expected: 全部通過。
 
 - [ ] **Step 8: production 逐項截圖說明變動**
 
-```bash
-yarn build
-```
-
-```bash
-yarn serve -H 127.0.0.1 -p 3012 > /tmp/serve.log 2>&1 &
-until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
-```
-
-必須逐一確認並說明:
+依 Global Constraints 的「啟動與關閉 production server(標準流程)」啟動,必須逐一確認並說明:
 
 | 位置                                 | 預期                                                                                          |
 | ------------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -1435,7 +1462,7 @@ until curl -sf -o /dev/null http://127.0.0.1:3012/; do sleep 1; done; echo ready
 | popup focus 態                       | **刻意改變**:白字青底(2.31)→ `--hux-on-interactive` 對 `--hux-interactive`(淺 6.49 / 深 7.08) |
 | 手機展開漢堡 popup                   | 同上                                                                                          |
 
-用 `getComputedStyle` 量實際值,不從 CSS 原始碼推論。**驗證完 `kill $(lsof -ti:3012)`。**
+用 `getComputedStyle` 量實際值,不從 CSS 原始碼推論。**驗證完依 Global Constraints 的關閉流程收工。**
 
 - [ ] **Step 9: 跑 parity 套件**
 
@@ -2016,13 +2043,43 @@ Task 9 補完 E2E 測試後一起 commit。
 用 `page.mouse.wheel()` + `waitForTimeout()` 的話,fixture 不夠高時捲動量會被夾住,
 測試會**靜默退化**成在測 top 狀態 —— 而 `@media (max-width: 767px)` 那條被刪掉照樣綠。
 
-- [ ] **Step 1: 寫測試**
+- [ ] **Step 1a: 把既有的 `focusWithKeyboard` 抽成共用 helper**
+
+`tests/playwright/series.spec.ts` 第 44 行已經有一個真正走 Tab 的實作。新 spec 需要同一個
+行為,**不要寫第二份** —— 那正是 color helper 那條教訓要避免的。
+
+Create `tests/helpers/focus.ts`,把該函式原封不動搬過來(型別改成從 `@playwright/test` import):
+
+```ts
+import type { Locator, Page } from '@playwright/test'
+
+/**
+ * 真正用鍵盤 Tab 走到目標元素。
+ *
+ * 不要用 locator.focus() 取代:那是程式化 focus,規則若哪天收緊成 :focus-visible,
+ * 程式化 focus 不會觸發,測試會靜默失去鑑別力而不是變紅。
+ */
+export async function focusWithKeyboard(page: Page, target: Locator) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  for (let attempts = 0; attempts < 200; attempts += 1) {
+    await page.keyboard.press('Tab')
+    if (await target.evaluate((element) => document.activeElement === element)) return
+  }
+  throw new Error('Target did not receive keyboard focus')
+}
+```
+
+**`series.spec.ts` 的本地版本先留著不動** —— Task 10 才會刪掉它並改為 import,那樣本 task 的
+diff 只增不減,`series.spec.ts` 也不會在兩個 commit 之間處於半改狀態。
+
+- [ ] **Step 1b: 寫測試**
 
 Create `tests/playwright/header-style-text.spec.ts`:
 
 ```ts
 import { expect, test, type Page } from '@playwright/test'
 import { contrastOf, contrastRatio, flattenLayers, parseColor } from '../helpers/color'
+import { focusWithKeyboard } from '../helpers/focus'
 
 const textPost = '/2026/07/31/header-style-text-test/'
 const imagePost = '/2026/07/25/openwiki-tame-agents-md/'
@@ -2428,8 +2485,10 @@ for (const theme of ['light', 'dark'] as const) {
     const link = await injectSeriesHarness(page)
 
     const resting = await link.evaluate((el) => getComputedStyle(el).color)
-    // 用鍵盤 focus。規則同時宣告 hover 與 focus,只測 hover 的話刪掉 focus arm 照樣綠。
-    await link.focus()
+    // 必須是**真的鍵盤** focus。link.focus() 是程式化 focus,規則若哪天收緊成
+    // :focus-visible,程式化 focus 不會觸發而測試會靜默失去鑑別力。
+    // 規則同時宣告 hover 與 focus,只測 hover 的話刪掉 focus arm 照樣綠。
+    await focusWithKeyboard(page, link)
     const focused = await link.evaluate((el) => ({
       color: getComputedStyle(el).color,
       page: getComputedStyle(document.body).backgroundColor,
@@ -2443,17 +2502,25 @@ for (const theme of ['light', 'dark'] as const) {
 
 - [ ] **Step 2: 跑 production build 與新測試**
 
+先確認 3012 沒有殘留程序,再讓 build 在**前景**跑完:
+
 ```bash
-lsof -ti:3012 && kill $(lsof -ti:3012); yarn build
+test -f /tmp/blog-server.pid && kill "$(cat /tmp/blog-server.pid)" 2>/dev/null; rm -f /tmp/blog-server.pid
+lsof -ti:3012 || echo "port free"
+```
+
+```bash
+yarn build
 ```
 
 ```bash
 yarn playwright test tests/playwright/header-style-text.spec.ts 2>&1 | tail -30
 ```
 
-> 兩段分開跑。`yarn build && yarn playwright ... &` 之類的寫法在 zsh 會把整個 AND-list
+> 三段分開跑。`yarn build && yarn playwright ... &` 之類的寫法在 zsh 會把整個 AND-list
 > 背景化,而 `playwright.config.ts` 的 `webServer` 又會自己跑一次 build —— 兩個 contentlayer
 > 同時執行會被 lockfile 擋住。這裡讓 build 在前景跑完,webServer 的重建就是增量的。
+> Playwright 自己管理它啟動的 server,所以這一步不需要手動啟動。
 
 Expected: 全部 PASS。若 `.post-preview .tags .tag` 找不到,先確認首頁確實有帶 tag 的文章卡片;
 **不要**改成 count-based 跳過(那是假綠)。
@@ -2464,7 +2531,7 @@ Expected: 全部 PASS。若 `.post-preview .tags .tag` 找不到,先確認首頁
 yarn test:parity 2>&1 | tail -20
 ```
 
-Expected: 全綠。**驗證完 `kill $(lsof -ti:3012)` 並確認 `lsof -ti:3012` 為空。**
+Expected: 全綠。**驗證完依 Global Constraints 的關閉流程收工,並確認 `lsof -ti:3012` 為空。**
 
 - [ ] **Step 4: production 目視驗收**
 
@@ -2525,13 +2592,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: Task 1 的 color helper
 - Produces: 無
 
-- [ ] **Step 1: 改用共用 color helper**
+- [ ] **Step 1: 改用共用 color 與 focus helper**
 
 刪除 `tests/playwright/series.spec.ts` 頂端自己那份 `relativeLuminance` 與 `contrastRatio`
-(8-24 行),改成:
+(8-24 行),**以及第 44 行的本地 `focusWithKeyboard`**(Task 9 已把它搬到
+`tests/helpers/focus.ts`),改成:
 
 ```ts
 import { contrastOf, contrastRatio, parseColor } from '../helpers/color'
+import { focusWithKeyboard } from '../helpers/focus'
 ```
 
 把檔內所有 `contrastRatio(a, b)` 的呼叫改成 `contrastRatio(parseColor(a), parseColor(b))`,
@@ -2561,7 +2630,9 @@ test('image hero 的 series 連結 focus 色在兩個主題必須相同', async 
     await page.goto('/2026/07/25/openwiki-tame-agents-md/')
     await setTheme(page, theme)
     const link = page.locator('.intro-header-post .series-meta a').first()
-    await link.focus()
+    // 真的鍵盤 focus,與 text harness 同一個 helper。程式化 focus 在規則收緊成
+    // :focus-visible 時不會觸發,測試會靜默失去鑑別力。
+    await focusWithKeyboard(page, link)
     return link.evaluate((el) => getComputedStyle(el).color)
   }
 
@@ -2607,7 +2678,7 @@ test('image hero 的 series 連結 focus 色在兩個主題必須相同', async 
 yarn eslint app components lib layouts scripts && yarn tsc --noEmit && yarn test:unit && yarn test:parity 2>&1 | tail -10
 ```
 
-Expected: 全部通過。**驗證完 `kill $(lsof -ti:3012)`。**
+Expected: 全部通過。**驗證完依 Global Constraints 的關閉流程收工。**
 
 - [ ] **Step 6: Commit(commit F)**
 
@@ -2640,13 +2711,18 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - [ ] **Step 1: 從已提交的狀態建乾淨 worktree**
 
 ```bash
-SP=$(mktemp -d)
-git worktree add --detach "$SP/openwiki-pr2" HEAD
-git -C "$SP/openwiki-pr2" status --short
+WT=$(mktemp -d)/openwiki-pr2
+git worktree add --detach "$WT" HEAD
+git -C "$WT" status --short
+echo "WORKTREE=$WT"
 ```
 
-> 用 `mktemp -d` 而不是寫死路徑 —— session 專屬的暫存目錄不保證存在。
-> **`$SP` 必須在後續步驟的同一個 shell 中保持有效**;跨呼叫時改用完整路徑。
+Expected: `git status` **無輸出**(worktree 乾淨),最後一行印出實際路徑。
+
+> **把印出來的 `WORKTREE=` 路徑抄下來,後續每一步都用那個字面路徑。** shell 變數
+> **不跨 Bash 呼叫保存**(每次呼叫是獨立的 shell),所以下一步再寫 `$WT` 會展開成空字串,
+> 而 `git -C "" ...` 會落到當前目錄 —— 那正是主工作樹,等於整個 worktree 隔離失效。
+> 用 `mktemp -d` 而不是寫死路徑,是因為 session 專屬的暫存目錄不保證存在。
 
 Expected: 第二個指令**無輸出**(worktree 乾淨)。
 
@@ -2657,7 +2733,7 @@ Expected: 第二個指令**無輸出**(worktree 乾淨)。
 - [ ] **Step 2: 重生成**
 
 ```bash
-cd "$SP/openwiki-pr2" && openwiki code --update --print
+cd <WORKTREE> && openwiki code --update --print
 ```
 
 **必須帶 `--print`** —— 這是本專案唯一支援的完整命令。
@@ -2666,7 +2742,7 @@ cd "$SP/openwiki-pr2" && openwiki code --update --print
 
 ```bash
 cd /Users/allen/Dev/blog_Refactoring/myblog-nextjs
-cp -R "$SP/openwiki-pr2/openwiki/." openwiki/
+cp -R <WORKTREE>/openwiki/. openwiki/
 git diff --stat openwiki
 git diff openwiki
 ```
@@ -2680,7 +2756,8 @@ git diff openwiki
 git add openwiki && git commit -m "docs: regenerate OpenWiki for the text hero
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-git worktree remove --force "$SP/openwiki-pr2"
+git worktree remove --force <WORKTREE>
+git worktree list
 ```
 
 - [ ] **Step 5: 確認 `next-env.d.ts` 沒有被誤入庫**
@@ -2803,6 +2880,16 @@ Task 2/7 覆蓋,resolver 與 renderer 共 4 條由 Task 3/4/8 覆蓋,CSS 與導�
 另修三個次要項:validator wiring 的 regex 錨定到 deps 物件實字(原本會匹配到 import 行);
 trigger utility 的刪除改用 **class list** 斷言(計算色相等證明不了 —— 未分層 CSS 本來就會蓋掉
 utility);OpenWiki worktree 改用 `mktemp -d`。
+
+**第二輪外部審查(2026-07-31)後再修的五項 P2:**
+
+| 問題                                                                                                                                                    | 修正                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenWiki 的 `$SP` 不跨 Bash 呼叫保存,展開成空字串會讓 `git -C ""` 落到主工作樹,隔離失效;指令也沒印出實際路徑                                            | Step 1 改印 `WORKTREE=`,後續步驟一律用抄下來的字面路徑(計畫裡寫成 `<WORKTREE>` 佔位)                                                                      |
+| server readiness 迴圈無上限、無存活檢查,啟動失敗會永久等待;`kill $(lsof -ti:3012)` 會誤殺剛好占用該埠的其他程序                                         | Global Constraints 新增「啟動與關閉 production server(標準流程)」:90 秒上限、每輪 `kill -0` 檢查存活、PID 寫檔並用 PID 關閉。三處臨場指令全部改為引用該節 |
+| Series focus 測試註解宣稱鍵盤 focus,實際用 `link.focus()`(程式化);而 `series.spec.ts:44` 已有真正走 Tab 的 `focusWithKeyboard()`                        | Task 9 Step 1a 先把它抽到 `tests/helpers/focus.ts`,新 spec 直接 import;Task 10 才刪掉 `series.spec.ts` 的本地版本                                         |
+| hex parser 的 `/^#[0-9a-f]{3,8}$/` 會收下 5/7 位值,再用 `size=2` 切成看似合理的錯誤顏色                                                                 | 收緊成 `{3,4}`\|`{6}`\|`{8}`,並補三條非法長度必須拋錯的 golden test                                                                                       |
+| Task 5 Step 6 宣稱既有 image test 是 `--hero-link-hover` 的守門員 —— 它只守 consumer 的**刪除**,守不住改回硬編碼 `#66c7e0`(image hero 上那個值本來就對) | 改寫成明確的「守得住什麼、守不住什麼」,並載明 **commit B 落地時該保護尚未到位**,隨 Task 9 的 text harness 才補齊                                          |
 
 **Type consistency:** `RawHeroConfiguration`、`ParsedHeroConfiguration`、`HeroMode`、
 `HeroSurface`、`Rgb` 五個型別在 Task 1/2/3 定義,Task 4/7/8/9 使用時名稱與參數順序一致。
