@@ -1,28 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { contrastRatio, parseColor } from '../helpers/color'
+import { focusWithKeyboard } from '../helpers/focus'
 
 const seriesName = 'AI 自維護的知識庫'
 const seriesPath = '/series/ai-自維護的知識庫/'
 const encodedSeriesPath = encodeURI(seriesPath)
 const articleTitle = '讓 OpenWiki 接手 AGENTS.md：守則檔不再無止盡膨脹'
-
-function relativeLuminance(color: string) {
-  const channels = color
-    .match(/\d+(?:\.\d+)?/g)
-    ?.slice(0, 3)
-    .map(Number)
-  if (!channels || channels.length !== 3) throw new Error(`Unsupported color: ${color}`)
-  return channels
-    .map((channel) => channel / 255)
-    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
-    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
-}
-
-function contrastRatio(foreground: string, background: string) {
-  const [lighter, darker] = [relativeLuminance(foreground), relativeLuminance(background)].sort(
-    (left, right) => right - left
-  )
-  return (lighter + 0.05) / (darker + 0.05)
-}
 
 async function setTheme(page: import('@playwright/test').Page, theme: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: theme })
@@ -39,18 +22,6 @@ async function colorsFor(
     foreground: await foreground.evaluate((element) => getComputedStyle(element).color),
     background: await background.evaluate((element) => getComputedStyle(element).backgroundColor),
   }
-}
-
-async function focusWithKeyboard(
-  page: import('@playwright/test').Page,
-  target: import('@playwright/test').Locator
-) {
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-  for (let attempts = 0; attempts < 200; attempts += 1) {
-    await page.keyboard.press('Tab')
-    if (await target.evaluate((element) => document.activeElement === element)) return
-  }
-  throw new Error('Target did not receive keyboard focus')
 }
 
 test('Series index links to the statically generated collection', async ({ page }) => {
@@ -141,9 +112,10 @@ test('series posts link to their collection above and below the article', async 
     expect(Math.abs(heroTypography.metadataGap)).toBeLessThanOrEqual(0.5)
   }
 
-  // 靜止狀態刻意與周圍文字同色,hover 的變色是這個連結唯一的動態回饋。Hero 永遠是深色
-  // 照片、不隨站台主題翻轉,所以 hover 色必須兩個主題都相同。少了專屬的 hover 規則就會
-  // 遞補成 .post-series-link-top a:hover 的 --series-interactive —— 那個值會跟著主題走,
+  // 靜止狀態刻意與周圍文字同色,hover 的變色是這個連結唯一的動態回饋。這個 fixture 的
+  // hero 是深色照片,所以 hover 色必須兩個主題都相同。(headerStyle: text 的文章不適用
+  // —— 那裡的 hero 就是頁面底色,會隨主題翻轉。)少了專屬的 hover 規則就會遞補成
+  // .post-series-link-top a:hover 的 --series-interactive —— 那個值會跟著主題走,
   // 淺色主題下是深青色壓在深色照片上。只驗「顏色有變」抓不到這種遞補。
   const heroLink = heading.locator('.series-meta a')
   const heroHoverByTheme: string[] = []
@@ -188,6 +160,21 @@ test('series posts link to their collection above and below the article', async 
   ).toBe(true)
 })
 
+test('image hero 的 series 連結 focus 色在兩個主題必須相同', async ({ page }) => {
+  const measure = async (theme: 'light' | 'dark') => {
+    // goto 先、setTheme 後 —— 這是本檔既有的順序,反過來的話 class 會被導航沖掉。
+    await page.goto('/2026/07/25/openwiki-tame-agents-md/')
+    await setTheme(page, theme)
+    const link = page.locator('.intro-header-post .series-meta a').first()
+    // 真的鍵盤 focus,與 text harness 同一個 helper。程式化 focus 在規則收緊成
+    // :focus-visible 時不會觸發,測試會靜默失去鑑別力。
+    await focusWithKeyboard(page, link)
+    return link.evaluate((el) => getComputedStyle(el).color)
+  }
+
+  expect(await measure('light')).toBe(await measure('dark'))
+})
+
 test('posts without a series omit both article-level collection links', async ({ page }) => {
   await page.goto('/2026/07/14/kamiina-botan-anime-review/')
 
@@ -217,7 +204,9 @@ test('new Series secondary labels meet WCAG AA in light and dark themes', async 
         const background = getComputedStyle(document.body)
         return { foreground: style.color, background: background.backgroundColor }
       })
-      expect(contrastRatio(colors.foreground, colors.background)).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(parseColor(colors.foreground), parseColor(colors.background))
+      ).toBeGreaterThanOrEqual(4.5)
     }
 
     await page.goto('/2026/07/25/openwiki-tame-agents-md/')
@@ -228,9 +217,9 @@ test('new Series secondary labels meet WCAG AA in light and dark themes', async 
         const parentStyle = getComputedStyle(element.parentElement!)
         return { foreground: style.color, background: parentStyle.backgroundColor }
       })
-    expect(contrastRatio(bottomColors.foreground, bottomColors.background)).toBeGreaterThanOrEqual(
-      4.5
-    )
+    expect(
+      contrastRatio(parseColor(bottomColors.foreground), parseColor(bottomColors.background))
+    ).toBeGreaterThanOrEqual(4.5)
   }
 })
 
@@ -265,13 +254,17 @@ test('Series interactive states remain visible and meet WCAG AA in light and dar
 
       await link.hover()
       const hover = await colorsFor(link, background)
-      expect(contrastRatio(hover.foreground, hover.background)).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(parseColor(hover.foreground), parseColor(hover.background))
+      ).toBeGreaterThanOrEqual(4.5)
       expect(hover.foreground).not.toBe(resting)
 
       await page.mouse.move(0, 0)
       await focusWithKeyboard(page, link)
       const focus = await colorsFor(link, background)
-      expect(contrastRatio(focus.foreground, focus.background)).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(parseColor(focus.foreground), parseColor(focus.background))
+      ).toBeGreaterThanOrEqual(4.5)
       expect(focus.foreground).not.toBe(resting)
     }
   }

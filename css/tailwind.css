@@ -184,7 +184,12 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
   --hux-quote-bg: rgb(245, 245, 245);
-  --series-interactive: #00677d;
+  /* 成對 token:--hux-interactive 是頁面底色上的 accent 前景,
+     --hux-on-interactive 是承載文字的 focus 背景上要用的前景色。
+     同一個值不能兩者兼任 —— 見 --hux-interactive 深色值上白字只有 1.94。 */
+  --hux-interactive: #00677d;
+  --hux-on-interactive: #fff;
+  --series-interactive: var(--hux-interactive);
 }
 
 .dark {
@@ -194,7 +199,9 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(224, 224, 224);
   --hux-border: rgb(68, 68, 68);
   --hux-quote-bg: rgb(58, 58, 58);
-  --series-interactive: #66c7e0;
+  --hux-interactive: #66c7e0;
+  --hux-on-interactive: #2d2d2d;
+  --series-interactive: var(--hux-interactive);
 }
 
 body {
@@ -214,8 +221,10 @@ body {
   top: 0;
   z-index: 30;
   min-height: 56px;
-  color: #fff;
+  color: var(--navbar-fg);
   background: transparent;
+  --navbar-fg: #fff;
+  --navbar-fg-hover: rgba(255, 255, 255, 0.8);
 }
 
 .navbar-inner {
@@ -228,11 +237,42 @@ body {
   justify-content: space-between;
 }
 
+/* <Header/> 與 <main>{children}</main> 是兄弟節點,拿不到 frontmatter —— 資訊在下、需求在上,
+   React 單向資料流無 prop 路徑可走。:has() 讓瀏覽器做反向查詢,純宣告式:DOM 一變樣式立刻
+   跟著變,無 effect、無時序、無殘留狀態。
+   刻意不用 main > article > ... 的直接子選擇器鏈 —— 那會把 CSS 綁死在確切 DOM 嵌套上,
+   日後多包一層 wrapper 就靜默失效(tone 不再套用且無任何錯誤)。
+   加 .intro-header-post 限定:正文 raw HTML 出現同名 class 不會誤觸,並自然排除首頁與 archive。
+
+   桌面的 :not(.is-fixed) 是必要的:fixed 有自己的實心底,而 :has() 權重等於其參數,
+   整條是 (0,4,2) 會壓過 .navbar-custom.is-fixed 的 (0,2,0)。用 :not() 讓兩者以 class
+   互斥,比賭權重穩健。 */
+body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed) {
+  --navbar-fg: var(--hux-text);
+  --navbar-fg-hover: var(--hux-interactive);
+}
+
+/* 手機:JS 在所有 viewport 都會加 is-fixed,但手機沒有 fixed 視覺狀態(那組規則全在
+   min-width:768px 內),導覽列始終是 position:absolute 的透明疊層。因此不能被 is-fixed
+   排除,否則捲動回頂端途中(scrollY 僅數 px、導覽列已部分可見而 is-fixed 尚未移除)
+   會是白字白底。
+
+   767.98px 而非 767px:兩者中間有一段小數 viewport(瀏覽器縮放或 fractional device
+   pixel ratio 可達到)兩條媒體查詢都不吃,加上 is-fixed 存在時桌面規則又被
+   :not(.is-fixed) 排除,--navbar-fg 會退回 .navbar-custom 基底的 #fff,變成白字白底。
+   .98 讓兩個範圍在整數邊界上首尾相接,不要「整理」回 767px。 */
+@media (max-width: 767.98px) {
+  body:has(main .intro-header-post.intro-header-text) .navbar-custom {
+    --navbar-fg: var(--hux-text);
+    --navbar-fg-hover: var(--hux-interactive);
+  }
+}
+
 .navbar-brand {
   float: left;
   margin-left: -15px;
   padding: 15px;
-  color: #fff;
+  color: var(--navbar-fg);
   font-size: 18px;
   font-weight: 800;
   line-height: 20px;
@@ -240,7 +280,7 @@ body {
 
 .navbar-brand:hover,
 .navbar-links a:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--navbar-fg-hover);
 }
 
 .navbar-toggle {
@@ -256,7 +296,7 @@ body {
   width: 20px;
   height: 2px;
   margin-bottom: 4px;
-  background: #fff;
+  background: var(--navbar-fg);
 }
 
 /* 桌面版橫排導覽;手機版隱藏(手機改用 .navbar-mobile) */
@@ -272,18 +312,9 @@ body {
   margin-right: -15px;
 }
 
-/* HeadlessUI 下拉選單裡的按鈕不應繼承導覽列工具列的大寫/小字/字距樣式,
-   讓 theme 彈窗與漢堡下拉的搜尋項與其他項目一致 */
-.navbar-custom [role='menu'] button {
-  text-transform: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-}
-
 .navbar-links a,
-.navbar-tools button {
-  color: #fff;
+.navbar-tool-trigger {
+  color: var(--navbar-fg);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 1px;
@@ -291,21 +322,15 @@ body {
   text-transform: uppercase;
 }
 
+/* SVG 一律繼承 trigger 的 token;元件不得自帶顏色 utility。 */
+.navbar-tool-trigger svg {
+  color: currentColor;
+}
+
 .navbar-tools {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.navbar-tools svg {
-  color: #fff;
-}
-
-/* HeadlessUI 選單是行內渲染,選單項的圖標(svg)會被上面 .navbar-tools svg{color:#fff} 染白,
-   在淺色下拉(白底)時看不見、只有 hover 變青底才顯現。這裡(0,2,1 > .navbar-tools svg 的 0,1,1)
-   讓選單圖標改為 inherit 按鈕本身的文字色,淺/深色與 hover 皆正常可見。 */
-.navbar-custom [role='menu'] svg {
-  color: inherit;
 }
 
 .theme-switch-button {
@@ -331,7 +356,12 @@ body {
   background-color: #777;
   background-position: center center;
   background-size: cover;
-  color: #fff;
+  /* hero 顏色 token:目前值等同舊有硬編碼(image hero 永遠是深色照片),
+     之後的 text 模式只需重新賦值這三個變數,不必再逐條覆寫底下八條規則。 */
+  --hero-fg: #fff;
+  --hero-border: rgba(255, 255, 255, 0.8);
+  --hero-link-hover: #66c7e0;
+  color: var(--hero-fg);
 }
 
 .intro-header-home {
@@ -351,6 +381,32 @@ body {
   height: calc(100vh - 85px);
   min-height: 520px;
   background: #111;
+}
+
+/* 純文字 hero:沒有底圖、沒有漸層、沒有遮罩,標題直接落在頁面底色上。
+   background 用 shorthand 是刻意的 —— 它一併把 background-color 重置為 transparent,
+   清掉 .intro-header 的 #777。 */
+.intro-header-text {
+  background: none;
+  --hero-fg: var(--hux-text);
+  --hero-border: var(--hux-text);
+  --hero-link-hover: var(--hux-interactive);
+}
+
+/* Hux 的 style-text 在所有斷點都是 85/20。padding 不是變數,仍需權重:
+   單一 class 會跟桌面規則 .intro-header-post .intro-header-content(0,2,0)平手而輸在順序。 */
+.intro-header-post.intro-header-text .intro-header-content {
+  padding: 85px 15px 20px;
+}
+
+/* tag hover 的深色變體是必要的:Hux 的 rgba(0,0,0,.05) 是淺色專用,
+   往 rgb(45,45,45) 疊 5% 黑會更暗,回饋直接消失。 */
+.intro-header-text .tags .tag:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .intro-header-text .tags .tag:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .keynote-frame {
@@ -419,12 +475,11 @@ body {
 
 .intro-header-post .series-meta a:hover,
 .intro-header-post .series-meta a:focus {
-  color: #66c7e0;
+  color: var(--hero-link-hover);
 }
 
 .site-heading h1 {
   margin: 0;
-  color: #fff;
   font-size: 50px;
   font-weight: 700;
   line-height: 55px;
@@ -433,7 +488,6 @@ body {
 .site-heading .subheading {
   display: block;
   margin-top: 10px;
-  color: #fff;
   font-size: 18px;
   font-weight: 300;
   line-height: 22px;
@@ -447,7 +501,6 @@ body {
 
 .post-heading h1 {
   margin: 15px 0 24px;
-  color: #fff;
   font-size: 30px;
   font-weight: 700;
   line-height: 33px;
@@ -455,7 +508,6 @@ body {
 
 .post-heading .subheading {
   margin: -5px 0 22px;
-  color: #fff;
   font-size: 17px;
   font-weight: 300;
   line-height: 23.8px;
@@ -465,9 +517,12 @@ body {
   display: block;
 }
 
+/* 這兩個 class 保留明確宣告,不能只靠繼承:該元素同時帶 .post-series-link-top,
+   後者在下面直接宣告 color: #666,直接宣告永遠贏過繼承。少了這行,
+   series 那句話與其連結會在既有 image hero 上變灰。 */
 .post-heading .meta,
 .post-heading .series-meta {
-  color: #fff;
+  color: var(--hero-fg);
   font-size: 16px;
   font-style: italic;
   font-weight: 300;
@@ -493,6 +548,13 @@ body {
   font-weight: 500;
   line-height: 24px;
   padding: 0 10px;
+}
+
+/* 全域的 .tags .tag 用 border shorthand,文章列表卡片、文章內文都在用。把它改成消費
+   hero token 會讓 hero 外變數未定義 → 整條宣告在 computed-value time 失效 →
+   border-style 回到 none,而後面針對列表的規則只覆寫 border-color,補不回 border-style。 */
+.intro-header .tags .tag {
+  border-color: var(--hero-border);
 }
 
 .hux-home-layout {
@@ -1520,15 +1582,8 @@ body {
   }
 
   .navbar-links a,
-  .navbar-tools button {
+  .navbar-tool-trigger {
     padding: 20px;
-  }
-
-  /* HeadlessUI 選單是行內渲染,主題彈窗按鈕會被上面 .navbar-tools button 的 20px 波及而撐高。
-     這裡(權重 0,2,1 > .navbar-tools button 的 0,1,1)把彈窗按鈕 padding 收回 px-2 py-2 的意圖。
-     僅桌面套用;手機選單在 .navbar-mobile(此斷點下 display:none),不受影響。 */
-  .navbar-custom [role='menu'] button {
-    padding: 0.5rem;
   }
 
   .navbar-tools {
@@ -1560,30 +1615,20 @@ body {
     background-color: rgba(255, 255, 255, 0.9);
     border-bottom: 1px solid #f2f2f2;
     transition: transform 0.3s;
+    --navbar-fg: #2d2d2d;
+    /* 等值:複製「fixed 狀態 hover 不變色」的現況 */
+    --navbar-fg-hover: #2d2d2d;
   }
 
   .navbar-custom.is-visible {
     transform: translate3d(0, 100%, 0);
   }
 
-  /* 浅色浮動列需把原本白色的文字/圖示轉深色 */
-  .navbar-custom.is-fixed .navbar-brand,
-  .navbar-custom.is-fixed .navbar-links a,
-  .navbar-custom.is-fixed .navbar-tools button,
-  .navbar-custom.is-fixed .navbar-tools svg {
-    color: #2d2d2d;
-  }
-
   .dark .navbar-custom.is-fixed {
     background-color: rgba(45, 45, 45, 0.9);
     border-bottom-color: #535353;
-  }
-
-  .dark .navbar-custom.is-fixed .navbar-brand,
-  .dark .navbar-custom.is-fixed .navbar-links a,
-  .dark .navbar-custom.is-fixed .navbar-tools button,
-  .dark .navbar-custom.is-fixed .navbar-tools svg {
-    color: #fff;
+    --navbar-fg: #fff;
+    --navbar-fg-hover: #fff;
   }
 
   .intro-header {

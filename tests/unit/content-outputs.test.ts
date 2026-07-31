@@ -106,3 +106,38 @@ describe('dev script publication mode', () => {
     expect(source).toMatch(/contentlayer2['"],\s*['"]dev['"]\][\s\S]{0,80}BLOG_PUBLICATION_MODE/)
   })
 })
+
+describe('hero validation gates every derived output', () => {
+  test('validator 拋錯時 collect/tag/search 一次都不會被呼叫', async () => {
+    const d = deps()
+    d.assertValidHeroConfigurations.mockImplementation(() => {
+      throw new Error('invalid hero configuration')
+    })
+
+    await expect(runContentDerivedOutputs([normal], 'production', d)).rejects.toThrow(
+      'invalid hero configuration'
+    )
+
+    expect(d.collectSeries).not.toHaveBeenCalled()
+    expect(d.createTagCount).not.toHaveBeenCalled()
+    expect(d.createSearchIndex).not.toHaveBeenCalled()
+  })
+})
+
+describe('contentlayer config injects the hero validator', () => {
+  const source = readFileSync('./contentlayer.config.ts', 'utf8')
+
+  // 必須錨定在 deps 物件實字上。只寫 /assertValidHeroConfigurations[,\s}]/ 會連
+  // import 那一行一起匹配 —— 刪掉 deps 注入之後 import 還在,斷言照樣綠。
+  test('deps 物件實字裡帶著 assertValidHeroConfigurations', () => {
+    expect(source).toMatch(
+      /runContentDerivedOutputs\([\s\S]*?\{[^}]*assertValidHeroConfigurations[^}]*\}/
+    )
+  })
+
+  // 這條擋住「順手把 seam 換成舊簽章」——那會讓 tag/search 重新收到未過濾的 allBlogs。
+  test('沒有把 seam 改回收 raw posts 的舊簽章', () => {
+    expect(source).toContain('resolvePublicationMode(process.env.BLOG_PUBLICATION_MODE)')
+    expect(source).not.toMatch(/runContentDerivedOutputs\(\s*allBlogs\s*,\s*\{/)
+  })
+})

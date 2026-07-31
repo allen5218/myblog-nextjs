@@ -46,6 +46,7 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 | `headerBgCss`  | string      |      | Hero 的自訂 CSS 背景(`headerImg` 的替代方案)。                                                                                    |
 | `headerMask`   | number/json |      | Hero 遮罩不透明度。                                                                                                               |
 | `iframe`       | string      |      | 全版 hero iframe(投影片/keynote 文章)。來源必須通過 `lib/iframe.ts` 允許清單。                                                    |
+| `headerStyle`  | string      |      | 唯一合法值 `text`。啟用純文字 hero:無底圖、無漸層、無遮罩。                                                                       |
 | `catalog`      | boolean     |      | 顯示文章目錄:窄螢幕為正文上方原生折疊區,桌面 ≥1200px 為黏性側欄;`false` 同時關閉兩者。側欄預設只列 `##`,可展開 `###`/`####`。      |
 | `hidden`       | boolean     |      | 見下方「隱藏文章」。                                                                                                              |
 | `mathjax`      | boolean     |      | 純遷移相容旗標 — **絕不**載入 MathJax;數學一律由 KaTeX 渲染。                                                                     |
@@ -53,6 +54,13 @@ Contentlayer 執行 webpack hook,所以 `yarn dev`/`yarn start` 會先跑一次
 
 以下欄位自動計算(不要手動設定):閱讀時間、目錄、摘要預覽(取內文約 200 字)、JSON-LD
 結構化資料。
+
+`headerStyle: text` 與 `headerImg`、`headerBgCss`、`iframe`、`headerMask`、
+`layout: PostSimple` / `PostBanner` 互斥,併用會讓 **build 失敗**並指出檔名與衝突欄位
+(`lib/hero-config.ts` 的 `validateHeroConfiguration`)。拼錯值(如 `txt`)同樣讓 build
+失敗 — schema 的 `enum` 只產生 TypeScript union、不做執行期驗證,真正的閘門是
+`parseHeaderStyle`。text 模式文章的社群卡(§6)使用預設漸層後備,因為互斥規則保證
+`headerImg`/`headerBgCss` 兩欄皆空。
 
 ### 文章系列(Series)
 

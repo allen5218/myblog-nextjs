@@ -46,6 +46,10 @@ conventions.
   `/offline/` page.
 - **Mermaid diagrams** — build-time rendering to committed light/dark SVGs, instant
   client-side theme switching, and horizontal scroll on mobile instead of compression.
+- **Text-only hero** — opt-in `headerStyle: text` front matter drops the hero image,
+  gradient, and mask, and tones the navbar to match the page background instead of its
+  usual white-on-photo styling; mutually exclusive with the image/gradient/iframe hero
+  fields, enforced at build time.
 - **Hardened by default** — strict CSP (no `unsafe-eval` in production), iframe host
   allowlist, scoped dependency resolutions, security headers.
 - **Verified** — Vitest unit tests plus a production-backed Playwright parity suite that

@@ -153,6 +153,18 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   優先序」的 brief,OpenWiki 只讀不覆寫。生成內容跑偏(實測過:它會把「這次執行當下哪些
   檔案未被追蹤」寫成 repo 的永久不變量)要在這裡加約束,不要去改 `openwiki/` 底下的生成頁
   —— 那些下次 `--update` 會被重寫。
+- **`.icon-bar { background: var(--navbar-fg) }` 目前只是媒體查詢位置湊巧安全。** `.is-fixed`
+  的 token 重新賦值寫在 `min-width: 768px` 區塊內,而 `.navbar-toggle` 與 `.navbar-mobile`
+  在那個斷點是 `display: none`。把這組 token 搬出媒體查詢的話,手機漢堡選單會在 fixed
+  狀態悄悄變暗。
+- **Tailwind v4 的色盤編譯後,Chromium 的 `getComputedStyle` 會回傳 `lab()`。** 任何顏色斷言
+  都要走 `tests/helpers/color.ts`(支援 hex / rgb / rgba / oklch / lab,其餘一律拋錯)。用
+  數字 regex 讀顏色字串會同時誤判 `oklch()` 與 `lab()`,而且是靜默算錯,不會報錯。
+- **站台設了全域 `scroll-behavior: smooth`。** Playwright 的捲動輔助函式必須用
+  `behavior: 'instant'` 蓋掉它,再等兩輪 `requestAnimationFrame`,否則會同時被 easing 動畫
+  與 `Header.tsx` 的 scroll 監聽器捲進競態 —— 症狀是測試靜默量到頂部狀態,而不是報錯。
+- **`Header.tsx` 只在 `scrollY` 恰好等於 `0` 時才移除 `is-fixed`。** 想測「捲回接近頂端」
+  狀態的測試要用一個小的非零 offset,並把 class 與 `scrollY` 都當前置斷言驗證。
 
 ## Git 工作流程(2026-07-12 起)
 

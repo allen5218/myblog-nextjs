@@ -22,7 +22,9 @@ const SearchMenuItem = () => {
           type="button"
           onClick={() => query.toggle()}
           className={`${
-            focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
+            focus
+              ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+              : 'text-gray-700! dark:text-gray-200!'
           } block w-full rounded-md px-3 py-2 text-left text-sm font-semibold tracking-wide`}
         >
           Search
@@ -37,7 +39,7 @@ const SearchMenuItem = () => {
 const MobileNavMenu = () => {
   return (
     <Menu as="div" className="relative inline-block text-left">
-      <MenuButton aria-label="Toggle navigation" className="navbar-toggle">
+      <MenuButton aria-label="Toggle navigation" className="navbar-toggle navbar-tool-trigger">
         <span className="icon-bar" />
         <span className="icon-bar" />
         <span className="icon-bar" />
@@ -64,7 +66,9 @@ const MobileNavMenu = () => {
                   <Link
                     href={link.href}
                     className={`${
-                      focus ? 'bg-primary-600 text-white' : 'text-gray-700! dark:text-gray-200!'
+                      focus
+                        ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                        : 'text-gray-700! dark:text-gray-200!'
                     } block rounded-md px-3 py-2 text-sm font-semibold tracking-wide`}
                   >
                     {link.title}

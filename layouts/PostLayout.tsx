@@ -37,6 +37,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
     headerImg,
     headerBgCss,
     headerMask,
+    headerStyle,
     catalog,
     toc,
   } = content
@@ -57,6 +58,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
           headerBgCss={headerBgCss}
           headerMask={headerMask as number | string | undefined}
           iframe={(content as CoreContent<Blog> & { iframe?: string }).iframe}
+          headerStyle={headerStyle}
         />
         <div className="post-shell">
           <div className="post-container">
