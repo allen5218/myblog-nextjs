@@ -28,6 +28,7 @@ Vitest is node-only and includes only `tests/unit/**/*.test.ts` ([`vitest.config
 | Pagination | URL/page-count semantics. |
 | Publication policy and derived outputs | [`post-publication.test.ts`](../../tests/unit/post-publication.test.ts) defines the production/preview reachable-and-listed truth table, deterministic navigation ordering, static params, aliases, and hidden-pager behavior; [`content-outputs.test.ts`](../../tests/unit/content-outputs.test.ts) and [`content-writers.test.ts`](../../tests/unit/content-writers.test.ts) verify explicit-mode content-output orchestration and writers that do not re-filter their inputs; [`route-publication-wiring.test.ts`](../../tests/unit/route-publication-wiring.test.ts) guards canonical, OG, and legacy-route policy wiring. |
 | Series domain/rendering | [`series.test.ts`](../../tests/unit/series.test.ts) covers normalized identities, visibility, collision rejection, locale-independent reading order, encoded route lookup, and member-wide modification dates; [`series-rendering.test.ts`](../../tests/unit/series-rendering.test.ts) pins link eligibility, top/bottom placement, and the rendered Hero sentence/order. |
+| Hero front matter and rendering | [`hero-config.test.ts`](../../tests/unit/hero-config.test.ts) defines parse/coercion and build-validation failures for `headerStyle: text`, including every conflicting field and a transparent (`0`) mask; [`hero-mode.test.ts`](../../tests/unit/hero-mode.test.ts) pins surface precedence and text-mode mask suppression; [`hero-rendering.test.tsx`](../../tests/unit/hero-rendering.test.tsx) checks the rendered text-hero class, no-inline-style requirement, retained post metadata, and no mask. |
 | Font pipeline | source metadata, code-point planning, generation, command parsing, validation policy, and rollback/failure behavior in `site-font-*.test.ts`; epoch-advance checks also require the exact deterministic rebalance output, and a missing base epoch remains history-protected. |
 
 Add unit coverage when changing a pure policy, parser/transform, cache key, or transactional generation invariant. In particular, security allowlists and font assignment behavior must not rely only on end-to-end coverage.
@@ -48,6 +49,7 @@ Important contract groups include:
 | Hux visual shell and responsive post widths | [`article-width.spec.ts`](../../tests/playwright/article-width.spec.ts), `blog-parity.spec.ts` |
 | Article hash/catalog/mobile ToC | [`catalog.spec.ts`](../../tests/playwright/catalog.spec.ts) |
 | About hero stays mounted across locale navigation | [`about-hero-persistence.spec.ts`](../../tests/playwright/about-hero-persistence.spec.ts) |
+| Text-only post hero | [`header-style-text.spec.ts`](../../tests/playwright/header-style-text.spec.ts) covers light/dark foreground and contrast tokens across hero and navbar consumers at desktop/mobile viewports, absence of background/mask, responsive hero spacing, tag interaction, fixed-header transitions, and keyboard focus visibility; it uses an image post as a white-on-photo control. |
 | Hero preload and lazy comments | [`home-hero-preload.spec.ts`](../../tests/playwright/home-hero-preload.spec.ts), [`comments-lazy-loading.spec.ts`](../../tests/playwright/comments-lazy-loading.spec.ts) |
 | Mermaid cached rendering/theme/overflow | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) |
 | OG images | [`social-card.spec.ts`](../../tests/playwright/social-card.spec.ts) |
@@ -60,7 +62,7 @@ Important contract groups include:
 | --- | --- |
 | post schema, publication policy, canonical URLs, pagination, tag/search/feed filtering | Contentlayer build; publication-policy/output/wiring unit tests when visibility changes; `publication-policy`, `pagination`, and/or `blog-parity` browser specs as applicable |
 | series front matter, collection grouping/routes, or collection styling | Contentlayer build, `series.test.ts` and `series-rendering.test.ts`, then production-backed `series.spec.ts`; preserve hidden/draft exclusion, static 404 behavior, accessible hover/focus states in both themes, the 375px/1200px Hero metadata/link alignment with Posted/Updated, and the distinct article-body link treatment |
-| Hux CSS, hero, article layout, catalog | targeted Playwright specs at desktop and mobile; use production build |
+| Hux CSS, hero, article layout, catalog | targeted production-backed Playwright specs at desktop and mobile; use `header-style-text` for text-hero foreground/background, responsive spacing, interaction, or navbar-token changes |
 | About locales/layout | `about-hero-persistence` plus parity URL metadata checks |
 | PWA/service-worker caching | `serwist-precache`; verify offline fallback hydration if chunk strategy changes |
 | social-card layout/font/background choice | unit coverage plus `social-card`; inspect rendered PNG behavior rather than only props |

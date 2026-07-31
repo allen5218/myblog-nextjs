@@ -13,7 +13,8 @@ Blog posts are Markdown/MDX files under `data/blog/`; author profiles are MDX un
 | `draft` | In production, excluded from public post routes/OG/legacy aliases and from derived tag/search outputs; preview development retains it in both views. |
 | `hidden` | Sets computed `listed: false`; remains directly reachable but is excluded from listing/search/tag count surfaces and pager navigation. |
 | `update`, `subtitle`, `images`, `canonicalUrl` | Feed/metadata/preview support; `update` becomes `lastmod` when available. |
-| `headerImg`, `headerBgCss`, `headerMask` | Hux hero and social-card presentation. |
+| `headerImg`, `headerBgCss`, `headerMask` | Image/CSS-background hero presentation and social-card input. |
+| `headerStyle` | Only `text` is valid. It makes a post hero text-only—no image, CSS background, or mask—and is mutually exclusive with `headerImg`, `headerBgCss`, `iframe`, any `headerMask` (including `0`), and `PostSimple`/`PostBanner` layouts. The build reports invalid values or combinations with the source file and conflicting fields. |
 | `series` | Optional collection name. Visible, non-draft posts with the same normalized name form an oldest-to-newest static reading path; the post links to it in the hero and after its body. Blank/missing values are ignored. Nonblank values must normalize to a non-empty `github-slugger` slug and distinct names may not collapse to the same slug, or Contentlayer generation fails. |
 | `catalog` | Defaults to visible; set false to suppress desktop/mobile article navigation. |
 | `bibliography`, `mathjax`, `mermaid`, `iframe` | Content capability/configuration fields. |
