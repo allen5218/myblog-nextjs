@@ -74,14 +74,14 @@ describe('image mode fallback colour', () => {
   })
 })
 
-// commit A 是等值重構:遮罩行為逐項複製現況,**不分模式**。
-// 「text 模式抑制遮罩」是行為改變,留到功能 commit 才做。
-describe('mask opacity is unchanged in commit A', () => {
+// text 模式強制抑制遮罩(這裡是行為改變的落點);其餘模式維持 commit A 的逐項複製現況。
+describe('mask opacity', () => {
   test('有效數字在任何模式都回傳', () => {
     expect(surfaceOf({ headerMask: 0.6 }).maskOpacity).toBe(0.6)
     expect(surfaceOf({ headerMask: 0 }).maskOpacity).toBe(0)
+    // keynote 疊加遮罩仍然渲染 —— 證明 text 的抑制是該模式專屬,不是全域行為。
     expect(surfaceOf({ iframe: keynoteSrc, headerMask: 0.6 }).maskOpacity).toBe(0.6)
-    expect(surfaceOf({ headerStyle: 'text', headerMask: 0.6 }).maskOpacity).toBe(0.6)
+    expect(surfaceOf({ headerStyle: 'text', headerMask: 0.6 }).maskOpacity).toBeNull()
   })
 
   test('未設或無法轉成數字時為 null', () => {

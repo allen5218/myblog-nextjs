@@ -49,6 +49,7 @@ standalone typecheck.
 | `headerBgCss`  | string      |          | Custom CSS background for the hero (alternative to `headerImg`).                                                                                                    |
 | `headerMask`   | number/json |          | Hero mask opacity.                                                                                                                                                  |
 | `iframe`       | string      |          | Full-hero iframe (slide/keynote posts). Source must pass the allowlist in `lib/iframe.ts`.                                                                          |
+| `headerStyle`  | string      |          | Only legal value is `text`. Enables the text-only hero: no image, no gradient, no mask.                                                                             |
 | `catalog`      | boolean     |          | Shows a native disclosure above the post on narrow screens and a sticky sidebar on desktop ≥1200px; `false` disables both. The sidebar lists `##` by default and can expand `###`/`####`. |
 | `hidden`       | boolean     |          | See "Hidden posts" below.                                                                                                                                           |
 | `mathjax`      | boolean     |          | Legacy migration flag only — MathJax is **never** loaded; math renders via KaTeX regardless.                                                                        |
@@ -56,6 +57,15 @@ standalone typecheck.
 
 Computed automatically (do not set manually): reading time, table of contents, excerpt
 preview (~200 chars from body), and JSON-LD structured data.
+
+`headerStyle: text` is mutually exclusive with `headerImg`, `headerBgCss`, `iframe`,
+`headerMask`, and `layout: PostSimple` / `PostBanner`; combining them **fails the build**
+and names the file and the conflicting field (`validateHeroConfiguration` in
+`lib/hero-config.ts`). A misspelled value (e.g. `txt`) fails the build the same way — the
+schema's `enum` only produces a TypeScript union and does no runtime validation; the actual
+gate is `parseHeaderStyle`. Text-mode posts fall back to the default gradient for their
+social card (§6), since the mutual-exclusion rule guarantees `headerImg`/`headerBgCss` are
+both empty.
 
 ### Post series
 

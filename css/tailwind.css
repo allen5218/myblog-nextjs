@@ -240,6 +240,32 @@ body {
   --navbar-fg-hover: rgba(255, 255, 255, 0.8);
 }
 
+/* <Header/> 與 <main>{children}</main> 是兄弟節點,拿不到 frontmatter —— 資訊在下、需求在上,
+   React 單向資料流無 prop 路徑可走。:has() 讓瀏覽器做反向查詢,純宣告式:DOM 一變樣式立刻
+   跟著變,無 effect、無時序、無殘留狀態。
+   刻意不用 main > article > ... 的直接子選擇器鏈 —— 那會把 CSS 綁死在確切 DOM 嵌套上,
+   日後多包一層 wrapper 就靜默失效(tone 不再套用且無任何錯誤)。
+   加 .intro-header-post 限定:正文 raw HTML 出現同名 class 不會誤觸,並自然排除首頁與 archive。
+
+   桌面的 :not(.is-fixed) 是必要的:fixed 有自己的實心底,而 :has() 權重等於其參數,
+   整條是 (0,4,2) 會壓過 .navbar-custom.is-fixed 的 (0,2,0)。用 :not() 讓兩者以 class
+   互斥,比賭權重穩健。 */
+body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed) {
+  --navbar-fg: var(--hux-text);
+  --navbar-fg-hover: var(--hux-interactive);
+}
+
+/* 手機:JS 在所有 viewport 都會加 is-fixed,但手機沒有 fixed 視覺狀態(那組規則全在
+   min-width:768px 內),導覽列始終是 position:absolute 的透明疊層。因此不能被 is-fixed
+   排除,否則捲動回頂端途中(scrollY 僅數 px、導覽列已部分可見而 is-fixed 尚未移除)
+   會是白字白底。 */
+@media (max-width: 767px) {
+  body:has(main .intro-header-post.intro-header-text) .navbar-custom {
+    --navbar-fg: var(--hux-text);
+    --navbar-fg-hover: var(--hux-interactive);
+  }
+}
+
 .navbar-brand {
   float: left;
   margin-left: -15px;
@@ -353,6 +379,32 @@ body {
   height: calc(100vh - 85px);
   min-height: 520px;
   background: #111;
+}
+
+/* 純文字 hero:沒有底圖、沒有漸層、沒有遮罩,標題直接落在頁面底色上。
+   background 用 shorthand 是刻意的 —— 它一併把 background-color 重置為 transparent,
+   清掉 .intro-header 的 #777。 */
+.intro-header-text {
+  background: none;
+  --hero-fg: var(--hux-text);
+  --hero-border: var(--hux-text);
+  --hero-link-hover: var(--hux-interactive);
+}
+
+/* Hux 的 style-text 在所有斷點都是 85/20。padding 不是變數,仍需權重:
+   單一 class 會跟桌面規則 .intro-header-post .intro-header-content(0,2,0)平手而輸在順序。 */
+.intro-header-post.intro-header-text .intro-header-content {
+  padding: 85px 15px 20px;
+}
+
+/* tag hover 的深色變體是必要的:Hux 的 rgba(0,0,0,.05) 是淺色專用,
+   往 rgb(45,45,45) 疊 5% 黑會更暗,回饋直接消失。 */
+.intro-header-text .tags .tag:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .intro-header-text .tags .tag:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .keynote-frame {

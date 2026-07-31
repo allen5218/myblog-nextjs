@@ -85,3 +85,20 @@ describe('text hero static rendering', () => {
     expect(html).toContain('Posted by Allen')
   })
 })
+
+describe('text hero suppresses the mask', () => {
+  test('即使明確給了 headerMask 也不渲染遮罩', () => {
+    expect(render({ title: 'T', headerStyle: 'text', headerMask: 0.6 })).not.toContain(
+      'header-mask'
+    )
+  })
+
+  test('keynote 仍然渲染遮罩 —— 證明抑制是 text 專屬的', () => {
+    const html = render({
+      title: 'Deck',
+      iframe: 'https://slide.allenspace.de/deck/',
+      headerMask: 0.6,
+    })
+    expect(html).toContain('header-mask')
+  })
+})

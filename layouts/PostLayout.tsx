@@ -37,13 +37,11 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
     headerImg,
     headerBgCss,
     headerMask,
+    headerStyle,
     catalog,
     toc,
   } = content
   const authorName = author || authorDetails[0]?.name || siteMetadata.author
-  // headerStyle 的 contentlayer schema 欄位要到後續 task 才加,這時 Blog 型別上還沒有
-  // 這個屬性,沿用 iframe 既有的暫時 cast 寫法取值。
-  const headerStyle = (content as CoreContent<Blog> & { headerStyle?: 'text' }).headerStyle
 
   return (
     <>

@@ -35,7 +35,8 @@ export function resolveHeroSurface(config: ParsedHeroConfiguration): HeroSurface
   const iframeSrc = resolveHeroIframeSrc(config.iframe ?? undefined)
 
   if (iframeSrc) return { mode: { kind: 'keynote', iframeSrc }, maskOpacity }
-  if (config.headerStyle === 'text') return { mode: { kind: 'text' }, maskOpacity }
+  // text 模式強制沒有遮罩:沒有底圖就沒有東西需要壓暗,而遮罩會在頁面底色上疊一層灰。
+  if (config.headerStyle === 'text') return { mode: { kind: 'text' }, maskOpacity: null }
   if (config.headerBgCss !== null) {
     return { mode: { kind: 'css-background', background: config.headerBgCss }, maskOpacity }
   }

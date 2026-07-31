@@ -61,6 +61,66 @@ function parseOklch(value: string): Rgb {
   return { r: linear[0], g: linear[1], b: linear[2], a: alpha }
 }
 
+/**
+ * lab(D50) → XYZ(D50) → Bradford 轉 XYZ(D65) → linear sRGB → gamma-encoded sRGB。
+ *
+ * Tailwind v4 預設色盤(如 gray-800)用 oklch 定義,經 Lightning CSS 編譯後除了
+ * sRGB fallback 還會留一份 lab() 精確值;支援 CSS Color 4 的 Chromium 讀
+ * getComputedStyle 時回傳的正是 lab() 這份,不會退回 fallback 的 hex。矩陣常數已用
+ * 已知解答(同一份編譯輸出裡的 sRGB fallback,例如 gray-800 的 #1e2939)驗證過一致。
+ */
+function parseLab(value: string): Rgb {
+  const body = value.slice(value.indexOf('(') + 1, value.lastIndexOf(')'))
+  const [coords, alphaPart] = body.split('/')
+  const raw = coords.trim().split(/\s+/)
+  if (raw.length < 3) throw new Error(`Unsupported color: ${value}`)
+  const [lightness, a, b] = raw.map((part) => Number(part.replace('%', '')))
+  if ([lightness, a, b].some(Number.isNaN)) throw new Error(`Unsupported color: ${value}`)
+
+  const kappa = 24389 / 27
+  const eps = 216 / 24389
+  const fy = (lightness + 16) / 116
+  const fx = a / 500 + fy
+  const fz = fy - b / 200
+  const whiteD50 = [0.96422, 1.0, 0.82521]
+  const xyzD50 = [
+    fx ** 3 > eps ? fx ** 3 : (116 * fx - 16) / kappa,
+    lightness > kappa * eps ? ((lightness + 16) / 116) ** 3 : lightness / kappa,
+    fz ** 3 > eps ? fz ** 3 : (116 * fz - 16) / kappa,
+  ].map((channel, index) => channel * whiteD50[index])
+
+  const multiply = (matrix: number[][], vector: number[]) =>
+    matrix.map((row) => row[0] * vector[0] + row[1] * vector[1] + row[2] * vector[2])
+
+  // Bradford D50 → D65。
+  const xyzD65 = multiply(
+    [
+      [0.9554734527042182, -0.023098536874261423, 0.0632593086610217],
+      [-0.028369706963208136, 1.0099954580058226, 0.021041398966943008],
+      [0.012314001688319899, -0.020507696433477912, 1.3303659366080753],
+    ],
+    xyzD50
+  )
+
+  // XYZ(D65) → linear sRGB。
+  const linear = multiply(
+    [
+      [3.2404542, -1.5371385, -0.4985314],
+      [-0.969266, 1.8760108, 0.041556],
+      [0.0556434, -0.2040259, 1.0572252],
+    ],
+    xyzD65
+  ).map((channel) => {
+    const clamped = clamp01(channel)
+    const encoded = clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055
+    return clamp01(encoded) * 255
+  })
+
+  const alpha = alphaPart === undefined ? 1 : Number(alphaPart.trim().replace('%', ''))
+  if (Number.isNaN(alpha)) throw new Error(`Unsupported color: ${value}`)
+  return { r: linear[0], g: linear[1], b: linear[2], a: alpha }
+}
+
 export function parseColor(value: string): Rgb {
   const normalized = value.trim().toLowerCase()
   // 只有 3/4/6/8 位是合法的 hex 長度。寫成 {3,8} 會收下 #12345 這種 5 位值,
@@ -68,6 +128,7 @@ export function parseColor(value: string): Rgb {
   if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(normalized)) return parseHex(normalized)
   if (normalized.startsWith('rgb')) return parseRgb(normalized)
   if (normalized.startsWith('oklch')) return parseOklch(normalized)
+  if (normalized.startsWith('lab')) return parseLab(normalized)
   throw new Error(`Unsupported color: ${value}`)
 }
 
