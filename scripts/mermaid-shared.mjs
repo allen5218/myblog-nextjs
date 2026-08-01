@@ -121,7 +121,9 @@ export function normalizeSvg(svg) {
  */
 // SVG 的 <length> 是十進位寫法。`Number()` 會接受 "0x10"、"0b10" 這類 JS 數字字面值,
 // 那不是合法的 SVG 屬性值 —— 放行等於讓瀏覽器與我們對固有尺寸的解讀不一致。
-const SVG_DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+// 小數點後必須至少一位數字 —— `10.` 不是合法寫法。允許指數是因為 SVG 的 number
+// 文法明確接受科學記號(`1e3`、`2.5E+2`),不是因為 mermaid 會不會輸出。
+const SVG_DECIMAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i
 
 function svgLength(raw) {
   if (typeof raw !== 'string') return null
@@ -140,15 +142,24 @@ export function parseSvgRootDimensions(svg) {
 
   // 循序吃 name="value" / name='value'。**不能**直接對整段字串搜尋 ` width="` ——
   // `data-note=' width="999"'` 這種屬性值裡的假字串會被當成真的 width 抓走。
-  // 循序掃描會把引號內容整段吃掉,假字串因此不可能被誤認成屬性;sticky 旗標讓
-  // 掃描在遇到 `>` 或 `/>` 時自然停在 opening tag 的邊界。
+  // 循序掃描會把引號內容整段吃掉,假字串因此不可能被誤認成屬性。
   const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
   attribute.lastIndex = opening[0].length
   const found = new Map()
+  let cursor = attribute.lastIndex
   let match
   while ((match = attribute.exec(svg)) !== null) {
-    found.set(match[1].toLowerCase(), match[2] ?? match[3])
+    const name = match[1].toLowerCase()
+    // 同一個屬性出現兩次時哪一個生效由 parser 自己決定,不同實作可能不一致。
+    // 與其猜,不如拒絕 —— 這是 fail-loud 而不是靜默選一個。
+    if (found.has(name)) return null
+    found.set(name, match[2] ?? match[3])
+    cursor = attribute.lastIndex
   }
+  // sticky 掃描停下來的原因**不只是**遇到標籤結尾,任何解析不了的 token 都會讓它停。
+  // 少了這道檢查,`<svg width="10" height="20" BROKEN>` 會因為尺寸已先讀到而過關,
+  // 後面的垃圾被靜默忽略。要求剩餘內容真的是標籤結尾,循序掃描的契約才成立。
+  if (!/^\s*\/?>/.test(svg.slice(cursor))) return null
 
   const width = svgLength(found.get('width'))
   const height = svgLength(found.get('height'))

@@ -124,13 +124,13 @@ test('SVG 抵達前就保留正確版位', async ({ browser, baseURL }) => {
     const responseGate = new Promise<void>((resolve) => {
       release = resolve
     })
-    let seen!: () => void
-    const requestSeen = new Promise<void>((resolve) => {
-      seen = resolve
-    })
+    // 記錄**哪些** URL 被攔到,而不是只記「有東西被攔到」。這一頁有多張圖、每張兩個
+    // 變體,若只等「任一請求」,「別張圖被攔到、被量測的這張還沒開始請求」也會滿足
+    // 正控制 —— 那樣它就證明不了「這張圖的回應確實被擋著」。
+    const intercepted = new Set<string>()
 
     await context.route('**/mermaid/*.svg', async (route) => {
-      seen()
+      intercepted.add(new URL(route.request().url()).pathname)
       await responseGate
       await route.continue()
     })
@@ -151,6 +151,9 @@ test('SVG 抵達前就保留正確版位', async ({ browser, baseURL }) => {
     // 保留 production 的 lazy 行為,不改成 eager。
     expect(await image.getAttribute('loading')).toBe('lazy')
 
+    const source = await image.getAttribute('src')
+    expect(source).toBeTruthy()
+
     await figure.evaluate((node) => {
       // 捲動目標必須是獨立的 1×1 元素,不能是圖片本身 —— 否則「移除 height 屬性」
       // 的突變會讓 lazy 觸發失效,測試變成因為別的原因紅。
@@ -163,12 +166,14 @@ test('SVG 抵達前就保留正確版位', async ({ browser, baseURL }) => {
       scrollTarget.scrollIntoView({ behavior: 'instant', block: 'center' })
     })
 
-    await requestSeen
+    // 等**這張圖自己**的請求被攔到:證明 sentinel 確實觸發了它的 lazy 載入,
+    // 而且此刻它的回應正被閘門擋著。
+    await expect.poll(() => intercepted.has(source!), { timeout: 10_000 }).toBe(true)
     await settle(page)
     const before = await measure(image)
 
-    // 正控制:證明閘門真的擋著。少了這條,before 量到的其實是 after,
-    // 整組斷言會無聲空轉通過。
+    // 正控制:證明量到的確實是「資源尚未抵達」的狀態。少了這條,若 route 沒攔成功
+    // (或被 SW 繞過),before 量到的其實是 after,整組斷言會無聲空轉通過。
     expect(before.naturalWidth).toBe(0)
     expect(before.naturalHeight).toBe(0)
 

@@ -184,15 +184,22 @@ describe('rehypeMermaid', () => {
   })
 
   // 缺檔有 mermaid-check 兜底,不該遮住沒有防線的「存在但損壞」。
-  it('一份缺檔、另一份損壞時,揭露損壞的那份而不是靜默退化', async () => {
-    const def = 'graph TD\n  T-->U'
-    const hash = hashDiagram(def)
-    await fs.writeFile(path.join(cacheDir, svgFileName(hash, 'dark')), '<svg></svg>')
+  // **兩個方向都要測**:只測一邊的話,把讀取順序反過來、或對某一邊恢復短路,
+  // 都能讓「缺檔遮住損壞」重新發生而測試照樣全綠。
+  it.each([
+    ['dark', 'light', 'graph TD\n  T-->U'],
+    ['light', 'dark', 'graph TD\n  X-->Y2'],
+  ] as const)(
+    '%s 損壞、%s 缺檔時,揭露損壞的那份而不是靜默退化',
+    async (broken, _missing, def) => {
+      const hash = hashDiagram(def)
+      await fs.writeFile(path.join(cacheDir, svgFileName(hash, broken)), '<svg></svg>')
 
-    expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(
-      new RegExp(svgFileName(hash, 'dark'))
-    )
-  })
+      expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(
+        new RegExp(svgFileName(hash, broken))
+      )
+    }
+  )
 
   it.each([['light'], ['dark']] as const)(
     '只有 %s 變體缺檔(另一份有效)時退化成程式碼區塊,不丟錯',

@@ -150,6 +150,29 @@ describe('parseSvgRootDimensions', () => {
     expect(parseSvgRootDimensions('<svg width="1_0" height="10"></svg>')).toBeNull()
   })
 
+  it('小數點後沒有數字(10.)回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="10." height="20"></svg>')).toBeNull()
+  })
+
+  // SVG 的 number 文法明確允許科學記號,即使 mermaid 目前不輸出。
+  it('科學記號可以解析', () => {
+    expect(parseSvgRootDimensions('<svg width="1e3" height="2.5E+2"></svg>')).toEqual({
+      width: 1000,
+      height: 250,
+    })
+  })
+
+  // sticky 掃描停下來的原因不只是遇到標籤結尾,任何解析不了的 token 都會讓它停。
+  // 少了邊界檢查,尺寸已先讀到就會讓後面的垃圾被靜默忽略。
+  it('opening tag 有解析不了的殘餘時回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="10" height="20" BROKEN>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="20" data-x=nope>')).toBeNull()
+  })
+
+  it('屬性重複出現時回傳 null(哪一個生效因實作而異,不猜)', () => {
+    expect(parseSvgRootDimensions('<svg width="10" width="99" height="20">')).toBeNull()
+  })
+
   // 直接對整段搜尋 ` width="` 會抓到別的屬性值裡的假字串。
   it('屬性值內含假的 width= 字串時不被穿透', () => {
     expect(
