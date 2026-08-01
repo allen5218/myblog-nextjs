@@ -9,6 +9,7 @@ import {
   hashDiagram,
   svgFileName,
   normalizeSvg,
+  parseSvgRootDimensions,
   LIGHT_THEME,
   DARK_THEME,
   PUBLIC_MERMAID_DIR,
@@ -82,6 +83,16 @@ async function renderVariant(page, config, def, id) {
   }, normalized)
   if (parseError) {
     throw new Error(`${id} 產出的 SVG 不是合法 XML,瀏覽器會拒絕以 <img> 顯示:${parseError}`)
+  }
+  // 上面那道只檢查 XML 合法性 —— 合法但沒有尺寸的 SVG 照樣會寫進快取,而
+  // `mermaid-check` 只比對檔名、不讀內容,consumer 端要到 build 時才會發現。
+  // 在生產端把不變量守住:寫出去的每一份 SVG 都要能被 consumer 讀到正尺寸。
+  // 刻意用 consumer 同一個 parser,這樣「producer 過關」才真的等於「consumer 讀得到」。
+  if (!parseSvgRootDimensions(normalized)) {
+    throw new Error(
+      `${id} 產出的 SVG 根標籤沒有合法的 width/height,<img> 無法取得固有尺寸、` +
+        `版位不會被保留。多半是 normalizeSvg 的 viewBox 正規式沒有匹配到這個圖種的輸出。`
+    )
   }
   return normalized
 }
