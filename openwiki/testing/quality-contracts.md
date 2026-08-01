@@ -23,7 +23,7 @@ Vitest is node-only and includes only `tests/unit/**/*.test.ts` ([`vitest.config
 | Area | Representative coverage |
 | --- | --- |
 | Embed policy | [`iframe.test.ts`](../../tests/unit/iframe.test.ts) rejects deceptive suffixes, subdomains, ports, and unsupported protocols/hosts. |
-| Content/Mermaid transform | [`rehype-mermaid.test.ts`](../../tests/unit/rehype-mermaid.test.ts) covers hash/cache lookup and fallback behavior. |
+| Content/Mermaid transform | [`rehype-mermaid.test.ts`](../../tests/unit/rehype-mermaid.test.ts) distinguishes a missing cache (code-block fallback) from an existing corrupt SVG (throw), requires both theme variants to be checked, and pins per-variant rounded image dimensions; [`mermaid-shared.test.ts`](../../tests/unit/mermaid-shared.test.ts) covers the shared root-dimension parser’s strict SVG-number, root-tag, duplicate-attribute, and malformed-tag rejection. [`mermaid-gantt-contract.test.ts`](../../tests/unit/mermaid-gantt-contract.test.ts) scans every Mermaid Gantt under `data/blog/` for `todayMarker off` and verifies its committed variants have no `today` element. |
 | Social cards | font loading and card rendering paths. |
 | Pagination | URL/page-count semantics. |
 | Publication policy and derived outputs | [`post-publication.test.ts`](../../tests/unit/post-publication.test.ts) defines the production/preview reachable-and-listed truth table, deterministic navigation ordering, static params, aliases, and hidden-pager behavior; [`content-outputs.test.ts`](../../tests/unit/content-outputs.test.ts) and [`content-writers.test.ts`](../../tests/unit/content-writers.test.ts) verify explicit-mode content-output orchestration and writers that do not re-filter their inputs; [`route-publication-wiring.test.ts`](../../tests/unit/route-publication-wiring.test.ts) guards canonical, OG, and legacy-route policy wiring. |
@@ -52,7 +52,7 @@ Important contract groups include:
 | About hero stays mounted across locale navigation | [`about-hero-persistence.spec.ts`](../../tests/playwright/about-hero-persistence.spec.ts) |
 | Text-only post hero | [`header-style-text.spec.ts`](../../tests/playwright/header-style-text.spec.ts) covers light/dark foreground and contrast tokens across hero and navbar consumers at desktop/mobile viewports, absence of background/mask, responsive hero spacing, tag interaction, fixed-header transitions, and keyboard focus visibility; it uses an image post as a white-on-photo control. |
 | Hero preload and lazy comments | [`home-hero-preload.spec.ts`](../../tests/playwright/home-hero-preload.spec.ts), [`comments-lazy-loading.spec.ts`](../../tests/playwright/comments-lazy-loading.spec.ts) |
-| Mermaid cached rendering/theme/overflow | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) |
+| Mermaid cached rendering/theme/overflow and load-time layout reservation | [`mermaid.spec.ts`](../../tests/playwright/mermaid.spec.ts) verifies light/dark switching, narrow-screen overflow, usable intrinsic SVGs, and—while the displayed SVG response is held—the rounded `<img>` dimensions, reserved geometry, and root-size/viewBox contract before load. |
 | OG images | [`social-card.spec.ts`](../../tests/playwright/social-card.spec.ts) |
 | PWA precache/offline behavior | [`serwist-precache.spec.ts`](../../tests/playwright/serwist-precache.spec.ts) |
 | Chiron request/byte budgets and rendered glyph selection | [`site-font-loading.spec.ts`](../../tests/playwright/site-font-loading.spec.ts) measures the homepage and every generated article against the manifest; this catches glyphs omitted from the hand-maintained static seeds (printable ASCII, shared UI text, dictionaries, and site metadata) or not discoverable from article Markdown. KaTeX output is excluded because its HTML and MathML font chains bypass Chiron, so its DOM presence does not create a Chiron request. |
@@ -67,7 +67,7 @@ Important contract groups include:
 | About locales/layout | `about-hero-persistence` plus parity URL metadata checks |
 | PWA/service-worker caching | `serwist-precache`; verify offline fallback hydration if chunk strategy changes |
 | social-card layout/font/background choice | unit coverage plus `social-card`; inspect rendered PNG behavior rather than only props |
-| Mermaid renderer/plugin/theme | `mermaid:render`, `--check`, unit transform tests, browser theme/mobile tests |
+| Mermaid renderer/plugin/theme | `mermaid:render`, `--check`, `mermaid-shared`, `rehype-mermaid`, and all-Gantt contract unit tests, then browser theme/mobile/intrinsic-layout tests; preserve fail-loud rejection for an existing cache without usable root dimensions, the code-block fallback for a true cache miss, and the shared producer/consumer dimension parser. |
 | site/OG font generation | unit font tests, full local check where tooling exists, and rely on CI’s required font gate |
 | CSP/iframe/remote image policy | allowlist unit tests and a production browser case for the intended integration |
 
