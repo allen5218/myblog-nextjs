@@ -138,6 +138,27 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   不是 CSS 或路徑問題;它塌成細線而不是破圖,所以肉眼很容易誤判成「圖沒出來」。
   回歸測試在 `tests/playwright/mermaid.spec.ts`(必須同時涵蓋各圖種測試文**和**含多行標籤
   的文章 —— 前者沒有 `<br/>`,單靠它抓不到)。
+- **HTML 的 `width`/`height` 內容屬性是非負整數,而 mermaid 的 viewBox 幾乎都是小數**
+  (現有 10 組有 7 組至少一軸是小數)。寫進 `<img>` 屬性前一定要 `Math.round`,不要依賴
+  瀏覽器對非法值的容錯行為。因此**驗證「尺寸可用」必須看取整後的值**:`width="0.4"` 原始值
+  大於 0,取整卻是 `0`,一樣保留不了版位。代價是載入前後最多約 0.889px 的次像素更新
+  (實測那張是 0.7px),所以幾何斷言的容差**不能設 1px**,那只剩 0.11px 餘裕會隨機假紅。
+- **`mermaid-check` 只比對檔名,「檔案在、根標籤沒有合法尺寸」這種狀態它完全不會回報。**
+  所以那個情況在 producer(`mermaid-render.mjs` 寫檔前)與 consumer(`rehype-mermaid.mjs`)
+  **兩端都 fail-loud**,只有 `ENOENT` 才退化成程式碼區塊(缺檔有 `mermaid-check` 兜底)。
+  兩端刻意共用 `parseSvgRootDimensions`:各用一套 parser 會出現「producer 過關、consumer
+  仍解析失敗」的縫隙,producer 的保證就只是第二意見。
+- **靜態 gantt 一律要寫 `todayMarker off`。** 圖是 build 時渲染的,mermaid 預設的「今天」
+  會凍結在渲染那一刻,從隔天起就對讀者說謊,而 `mermaid-check` 不讀內容抓不到。
+  `tests/unit/mermaid-gantt-contract.test.ts` 掃全 `data/blog` 強制這條。
+- **量 mermaid 圖載入行為的 Playwright 測試,context 必須設 `serviceWorkers: 'block'`。**
+  站台的 service worker 對 `.svg` 掛 StaleWhileRevalidate(`app/sw.ts` 展開 `...defaultCache`),
+  而 Playwright 預設是 `'allow'` —— 不 block 的話量到的是 SW 快取行為而不是 markup,
+  且 SW claim client 與首次影像請求是競態,結果會時好時壞。
+- **只改 `public/mermaid/` 的 SVG 而不動 markdown,`.contentlayer` 會沿用快取的 HTML。**
+  2026-08-01 做突變測試時踩過:patch 了 SVG 的根尺寸再重跑,`<img>` 屬性仍是舊值、
+  `naturalWidth` 已是新值,於是紅在錯的斷言上,一度誤判成「那條斷言是空包彈」。
+  **驗證產物層的改動要先 `rm -rf .contentlayer`**,否則實驗有未受控變數且失敗訊息不會提示。
 - **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
   原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
   ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**

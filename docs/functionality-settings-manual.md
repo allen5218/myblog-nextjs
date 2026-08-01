@@ -184,7 +184,10 @@ matches the severity of the consequence.
   are produced by `yarn mermaid:render` (Playwright Chromium) and committed to
   `public/mermaid/<hash>.{light,dark}.svg` — this does **not** run on Vercel (same headless
   browser constraint as HarfBuzz, see §6/§10); a cache miss (diagram not yet rendered)
-  degrades gracefully to a plain code block instead of failing the build. The warn-only
+  degrades gracefully to a plain code block instead of failing the build — but a file that
+  **exists without usable root dimensions fails the build**, because `mermaid-check` compares
+  filenames only and never reads content, so degrading silently would leave that state with no
+  defence at all. The warn-only
   GitHub Action `mermaid-check` (`.github/workflows/mermaid-check.yml`, job `mermaid`, not a
   required check) runs `yarn mermaid:render --check` on push/PR — a purely structural
   comparison (does every fence's content hash have matching committed SVGs; any orphans),
@@ -194,7 +197,12 @@ matches the severity of the consequence.
   and `yarn mermaid:render` validates every output with the browser's `DOMParser` and **fails
   the command** if one is malformed (a malformed SVG does not degrade to a code block — it
   collapses to a zero-height sliver while still returning 200, so without this gate the only
-  symptom is visual).
+  symptom is visual). Both `<img>` elements carry `width`/`height` attributes taken from the
+  SVG root and rounded to integers (HTML's content attributes accept non-negative integers
+  only), so the box is reserved before the SVG arrives.
+- **Static gantt diagrams must declare `todayMarker off`**: diagrams render at build time, so
+  mermaid's default "today" line freezes at the moment of rendering and is wrong from the next
+  day onward. A unit test scans every gantt under `data/blog` and enforces this.
 - **Headings**: get slug anchors — a plain `#` appended after the heading text, visible on hover
   (AnchorJS-style, ported from the Jekyll site; not a prepended icon).
 - MDX is code-capable. Treat everything under `data/` as trusted author content; never
