@@ -119,13 +119,43 @@ export function normalizeSvg(svg) {
  * 回傳 null 而非丟錯,是為了讓呼叫端各自附上自己的脈絡(renderer 知道圖表 id、
  * rehype 知道檔案路徑),並各自決定錯誤語意。
  */
+// SVG 的 <length> 是十進位寫法。`Number()` 會接受 "0x10"、"0b10" 這類 JS 數字字面值,
+// 那不是合法的 SVG 屬性值 —— 放行等於讓瀏覽器與我們對固有尺寸的解讀不一致。
+const SVG_DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+
+function svgLength(raw) {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!SVG_DECIMAL.test(trimmed)) return null
+  const value = Number(trimmed)
+  return Number.isFinite(value) ? value : null
+}
+
 export function parseSvgRootDimensions(svg) {
-  const root = svg.match(/<svg\b[^>]*>/i)
-  if (!root) return null
-  const width = Number(root[0].match(/\swidth="([^"]*)"/i)?.[1])
-  const height = Number(root[0].match(/\sheight="([^"]*)"/i)?.[1])
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return null
-  if (width <= 0 || height <= 0) return null
+  // 必須是文件的**第一個**元素。`normalizeSvg` 的輸出契約是 trim 過且以 `<svg` 開頭 ——
+  // 不錨定的話 `<wrapper><svg …></wrapper>` 這種巢狀輸出也會被當成合法根標籤,
+  // 但它不是能直接餵給 <img> 的 SVG 資源。
+  const opening = /^<svg(?=[\s/>])/i.exec(svg)
+  if (!opening) return null
+
+  // 循序吃 name="value" / name='value'。**不能**直接對整段字串搜尋 ` width="` ——
+  // `data-note=' width="999"'` 這種屬性值裡的假字串會被當成真的 width 抓走。
+  // 循序掃描會把引號內容整段吃掉,假字串因此不可能被誤認成屬性;sticky 旗標讓
+  // 掃描在遇到 `>` 或 `/>` 時自然停在 opening tag 的邊界。
+  const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
+  attribute.lastIndex = opening[0].length
+  const found = new Map()
+  let match
+  while ((match = attribute.exec(svg)) !== null) {
+    found.set(match[1].toLowerCase(), match[2] ?? match[3])
+  }
+
+  const width = svgLength(found.get('width'))
+  const height = svgLength(found.get('height'))
+  if (width === null || height === null) return null
+  // consumer 會 `Math.round` 後寫進 HTML 屬性,所以真正的不變量是「**取整後**仍為正」:
+  // width="0.4" 的原始值 > 0,卻會輸出成 width="0",一樣保留不了版位。
+  if (Math.round(width) <= 0 || Math.round(height) <= 0) return null
   return { width, height }
 }
 

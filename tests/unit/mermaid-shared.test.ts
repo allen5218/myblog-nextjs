@@ -132,8 +132,48 @@ describe('parseSvgRootDimensions', () => {
     expect(parseSvgRootDimensions('<svg width="10" height="-5"></svg>')).toBeNull()
   })
 
+  // consumer 會 Math.round 後寫進 HTML 屬性,所以不變量必須是「取整後仍為正」。
+  // 只檢查原始值 > 0 的話,0.4 會通過 parser 卻輸出 width="0"。
+  it('取整後會變成 0 的尺寸回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="0.4" height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="0.49"></svg>')).toBeNull()
+    // 0.5 取整是 1,仍然可用 —— 邊界不能連坐。
+    expect(parseSvgRootDimensions('<svg width="0.5" height="10"></svg>')).toEqual({
+      width: 0.5,
+      height: 10,
+    })
+  })
+
+  // Number() 接受 JS 數字字面值,但 SVG 的 <length> 只有十進位寫法。
+  it('hex / binary 等非 SVG 十進位寫法回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="0x10" height="0b10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="1_0" height="10"></svg>')).toBeNull()
+  })
+
+  // 直接對整段搜尋 ` width="` 會抓到別的屬性值裡的假字串。
+  it('屬性值內含假的 width= 字串時不被穿透', () => {
+    expect(
+      parseSvgRootDimensions(`<svg data-note=' width="999"' width="10" height="20"></svg>`)
+    ).toEqual({ width: 10, height: 20 })
+  })
+
+  // 根元素不是 <svg> 的文件不能當成可直接餵給 <img> 的資源。
+  it('svg 不是文件第一個元素時回傳 null', () => {
+    expect(parseSvgRootDimensions('<wrapper><svg width="10" height="20"></svg></wrapper>')).toBeNull()
+  })
+
   it('沒有 svg 根標籤回傳 null', () => {
     expect(parseSvgRootDimensions('<html><body>nope</body></html>')).toBeNull()
+  })
+
+  // mermaid 只輸出雙引號。單引號能通過是「引號感知掃描」的副產物 —— 為了不被
+  // `data-note='…'` 這類屬性誤導,掃描本來就必須認得兩種引號,額外再去拒絕單引號的
+  // width/height 只會多一條沒人需要的規則。這裡把這個副產物釘住,避免日後誤以為是 bug。
+  it('單引號的 width/height 也能解析(引號感知掃描的副產物)', () => {
+    expect(parseSvgRootDimensions("<svg width='10' height='20'></svg>")).toEqual({
+      width: 10,
+      height: 20,
+    })
   })
 })
 
