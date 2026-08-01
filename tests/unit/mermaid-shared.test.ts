@@ -162,6 +162,18 @@ describe('parseSvgRootDimensions', () => {
     })
   })
 
+  // 接受科學記號就必須守住它的上界:取整後仍是 1e21 的值會被序列化成 "1e+21",
+  // 那不是 HTML 接受的整數寫法。1e309 則會變成 Infinity。
+  it('大到無法安全序列化成整數的尺寸回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="1e21" height="20"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="1e309" height="20"></svg>')).toBeNull()
+    // 2^53 - 1 仍是安全整數,邊界不能連坐。
+    expect(parseSvgRootDimensions('<svg width="9007199254740991" height="20"></svg>')).toEqual({
+      width: 9007199254740991,
+      height: 20,
+    })
+  })
+
   // sticky 掃描停下來的原因不只是遇到標籤結尾,任何解析不了的 token 都會讓它停。
   // 少了邊界檢查,尺寸已先讀到就會讓後面的垃圾被靜默忽略。
   it('opening tag 有解析不了的殘餘時回傳 null', () => {
@@ -182,9 +194,12 @@ describe('parseSvgRootDimensions', () => {
 
   // 根元素不是 <svg> 的文件不能當成可直接餵給 <img> 的資源。
   //
-  // 第二個 case 才是真正守住 `^` 錨定的那一條:前綴元素**自己帶著 width/height**。
-  // 少了它,拿掉錨定後整組測試仍會全綠 —— `<wrapper>` 那條是被 opening tag 的尾端
-  // 邊界檢查擋下來的,不是被錨定擋下來的。
+  // 拿掉 `^` 時變紅的是**第一條**(`<wrapper>`):游標從 `opening.index` 起算,
+  // 掃到的是內層 `<svg>` 自己的尺寸,於是回傳 {10,20} 而非 null。
+  //
+  // 第二條守的是**游標算術與錨定的組合**:若有人同時放寬錨定又把游標改回寫死長度,
+  // 掃描會錯位到前綴元素身上、從 `<xyz>` 讀走 width/height。單獨看它現在是綠的,
+  // 但它記錄了那個具體的損壞形態,兩條合起來才把這段邏輯釘住。
   it.each([
     ['前綴元素沒有尺寸', '<wrapper><svg width="10" height="20"></svg></wrapper>'],
     ['前綴元素自己帶尺寸', '<xyz width="10" height="20"><svg/></xyz>'],

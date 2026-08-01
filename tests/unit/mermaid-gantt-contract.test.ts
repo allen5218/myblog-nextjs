@@ -31,18 +31,32 @@ async function ganttDefinitions(): Promise<{ source: string; definition: string 
 }
 
 /**
- * 從 opening tag 的 class 屬性抽出所有 token。
+ * 從所有 opening tag 的 class 屬性抽出 token。
  *
  * 刻意**不**比對 `class="today"` 這種精確字串 —— `class="today marker"` 與
  * `class='today'` 都帶著真正的 today token 卻不含那個字串,精確比對會被穿透。
  * 按 token 比對同時仍會避開 `<style>` 區塊裡的 `.today{…}` 樣式規則
  * (那不在任何 opening tag 的 class 屬性裡)。
+ *
+ * **也不能用單一 regex 直接找 `class="…"`。** `<[a-z][^>]*\sclass=` 裡的 `[^>]*` 是
+ * greedy,會回溯到標籤內**最後一個** ` class=`,於是
+ * `<g class="today" data-note=' class="other"'>` 只抓得到屬性值裡的假 class,真正的
+ * today 反而被漏掉。改成逐標籤、標籤內**循序**掃屬性:引號內容被整段吃掉,假字串
+ * 就不可能被誤認 —— 與 `parseSvgRootDimensions` 是同一個技術、同一個理由。
  */
 function classTokens(svg: string): string[] {
   const tokens = new Set<string>()
-  for (const match of svg.matchAll(/<[a-z][^>]*\sclass\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
-    for (const token of (match[1] ?? match[2] ?? '').split(/\s+/)) {
-      if (token) tokens.add(token)
+  const tag = /<[a-z][a-z0-9-]*/gi
+  let opening: RegExpExecArray | null
+  while ((opening = tag.exec(svg)) !== null) {
+    const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
+    attribute.lastIndex = opening.index + opening[0].length
+    let match: RegExpExecArray | null
+    while ((match = attribute.exec(svg)) !== null) {
+      if (match[1].toLowerCase() !== 'class') continue
+      for (const token of (match[2] ?? match[3] ?? '').split(/\s+/)) {
+        if (token) tokens.add(token)
+      }
     }
   }
   return [...tokens]
@@ -89,6 +103,9 @@ describe('classTokens', () => {
     ['雙引號單一 class', '<g class="today"><line/></g>'],
     ['多個 class', '<g class="today marker"><line/></g>'],
     ['單引號', "<g class='today'><line/></g>"],
+    // 這一條守 greedy 回溯:單一 regex 的 `[^>]*` 會回溯到最後一個 class=,
+    // 只抓到屬性值裡的假 class 而漏掉真正的 today。
+    ['真 class 之後有屬性值裡的假 class', `<g class="today" data-note=' class="other"'><line/></g>`],
   ])('%s 都抓得到 today token', (_label, svg) => {
     expect(classTokens(svg)).toContain('today')
   })

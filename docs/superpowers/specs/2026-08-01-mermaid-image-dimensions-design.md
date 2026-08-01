@@ -62,9 +62,14 @@ mermaid 圖表在 build 時渲成淺/深雙份 SVG,commit 在 `public/mermaid/`,
 
 ### §1 Producer 端不變量(`scripts/mermaid-render.mjs`)
 
-`renderVariant` 已有一道 `DOMParser` 關卡(擋非法 XML)。**擴充同一道關卡**,一併從解析後的
-root `<svg>` 讀 `width`、`height`,要求兩者 finite 且 `> 0`,否則 render 直接失敗並指出
+`renderVariant` 已有一道 `DOMParser` 關卡(擋非法 XML)。在它之後**再加一道尺寸檢查**:
+用 `parseSvgRootDimensions` 讀 root 的 `width`/`height`,讀不到就讓 render 失敗並指出
 hash、variant。
+
+> **實作修正(審查後)**:原本寫的是「從 `DOMParser` 解析結果讀尺寸」。改成用與 consumer
+> **完全相同**的字串 parser —— 兩邊各一套 parser 的接受集合不同,會留下「producer 用
+> DOMParser 過關、consumer 的字串解析仍失敗」的縫隙,那樣 producer 的保證只是第二意見。
+> `DOMParser` 因此維持原職責(只驗 XML 合法性)。
 
 不變量:**任何寫進 `public/mermaid/` 的 SVG 都有合法正尺寸。**
 
@@ -84,9 +89,13 @@ SVG bytes。(AGENTS.md 的規則文字含「改 render 邏輯」,但該規則自
 existsSync(path) → 布林          ▶  讀檔頭 → { width, height } | ENOENT | 無效
 ```
 
-- 只讀檔案開頭(根標籤在 byte 0),`/<svg\b[^>]*>/i` 取根標籤,再抽 `width`/`height`
 - 讀 `width`/`height` 而非 `viewBox`:兩者等價,但前者是產物**實際宣告的固有尺寸**
 - 兩軸各自 `Math.round`,寫進 `imgNode` 的 `width`/`height` properties
+
+> **實作修正(審查後)**:原本寫的是「只讀檔頭 + 簡單 regex」。實際是 `readFileSync`
+> 讀整份(20KB × 20 次只發生在建置期,partial read 要處理 fd 與 chunk 邊界,不值得),
+> 解析則改用**錨定字串開頭 + 引號感知的循序屬性掃描**。簡單 regex 會被
+> `<svg data-note=' width="999"' width="10">` 這種屬性值裡的假字串穿透。
 
 **CSS 不改。** `height: auto` 搭配兩個屬性 → UA 樣式表算出 `aspect-ratio: auto W/H`;沒有
 CSS `width` 宣告,所以 used width 仍是屬性寬,與現況(SVG 固有寬)一致,`max-width: none`
@@ -210,9 +219,14 @@ C 組**不是**把 viewBox 當 SVG 的普遍規則(root viewport 與 viewBox 本
 `todayMarker off` 只修目前這一張 gantt。若只靠手動驗證,日後刪掉 directive 重新 render,
 所有檢查仍會全綠。需要持久斷言,**放在單元測試層**(不需瀏覽器,CI 每次都跑):
 
-- 讀 `data/blog/hidden/2025-08-29-mermaid-v10-test.md`,斷言其 gantt 定義**含**
-  `todayMarker off`
-- 讀該定義對應 hash 的兩份 committed SVG,斷言**都不含** `class="today"`
+- 掃**全 `data/blog`** 的每一張 gantt,斷言定義**含** `todayMarker off`
+- 讀各自 hash 的兩份 committed SVG,斷言 class token 裡**沒有** `today`
+- 一條正控制:掃得到至少一張 gantt(否則掃描壞掉時上面兩條會空轉通過)
+
+> **實作修正(審查後)**:原本寫的是「讀單一 fixture 檔 + 比對精確字串 `class="today"`」。
+> 兩者都被審查穿透 —— 單一 fixture 讓別篇文章新增沒有 directive 的 gantt 仍全綠;
+> 精確字串則被 `class="today marker"` 與 `class='today'` 繞過。圖種判斷也不能用
+> `startsWith('gantt')`(`%%{init: …}%%` 可以出現在關鍵字之前),改用 `/^\s*gantt\b/im`。
 
 第二條同時把「directive 還在但忘了重新 render」這個狀態抓出來——`mermaid-check` 只比對
 檔名,對這種情況是綠的。

@@ -130,7 +130,23 @@ function svgLength(raw) {
   const trimmed = raw.trim()
   if (!SVG_DECIMAL.test(trimmed)) return null
   const value = Number(trimmed)
+  // 這道 finite 檢查目前**與 `isUsableDimension` 的 `isSafeInteger` 重疊**:`1e309` 只靠
+  // 後者也會被擋下,單獨拿掉這行不會有任何測試變紅。保留是為了讓 `svgLength` 自己的
+  // 契約成立(回傳有限數或 null),**不是**一道獨立防線 —— 別把它當成第二層保護。
   return Number.isFinite(value) ? value : null
+}
+
+/**
+ * consumer 會 `Math.round` 後寫進 HTML 的 width/height 屬性,所以真正的不變量是
+ * 「**取整後**是能安全序列化成十進位整數的正數」,而不是原始值大於零:
+ *
+ * - `width="0.4"`:原始值 > 0,取整卻是 `0`,一樣保留不了版位。
+ * - `width="1e21"`:取整仍是 `1e21`,序列化成 `"1e+21"` —— 那不是 HTML 接受的整數寫法,
+ *   瀏覽器不會照我們的預期解讀。
+ */
+function isUsableDimension(value) {
+  const rounded = Math.round(value)
+  return Number.isSafeInteger(rounded) && rounded > 0
 }
 
 export function parseSvgRootDimensions(svg) {
@@ -169,9 +185,7 @@ export function parseSvgRootDimensions(svg) {
   const width = svgLength(found.get('width'))
   const height = svgLength(found.get('height'))
   if (width === null || height === null) return null
-  // consumer 會 `Math.round` 後寫進 HTML 屬性,所以真正的不變量是「**取整後**仍為正」:
-  // width="0.4" 的原始值 > 0,卻會輸出成 width="0",一樣保留不了版位。
-  if (Math.round(width) <= 0 || Math.round(height) <= 0) return null
+  if (!isUsableDimension(width) || !isUsableDimension(height)) return null
   return { width, height }
 }
 
