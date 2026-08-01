@@ -148,6 +148,15 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   **兩端都 fail-loud**,只有 `ENOENT` 才退化成程式碼區塊(缺檔有 `mermaid-check` 兜底)。
   兩端刻意共用 `parseSvgRootDimensions`:各用一套 parser 會出現「producer 過關、consumer
   仍解析失敗」的縫隙,producer 的保證就只是第二意見。
+- **`rehype-mermaid` 丟出的錯誤會被 contentlayer 包成「possibly a bug in Contentlayer」。**
+  它走 `UnexpectedMarkdownError` → `FetchDataError.UnexpectedError`,category 是 `Unexpected`,
+  所以標頭會叫你去 Contentlayer 開 issue —— **真正的訊息(含快取檔案路徑)在明細行**。
+  看到那個標頭先往下讀,不要真的去開 issue。這條路徑每個 PR 都會執行(必過的 `ci` job
+  跑 `yarn contentlayer2 build`)。
+- **`CACHE_VERSION` 的 bump 規則有一個例外:純驗證關卡不必 bump。** 規則字面寫「改 render
+  邏輯」要 bump,但它自陳的目的是「任何**影響渲染輸出**的改動」。在 `mermaid-render.mjs`
+  加一道不改變任何 SVG bytes 的驗證(例如根尺寸檢查)不影響輸出,bump 反而會逼 20 張圖
+  在不同機器/日期重生成,製造真正的假 diff。
 - **靜態 gantt 一律要寫 `todayMarker off`。** 圖是 build 時渲染的,mermaid 預設的「今天」
   會凍結在渲染那一刻,從隔天起就對讀者說謊,而 `mermaid-check` 不讀內容抓不到。
   `tests/unit/mermaid-gantt-contract.test.ts` 掃全 `data/blog` 強制這條。

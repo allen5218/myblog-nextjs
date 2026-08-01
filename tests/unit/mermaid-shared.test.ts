@@ -181,8 +181,15 @@ describe('parseSvgRootDimensions', () => {
   })
 
   // 根元素不是 <svg> 的文件不能當成可直接餵給 <img> 的資源。
-  it('svg 不是文件第一個元素時回傳 null', () => {
-    expect(parseSvgRootDimensions('<wrapper><svg width="10" height="20"></svg></wrapper>')).toBeNull()
+  //
+  // 第二個 case 才是真正守住 `^` 錨定的那一條:前綴元素**自己帶著 width/height**。
+  // 少了它,拿掉錨定後整組測試仍會全綠 —— `<wrapper>` 那條是被 opening tag 的尾端
+  // 邊界檢查擋下來的,不是被錨定擋下來的。
+  it.each([
+    ['前綴元素沒有尺寸', '<wrapper><svg width="10" height="20"></svg></wrapper>'],
+    ['前綴元素自己帶尺寸', '<xyz width="10" height="20"><svg/></xyz>'],
+  ])('svg 不是文件第一個元素時回傳 null(%s)', (_label, svg) => {
+    expect(parseSvgRootDimensions(svg)).toBeNull()
   })
 
   it('沒有 svg 根標籤回傳 null', () => {

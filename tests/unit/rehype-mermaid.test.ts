@@ -201,6 +201,22 @@ describe('rehypeMermaid', () => {
     }
   )
 
+  // ENOENT 以外的讀檔錯誤(EACCES / EISDIR / ENOTDIR)**不是**快取未命中,不能退化。
+  // 少了這條,把整個 catch body 換成 `return null` 也會全綠 —— 而那正好是本次要消滅的
+  // 那一類靜默失敗:`mermaid-check` 對這些狀態同樣沒有防線。
+  it('讀檔錯誤不是 ENOENT 時原樣拋出,不當成快取未命中', async () => {
+    const def = 'graph TD\n  Z-->A2'
+    const hash = hashDiagram(def)
+    // 把快取「檔案」建成目錄,readFileSync 會丟 EISDIR。
+    await fs.mkdir(path.join(cacheDir, svgFileName(hash, 'light')), { recursive: true })
+    await fs.writeFile(
+      path.join(cacheDir, svgFileName(hash, 'dark')),
+      svgFixture(DARK.width, DARK.height)
+    )
+
+    expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(/EISDIR|illegal operation/i)
+  })
+
   it.each([['light'], ['dark']] as const)(
     '只有 %s 變體缺檔(另一份有效)時退化成程式碼區塊,不丟錯',
     async (missing) => {

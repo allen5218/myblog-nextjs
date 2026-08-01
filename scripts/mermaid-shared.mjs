@@ -134,9 +134,11 @@ function svgLength(raw) {
 }
 
 export function parseSvgRootDimensions(svg) {
-  // 必須是文件的**第一個**元素。`normalizeSvg` 的輸出契約是 trim 過且以 `<svg` 開頭 ——
-  // 不錨定的話 `<wrapper><svg …></wrapper>` 這種巢狀輸出也會被當成合法根標籤,
-  // 但它不是能直接餵給 <img> 的 SVG 資源。
+  // 必須是文件的**第一個**元素:不錨定的話 `<xyz width="10" height="20"><svg/></xyz>`
+  // 會從前綴元素身上讀走尺寸,而它不是能直接餵給 <img> 的 SVG 資源。
+  //
+  // (`normalizeSvg` 只保證 `trim()`;「以 `<svg` 開頭」是 mermaid 輸出本來就有的性質、
+  // 被原樣保留,不是 `normalizeSvg` 強制的。所以這裡是自己驗,不是信賴上游契約。)
   const opening = /^<svg(?=[\s/>])/i.exec(svg)
   if (!opening) return null
 
@@ -144,7 +146,10 @@ export function parseSvgRootDimensions(svg) {
   // `data-note=' width="999"'` 這種屬性值裡的假字串會被當成真的 width 抓走。
   // 循序掃描會把引號內容整段吃掉,假字串因此不可能被誤認成屬性。
   const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
-  attribute.lastIndex = opening[0].length
+  // 用 `opening.index + …` 而不是只用長度:兩者目前等價(錨定保證 index 為 0),但寫死
+  // 「從 4 開始」會讓錨定變成隱性承重 —— 日後若為了支援前置 XML declaration 放寬錨定,
+  // 游標會靜默錯位到前一個元素身上,從它讀走 width/height。
+  attribute.lastIndex = opening.index + opening[0].length
   const found = new Map()
   let cursor = attribute.lastIndex
   let match

@@ -18,8 +18,11 @@ mermaid 圖表在 build 時渲成淺/深雙份 SVG,commit 在 `public/mermaid/`,
 
 ### A-3:gantt today marker 讓輸出依賴系統時鐘
 
-`data/blog/hidden/2025-08-29-mermaid-v10-test.md` 的 gantt 每次重跑 `yarn mermaid:render`
-都改寫 today 線的 x 座標,在 `public/mermaid/` 製造假 diff。
+`data/blog/hidden/2025-08-29-mermaid-v10-test.md` 的 gantt 在**跨日期**重跑
+`yarn mermaid:render` 時會改寫 today 線的 x 座標,在 `public/mermaid/` 製造假 diff。
+(不是「每次重跑」—— `Math.random` 早已被固定種子的 LCG 蓋掉,同一天內重跑是逐位元組
+相同的;真正的漂移驅動是 `new Date()`。2026-08-02 跨日重跑實測:修好後 20 個 SVG
+逐位元組不變。)
 
 **這不只是雜訊,是潛在的正確性 bug**:build 時渲染的 gantt 會把「今天」凍結在渲染那一刻。
 現在的圖因日期範圍在 2025 年初、marker 落在 viewBox 外(`x1="8787"` vs 寬 `1264`)所以無害,
@@ -152,8 +155,11 @@ expect(before.heightAttribute).not.toBeNull()
 expect(before.rect.height).toBeGreaterThan(0)
 expect(before.rect.height).toBeCloseTo(
   before.rect.width * (Number(before.heightAttribute) / Number(before.widthAttribute)), 1)
-expect(Math.abs(after.rect.height - before.rect.height)).toBeLessThan(1)
-expect(Math.abs(after.sentinelTop - before.sentinelTop)).toBeLessThan(1)
+// 容差 2px 而非 1px:整數 HTML 屬性對上小數固有尺寸,載入後改用真實比例必然有次像素
+// 更新。實測被量測那張是 0.7068px,20 個產物的最壞值是 0.8887px —— 1px 只剩 0.11px
+// 餘裕。等比縮放的突變因此改由 B 組結構性地接手,不靠容差邊緣去抓。
+expect(Math.abs(after.rect.height - before.rect.height)).toBeLessThan(2)
+expect(Math.abs(after.sentinelTop - before.sentinelTop)).toBeLessThan(2)
 
 // B. natural-size 錨定 —— 保留的版位是不是對的絕對尺寸
 expect(Math.abs(after.naturalWidth - Number(before.widthAttribute))).toBeLessThanOrEqual(1)

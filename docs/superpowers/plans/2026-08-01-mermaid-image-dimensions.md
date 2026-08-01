@@ -149,7 +149,9 @@ git commit -m "fix: stop the gantt today marker from freezing a stale date
 
 A build-time-rendered gantt bakes \"today\" into the committed SVG, so any
 diagram whose range covers the current date starts lying to readers the
-next day. It also rewrote the SVG on every mermaid:render run, producing
+next day. It also rewrote the SVG whenever mermaid:render ran on a later
+date -- same-day reruns are byte-identical because Math.random is already
+stubbed with a fixed-seed LCG -- producing
 diff churn. mermaid-check compares filenames only and never reads SVG
 content, so neither symptom had any automated defence.
 
@@ -709,8 +711,10 @@ test('SVG 抵達前就保留正確版位', async ({ browser, baseURL }) => {
     await settle(page)
     const after = await measure(image)
 
-    expect(Math.abs(after.rect.height - before.rect.height)).toBeLessThan(1)
-    expect(Math.abs(after.sentinelTop - before.sentinelTop)).toBeLessThan(1)
+    // 容差 2px:整數屬性對小數固有尺寸,載入後改用真實比例必然有次像素更新
+    //(實測 0.7068px,20 個產物最壞 0.8887px)。1px 只剩 0.11px 餘裕。
+    expect(Math.abs(after.rect.height - before.rect.height)).toBeLessThan(2)
+    expect(Math.abs(after.sentinelTop - before.sentinelTop)).toBeLessThan(2)
 
     // B 組:保留的版位是不是對的絕對尺寸。單獨守不住 height="1"(A 組負責),
     // 但 A 組守不住 width/height 同時 ×2 —— 那會比例自洽、前後一致,圖卻被放大兩倍。
