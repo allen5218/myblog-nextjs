@@ -108,6 +108,27 @@ export function normalizeSvg(svg) {
   return out.trim()
 }
 
+/**
+ * 從 SVG 字串的根標籤抽出固有尺寸。回傳 null 代表根標籤缺尺寸、非數字、或不是有限正數。
+ *
+ * **producer 與 consumer 共用同一個實作是刻意的。** producer(mermaid-render 寫檔前)
+ * 若用瀏覽器的 DOMParser、consumer(rehype,在 Node 裡)用字串解析,兩者的接受集合不同,
+ * 就會出現「producer 驗證過關、consumer 仍解析失敗」的縫隙 —— producer 的不變量因此
+ * 只是「某個 parser 讀得到」,而不是我們真正要的「consumer 讀得到」。
+ *
+ * 回傳 null 而非丟錯,是為了讓呼叫端各自附上自己的脈絡(renderer 知道圖表 id、
+ * rehype 知道檔案路徑),並各自決定錯誤語意。
+ */
+export function parseSvgRootDimensions(svg) {
+  const root = svg.match(/<svg\b[^>]*>/i)
+  if (!root) return null
+  const width = Number(root[0].match(/\swidth="([^"]*)"/i)?.[1])
+  const height = Number(root[0].match(/\sheight="([^"]*)"/i)?.[1])
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return null
+  if (width <= 0 || height <= 0) return null
+  return { width, height }
+}
+
 export function extractMermaidDefinitions(markdown) {
   const { content } = matter(markdown)
   const tree = remark().parse(content)

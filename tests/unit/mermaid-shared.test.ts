@@ -4,6 +4,7 @@ import {
   normalizeDefinition,
   svgFileName,
   normalizeSvg,
+  parseSvgRootDimensions,
   extractMermaidDefinitions,
   LIGHT_THEME,
   DARK_THEME,
@@ -97,6 +98,42 @@ describe('extractMermaidDefinitions', () => {
     expect(defs).toHaveLength(2)
     expect(defs[0]).toContain('graph TD')
     expect(defs[1]).toContain('sequenceDiagram')
+  })
+})
+
+describe('parseSvgRootDimensions', () => {
+  // producer(render 寫檔前)與 consumer(rehype 產生 <img>)共用同一個實作是刻意的:
+  // 兩邊各一套 parser 會出現「producer 過關、consumer 仍解析失敗」的縫隙。
+  it('抽出小數尺寸(mermaid 的 viewBox 幾乎都是小數,現有 10 組有 7 組)', () => {
+    const svg =
+      '<svg height="461.63739013671875" width="722.8872680664062" viewBox="0 0 722.8872680664062 461.63739013671875"></svg>'
+    expect(parseSvgRootDimensions(svg)).toEqual({
+      width: 722.8872680664062,
+      height: 461.63739013671875,
+    })
+  })
+
+  it('屬性順序與夾雜的其他屬性不影響抽取', () => {
+    const svg = '<svg id="mmd-abc-dark" class="classDiagram" width="650" role="img" height="355">'
+    expect(parseSvgRootDimensions(svg)).toEqual({ width: 650, height: 355 })
+  })
+
+  it('缺 width 或缺 height 回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10"></svg>')).toBeNull()
+  })
+
+  it('非數字(例如未被清掉的 width="100%")回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="100%" height="10"></svg>')).toBeNull()
+  })
+
+  it('零或負值回傳 null —— 零尺寸保留不了版位,與缺尺寸同樣有害', () => {
+    expect(parseSvgRootDimensions('<svg width="0" height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="-5"></svg>')).toBeNull()
+  })
+
+  it('沒有 svg 根標籤回傳 null', () => {
+    expect(parseSvgRootDimensions('<html><body>nope</body></html>')).toBeNull()
   })
 })
 
