@@ -36,15 +36,16 @@ async function ganttDefinitions(): Promise<{ source: string; definition: string 
 /**
  * 從所有元素的 class 屬性抽出 token。
  *
- * **用真正的 parser,不用 regex。** 這條路先後試過三種 regex 寫法,每一種都被合法輸入
- * 穿透,而且失敗方向包含**假綠**(該抓的沒抓到):
+ * **用真正的 parser,不用自己比對。** 這條路先後試過三版(一版精確字串 + 兩版 regex),
+ * 每一版都被合法輸入穿透,而且失敗方向包含**假綠**(該抓的沒抓到):
  *
  * - 精確比對 `class="today"` → 被 `class="today marker"`、`class='today'` 繞過
  * - 單一 regex 找 `class=` → `[^>]*` 是 greedy,會回溯到標籤內最後一個 `class=`,
  *   於是 `<g class="today" data-note=' class="other"'>` 只抓到假的那個
- * - 剝註解/CDATA 後逐標籤掃 → `<?pi <!-- ?><svg><g class="today"/></svg><?pi --> ?>`
- *   是合法 XML(xmllint 驗過),剝除會從第一個 PI 一路吃到第二個,把真的 today 刪掉;
- *   實體編碼的 `class="to&#100;ay"` 也照樣看不見
+ * - 剝註解/CDATA 後逐標籤掃 → 實體編碼的 `class="to&#100;ay"` 看不見(**管線可達**);
+ *   `<?pi <!-- ?><svg><g class="today"/></svg><?pi --> ?>` 這種合法 XML(xmllint 驗過)
+ *   也會讓剝除從第一個 PI 一路吃到第二個、把真的 today 刪掉(這個**管線不可達** ——
+ *   前置 PI 過不了 producer 的根標籤錨定 —— 但它證明了 pattern 的方向本身有問題)
  *
  * 根本問題是**剝除 XML 結構本身就需要理解 XML 結構**。`hast-util-from-html-isomorphic`
  * 與 `unist-util-visit` 都已經是本 repo 的直接依賴(後者 `lib/rehype-mermaid.mjs` 就在用),
@@ -55,8 +56,14 @@ function classTokens(svg: string): string[] {
   const tokens = new Set<string>()
   visit(fromHtmlIsomorphic(svg, { fragment: true }), 'element', (node: Element) => {
     const className = node.properties?.className
-    const values = Array.isArray(className) ? className : String(className ?? '').split(/\s+/)
-    for (const value of values) {
+    if (className === undefined) return
+    // hast 把 class 當 space-separated property,一律正規化成陣列(實測 20 個產物、
+    // 1482 個帶 class 的元素全是陣列)。所以這裡**不寫**字串分支 —— 那會是永遠不執行的
+    // 死防禦。但也不能默默 return:若日後正規化改變,靜默略過就是假綠,所以直接爆。
+    if (!Array.isArray(className)) {
+      throw new Error(`預期 hast 把 class 正規化成陣列,實際是 ${typeof className}`)
+    }
+    for (const value of className) {
       const token = String(value)
       if (token) tokens.add(token)
     }
