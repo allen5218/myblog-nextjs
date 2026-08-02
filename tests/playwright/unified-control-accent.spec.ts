@@ -24,7 +24,11 @@ async function scrollPastBackTopThreshold(page: Page) {
 async function expectHoverAndKeyboardFocusAccent(page: Page, target: Locator, property = 'background-color') {
   await target.hover()
   await expect(target).toHaveCSS(property, accent)
+
+  // focus 必須脫離 :hover 後單獨量:若游標還停在目標上,刪掉 :focus 規則仍會由 hover 假綠。
+  await page.mouse.move(0, 0)
   await focusWithKeyboard(page, target)
+  await expect(target).toBeFocused()
   await expect(target).toHaveCSS(property, accent)
 }
 
@@ -61,6 +65,33 @@ test('article pager keeps the two-line classic Previous and Next contract withou
 })
 
 for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}: pager title keeps its muted rest style, white active style, and responsive link metrics`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(middleArticlePath)
+    await setTheme(page, theme)
+
+    const pager = page.locator('.post-container > .pager > .previous > a')
+    const title = pager.locator('.pager-title')
+    await expect(title).toHaveCSS('color', theme === 'light' ? 'rgb(128, 128, 128)' : 'rgb(136, 136, 136)')
+    await expect(pager).toHaveCSS('font-size', '13px')
+    await expect(pager).toHaveCSS('padding-top', '10px')
+    await expect(pager).toHaveCSS('padding-right', '10px')
+
+    await pager.hover()
+    await expect(title).toHaveCSS('color', 'rgb(255, 255, 255)')
+    await page.mouse.move(0, 0)
+    await focusWithKeyboard(page, pager)
+    await expect(pager).toBeFocused()
+    await expect(title).toHaveCSS('color', 'rgb(255, 255, 255)')
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await expect(pager).toHaveCSS('font-size', '14px')
+    await expect(pager).toHaveCSS('padding-top', '15px')
+    await expect(pager).toHaveCSS('padding-right', '25px')
+  })
+
   test(`${theme}: pager and Back to top use one control accent for hover and keyboard focus`, async ({
     page,
   }) => {
@@ -82,15 +113,16 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/')
     await setTheme(page, theme)
     await openKBar(page)
-    await page.locator('input[aria-controls="kbar-listbox"]').fill('防火')
+    await page.locator('input[aria-controls="kbar-listbox"]').fill('AI')
 
     const activeResult = page.locator('#kbar-listbox [role="option"][aria-selected="true"] > div')
     await expect(activeResult).toHaveCSS('background-color', accent)
 
-    const hoveredResult = page
-      .locator('#kbar-listbox [role="option"]')
-      .filter({ hasText: '你的防火牆很強' })
-      .locator(':scope > div')
+    const options = page.locator('#kbar-listbox [role="option"]')
+    await expect.poll(() => options.count()).toBeGreaterThanOrEqual(3)
+    const hoveredOption = options.nth(2)
+    await expect(hoveredOption).toHaveAttribute('aria-selected', 'false')
+    const hoveredResult = hoveredOption.locator(':scope > div')
     await hoveredResult.hover()
     await expect(hoveredResult).toHaveCSS('background-color', accent)
 
