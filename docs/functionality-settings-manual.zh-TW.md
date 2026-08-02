@@ -197,8 +197,9 @@ Updated/Posted 日期資訊下方;正文連結則在全站原有
 中央設定檔:站名/描述、`siteUrl`(`https://blog.allenspace.de`)、預設主題(`dark`)、
 語言(`zh-TW`)、社群連結、分析、留言、搜尋。重點:
 
-- **社群連結**(`github`、`linkedin`、`x`、`facebook`、`reddit`、`buymeacoffee` 等):由
-  `components/hux/HuxSocial.tsx` 渲染成 Hux 風格圓形圖標(自訂 SVG,不依賴 icon font)。
+- **社群連結**(`github`、`linkedin`、`x`、`facebook`、`reddit`、`buymeacoffee`):由
+  `components/hux/HuxSocial.tsx` 以**寫死的清單**渲染成 Hux 風格圓形圖標(自訂 SVG,不依賴
+  icon font)。上列即完整清單。
   **空字串 = 隱藏該圖標。** RSS 固定顯示,連到 `/feed.xml`。
 - **分析**:GA4(`googleAnalytics.googleAnalyticsId` = `G-M2HR0MGKVL`,沿用舊站)。
   Umami/Plausible/PostHog 保留為註解範例 — 切換供應商時必須同步更新 `next.config.mjs`
@@ -503,6 +504,19 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
   以渲染結果驗三個 navbar trigger 的語意 class,並要求 popup focus 的成對 token 只以
   成對形式出現在 focus 分支。**只守接線**:算出來的顏色、對比度與斷點覆蓋仍然只有
   Playwright 抓得到,而 Playwright 不是必過檢查。
+- `tests/unit/layout-reachability.test.ts` — `layouts/` 的架構契約:遞迴列舉底下每個 `.tsx`,
+  每一個都必須是某個 `app/**/page.tsx` **編譯後仍然留著**的 import。刻意不接受 test-only
+  import(本 repo 的單元測試確實會直接 import production 元件,測試自己 import 一下就能養活
+  死碼)與未被頁面引用的 barrel。**「編譯後仍留著」而不是「原始碼裡有 import」是關鍵**:
+  `no-unused-vars` 在 eslint 是 off、tsconfig 也沒開 `noUnusedLocals`,所以「刪掉用法卻留下
+  import」逃得過所有其他關卡,而編譯器會把整條 import 抹除 —— 只看 import 在不在,等於在測
+  一個已被丟掉的東西。**判斷交給 `ts.transpileModule`(用 repo 自己的 compilerOptions),
+  路徑交給 `ts.resolveModuleName`,兩者都不自己實作**:手寫識別字比對兩個方向都會錯
+  (同名的物件 property、type parameter、interface 成員、另一條 import 的來源名會被誤算成
+  用到了;而 `class Page extends Layout` 是真相依卻因 `ExpressionWithTypeArguments` 被歸類成
+  TypeNode 而漏掉),手寫 resolver 則會漏掉 `baseUrl` 裸路徑、`.js` 副檔名替換與目錄 index。
+  **17 條負向突變與 5 條正向對照都實測過**;候選檔用 `readdirSync` 而非 `git ls-files` 列舉,
+  否則突變測試新增的未 stage 檔案會看不見而靜默通過。
 - `tests/unit/post-publication.test.ts`、`tests/unit/content-outputs.test.ts`、
   `tests/unit/content-writers.test.ts` 與 `tests/unit/route-publication-wiring.test.ts` —
   發布政策單一入口:`production`/`preview` 兩種模式下 reachable 與 listed 的真值表、

@@ -216,10 +216,10 @@ The central config: site title/description, `siteUrl` (`https://blog.allenspace.
 default theme (`dark`), language/locale (`zh-TW`), social links, analytics, comments,
 search. Highlights:
 
-- **Social links** (`github`, `linkedin`, `x`, `facebook`, `reddit`, `buymeacoffee`, …):
-  rendered by `components/hux/HuxSocial.tsx` as the Hux-style circular icons (custom SVGs,
-  no icon-font dependency). **Empty string = icon hidden.** RSS is always shown and links
-  to `/feed.xml`.
+- **Social links** (`github`, `linkedin`, `x`, `facebook`, `reddit`, `buymeacoffee`):
+  rendered by `components/hux/HuxSocial.tsx` from a **hard-coded list** as the Hux-style
+  circular icons (custom SVGs, no icon-font dependency). That list is exhaustive.
+  **Empty string = icon hidden.** RSS is always shown and links to `/feed.xml`.
 - **Analytics**: GA4 via `googleAnalytics.googleAnalyticsId` (`G-M2HR0MGKVL`, carried over
   from the old site). Umami/Plausible/PostHog remain as commented examples — switching
   providers also requires updating the CSP in `next.config.mjs` (see §8). Google Search
@@ -572,6 +572,24 @@ chromium`) locally. It does not run on Vercel (same constraint as HarfBuzz); the
   triggers, and the paired popup focus tokens must appear only as a pair inside a focus
   branch. **Wiring only**: computed colour, contrast, and breakpoint coverage remain
   Playwright's job, and Playwright is not a required check.
+- `tests/unit/layout-reachability.test.ts` — the architectural contract for `layouts/`: every
+  `.tsx` found recursively underneath it must be an import that **survives compilation** in some
+  `app/**/page.tsx`. Test-only imports (this repo's unit tests do import production components
+  directly, so a test could keep dead code alive on its own) and barrels that no page references
+  deliberately do not count. **"Survives compilation" rather than "appears in the source" is the
+  crux**: `no-unused-vars` is off in eslint and `noUnusedLocals` is unset, so dropping a usage
+  while leaving its import behind escapes every other gate, and the compiler erases the whole
+  import — checking only that an import exists means testing something already thrown away.
+  **The judgement is delegated to `ts.transpileModule` (using the repo's own compilerOptions) and
+  path resolution to `ts.resolveModuleName`; neither is reimplemented**: hand-rolled identifier
+  matching errs in both directions (a same-named object property, type parameter, interface
+  member, or another import's source name all count as "used", while `class Page extends Layout`
+  is a genuine runtime dependency that gets missed because `ExpressionWithTypeArguments` is
+  classified as a TypeNode), and a hand-rolled resolver misses `baseUrl` bare paths, `.js`
+  extension substitution, and directory indexes. **Seventeen negative mutations and five positive
+  controls were all verified.** Candidates are enumerated with `readdirSync` rather than
+  `git ls-files`, otherwise an unstaged file added by a mutation test would be invisible and pass
+  silently.
 - `tests/unit/post-publication.test.ts`, `tests/unit/content-outputs.test.ts`,
   `tests/unit/content-writers.test.ts`, and `tests/unit/route-publication-wiring.test.ts` —
   the single entrance for publication policy: the reachable/listed truth table under
