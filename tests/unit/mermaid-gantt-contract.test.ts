@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic'
+import { visit } from 'unist-util-visit'
+import type { Element } from 'hast'
 import {
   extractMermaidDefinitions,
   hashDiagram,
@@ -31,47 +34,33 @@ async function ganttDefinitions(): Promise<{ source: string; definition: string 
 }
 
 /**
- * 從所有 opening tag 的 class 屬性抽出 token。
+ * 從所有元素的 class 屬性抽出 token。
  *
- * 刻意**不**比對 `class="today"` 這種精確字串 —— `class="today marker"` 與
- * `class='today'` 都帶著真正的 today token 卻不含那個字串,精確比對會被穿透。
- * 按 token 比對同時仍會避開 `<style>` 區塊裡的 `.today{…}` 樣式規則
- * (那不在任何 opening tag 的 class 屬性裡)。
+ * **用真正的 parser,不用 regex。** 這條路先後試過三種 regex 寫法,每一種都被合法輸入
+ * 穿透,而且失敗方向包含**假綠**(該抓的沒抓到):
  *
- * **也不能用單一 regex 直接找 `class="…"`。** `<[a-z][^>]*\sclass=` 裡的 `[^>]*` 是
- * greedy,會回溯到標籤內**最後一個** ` class=`,於是
- * `<g class="today" data-note=' class="other"'>` 只抓得到屬性值裡的假 class,真正的
- * today 反而被漏掉。
+ * - 精確比對 `class="today"` → 被 `class="today marker"`、`class='today'` 繞過
+ * - 單一 regex 找 `class=` → `[^>]*` 是 greedy,會回溯到標籤內最後一個 `class=`,
+ *   於是 `<g class="today" data-note=' class="other"'>` 只抓到假的那個
+ * - 剝註解/CDATA 後逐標籤掃 → `<?pi <!-- ?><svg><g class="today"/></svg><?pi --> ?>`
+ *   是合法 XML(xmllint 驗過),剝除會從第一個 PI 一路吃到第二個,把真的 today 刪掉;
+ *   實體編碼的 `class="to&#100;ay"` 也照樣看不見
  *
- * 這裡是**單向前掃**:剝掉註解與 CDATA,逐標籤循序吃屬性,吃完把游標推過整個
- * opening tag —— 屬性值裡的 `<fake class='today'>` 因此不會被當成新標籤。
- *
- * **已知限制(刻意不處理)**:實體編碼的 class(`class="to&#100;ay"`)看不出來,
- * 那需要真正的 XML parser。mermaid 不會這樣輸出 today marker,為此加一個依賴不划算;
- * mermaid 升級本來就另有「目視確認幾張圖」的守則(見 AGENTS.md)。
+ * 根本問題是**剝除 XML 結構本身就需要理解 XML 結構**。`hast-util-from-html-isomorphic`
+ * 與 `unist-util-visit` 都已經是本 repo 的直接依賴(後者 `lib/rehype-mermaid.mjs` 就在用),
+ * 所以正確做法零成本:交給 parser,它自己處理實體、namespace、註解、CDATA 與屬性值裡的
+ * 假標籤。合法性由 producer 端的 `DOMParser` 負責,這裡只需要讀已經合法的 SVG。
  */
 function classTokens(svg: string): string[] {
   const tokens = new Set<string>()
-  const source = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
-  // 標籤名要吃得下 namespace 前綴(`<s:g>`),否則內層掃描會對不上而**漏掉**該標籤的 class。
-  const tagStart = /<([a-z_:][-a-z0-9_:.]*)/gi
-  const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
-  let opening: RegExpExecArray | null
-  while ((opening = tagStart.exec(source)) !== null) {
-    let cursor = opening.index + opening[0].length
-    attribute.lastIndex = cursor
-    let match: RegExpExecArray | null
-    while ((match = attribute.exec(source)) !== null) {
-      cursor = attribute.lastIndex
-      if (match[1].toLowerCase() !== 'class') continue
-      for (const token of (match[2] ?? match[3] ?? '').split(/\s+/)) {
-        if (token) tokens.add(token)
-      }
+  visit(fromHtmlIsomorphic(svg, { fragment: true }), 'element', (node: Element) => {
+    const className = node.properties?.className
+    const values = Array.isArray(className) ? className : String(className ?? '').split(/\s+/)
+    for (const value of values) {
+      const token = String(value)
+      if (token) tokens.add(token)
     }
-    // 把外層掃描推過已消化的 opening tag。sticky regex 在 exec 回傳 null 時會把
-    // lastIndex 歸零,所以游標必須自己在迴圈內累進,不能事後讀 attribute.lastIndex。
-    tagStart.lastIndex = Math.max(tagStart.lastIndex, cursor)
-  }
+  })
   return [...tokens]
 }
 
@@ -139,9 +128,17 @@ describe('classTokens', () => {
     expect(classTokens(svg)).not.toContain('today')
   })
 
-  // 刻意記錄的已知限制:實體編碼看不出來,那需要真正的 XML parser。
-  // 寫成測試是為了讓限制**可見**,而不是讓它靜靜地待在註解裡等人踩。
-  it('已知限制:實體編碼的 class 抓不到(需要真正的 XML parser)', () => {
-    expect(classTokens('<g class="to&#100;ay"/>')).not.toContain('today')
+  // 實體編碼在解碼後就是 today。先前的 regex 版本看不見它,而且把這個假綠寫成
+  // 「會通過的測試」—— 那等於把缺陷定義成成功,真正修好時反而變紅。
+  it('實體編碼的 class 解碼後也抓得到 today token', () => {
+    expect(classTokens('<g class="to&#100;ay"/>')).toContain('today')
+  })
+
+  // 合法 XML,但 regex 版本的剝除會從第一個 processing instruction 裡的 `<!--`
+  // 一路吃到第二個裡的 `-->`,把中間真正的 today 元素整段刪掉 —— 假綠。
+  it('processing instruction 裡的 <!-- 不會吃掉後面真正的 today 元素', () => {
+    expect(
+      classTokens('<?pi <!-- ?><svg><g class="today"/></svg><?pi --> ?>')
+    ).toContain('today')
   })
 })

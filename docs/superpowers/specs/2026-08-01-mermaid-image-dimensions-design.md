@@ -226,12 +226,17 @@ C 組**不是**把 viewBox 當 SVG 的普遍規則(root viewport 與 viewBox 本
 所有檢查仍會全綠。需要持久斷言,**放在單元測試層**(不需瀏覽器,CI 每次都跑):
 
 - 掃**全 `data/blog`** 的每一張 gantt,斷言定義**含** `todayMarker off`
-- 讀各自 hash 的兩份 committed SVG,斷言 class token 裡**沒有** `today`
+- 讀各自 hash 的兩份 committed SVG,**用 hast parser 解析**後斷言沒有任何元素帶
+  `today` class token(不是字串比對 —— 見下方修正)
 - 一條正控制:掃得到至少一張 gantt(否則掃描壞掉時上面兩條會空轉通過)
 
-> **實作修正(審查後)**:原本寫的是「讀單一 fixture 檔 + 比對精確字串 `class="today"`」。
-> 兩者都被審查穿透 —— 單一 fixture 讓別篇文章新增沒有 directive 的 gantt 仍全綠;
-> 精確字串則被 `class="today marker"` 與 `class='today'` 繞過。圖種判斷也不能用
+> **實作修正(審查後)**:原本寫的是「讀單一 fixture 檔 + 比對精確字串 `class="today"`」,
+> 之後又試過兩版自製 regex 掃描,**三版全部被合法輸入穿透**:單一 fixture 讓別篇文章的
+> gantt 漏網;精確字串被 `class="today marker"` 與 `class='today'` 繞過;逐標籤掃描則被
+> 實體編碼(`class="to&#100;ay"`)與 processing instruction 裡的 `<!--` 穿透 —— 後者會讓
+> 剝除吃掉真正的 today 元素,是**假綠**。最終改用已在依賴清單裡的
+> `hast-util-from-html-isomorphic` 解析,因為「剝除 XML 結構」本身就需要理解 XML 結構。
+> 圖種判斷也不能用
 > `startsWith('gantt')`(`%%{init: …}%%` 可以出現在關鍵字之前),改用 `/^\s*gantt\b/im`。
 
 第二條同時把「directive 還在但忘了重新 render」這個狀態抓出來——`mermaid-check` 只比對

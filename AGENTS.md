@@ -164,6 +164,14 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   站台的 service worker 對 `.svg` 掛 StaleWhileRevalidate(`app/sw.ts` 展開 `...defaultCache`),
   而 Playwright 預設是 `'allow'` —— 不 block 的話量到的是 SW 快取行為而不是 markup,
   且 SW claim client 與首次影像請求是競態,結果會時好時壞。
+- **要從 SVG/HTML 取結構化資訊(class、屬性、元素),用 `hast-util-from-html-isomorphic`
+  解析,不要寫 regex。** 它與 `unist-util-visit` 都已是直接依賴,零新增成本。2026-08-02
+  在 gantt 的 today marker 斷言上連續寫壞三版 regex,每一版都被合法輸入穿透,而且包含
+  **假綠**:精確字串比對被 `class="today marker"` 繞過;單一 regex 找 `class=` 因為
+  `[^>]*` 是 greedy 會回溯到最後一個而抓到屬性值裡的假 class;逐標籤掃描則被實體編碼
+  (`class="to&#100;ay"`)與 `<?pi <!-- ?>…<?pi --> ?>`(合法 XML,xmllint 驗過)穿透 ——
+  後者讓剝除從第一個 processing instruction 一路吃到第二個,把真正的 today 元素刪掉。
+  根本問題是**剝除 XML 結構本身就需要理解 XML 結構**,每補一個 regex 只是把邊界往外推。
 - **只改 `public/mermaid/` 的 SVG 而不動 markdown,`.contentlayer` 會沿用快取的 HTML。**
   2026-08-01 做突變測試時踩過:patch 了 SVG 的根尺寸再重跑,`<img>` 屬性仍是舊值、
   `naturalWidth` 已是新值,於是紅在錯的斷言上,一度誤判成「那條斷言是空包彈」。
