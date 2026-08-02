@@ -4,6 +4,7 @@ Hard constraints:
 
 - **Document only durable repository properties.** Never record transient run-time or working-tree state: which files happen to be modified, staged, or untracked during a documentation run, the status of the OpenWiki setup itself, or anything that becomes false once the run is committed. Such state is not a repository invariant and must never appear in an invariants list.
 - **Do not restate `AGENTS.md` at length.** It is the human-maintained source of truth for rules, environment pitfalls, and the reasoning behind them. Link to it, and focus this wiki on what is derived from source code: structure, contracts, test coverage, and change impact.
+- **`docs/lessons/` holds the same kind of human-maintained rules, routed out of `AGENTS.md` because they are needed only when working on one subsystem.** `AGENTS.md` keeps a pointer with the trigger condition. Treat those files exactly as `AGENTS.md`: link, never restate at length, and never rewrite them from generated content. As of 2026-08-02 the only one is `docs/lessons/mermaid-pipeline.md`.
 - **Prefer facts verifiable from code, config, and tests** over prose summaries. Cite concrete file paths so a reader can check every claim.
 - **Use the repository's exact OpenWiki refresh procedure.** After source changes are committed
   and the worktree is clean, the local refresh command is
