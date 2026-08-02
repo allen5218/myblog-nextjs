@@ -267,8 +267,13 @@ C 組**不是**把 viewBox 當 SVG 的普遍規則(root viewport 與 viewBox 本
 
 ## 文件連動
 
-- `openwiki/operations/runbook.md`:「mermaid 退化成程式碼區塊」四點排查補第 5 點(ENOENT
-  以外的尺寸問題現在是 **build 失敗**,不再退化,排查方向不同)
+- `openwiki/operations/runbook.md`:說明 ENOENT 以外的尺寸問題現在是 **build 失敗**、
+  不再退化
+
+  > **實作修正(審查後)**:原本寫的是「在四點排查清單補第 5 點」。**沒有這樣做,而且
+  > 不該這樣做** —— 那份清單回答的是「為什麼圖退化成了程式碼區塊」,而 fail-loud 根本
+  > 不會產生程式碼區塊,列進去只會把讀者導向錯誤方向。改成在同一段用散文交代兩者的分野;
+  > `AGENTS.md` 的四點排查也因此維持原樣、與 runbook 一致。
 - `openwiki/INSTRUCTIONS.md` backlog:「Mermaid image dimensions」改寫為已修;
   「Gantt `today` marker」移除
 - `AGENTS.md`:新增「HTML `width`/`height` 屬性是非負整數,mermaid viewBox 幾乎都是小數」
