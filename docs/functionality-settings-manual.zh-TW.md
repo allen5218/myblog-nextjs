@@ -170,7 +170,9 @@ Updated/Posted 日期資訊下方;正文連結則在全站原有
   SVG 由 `yarn mermaid:render`(Playwright Chromium)產生並 commit 到
   `public/mermaid/<hash>.{light,dark}.svg` — **不在 Vercel 上跑**(和 HarfBuzz 同樣的
   headless 瀏覽器限制,見 §6/§10);快取未命中(圖還沒渲染)會優雅退化成一般程式碼區塊,
-  不會讓 build 失敗。警告級的 GitHub Action `mermaid-check`
+  不會讓 build 失敗 —— 但**「檔案在、根標籤卻沒有合法尺寸」會直接讓 build 失敗**,因為
+  `mermaid-check` 只比對檔名、不讀內容,靜默退化的話這種狀態沒有任何防線。警告級的
+  GitHub Action `mermaid-check`
   (`.github/workflows/mermaid-check.yml`,job 名 `mermaid`,非必過檢查)在 push/PR 時跑
   `yarn mermaid:render --check` —— 純結構比對(每個 fence 的內容 hash 是否都有對應
   committed SVG、有無孤兒檔),不重新渲染,藉此提醒作者「改了圖忘了 render + commit」。
@@ -178,6 +180,11 @@ Updated/Posted 日期資訊下方;正文連結則在全站原有
   `normalizeSvg` 會把 mermaid 序列化出的裸 `<br>` 補成自閉合,`yarn mermaid:render` 也會用
   瀏覽器的 `DOMParser` 驗每一張輸出,不合法就**直接讓指令失敗**(不合法的 SVG 不會塌成
   程式碼區塊,而是變成沒有固有尺寸的細線 —— 請求仍是 200,沒有這道關卡就只能靠肉眼發現)。
+  兩張 `<img>` 都帶 `width`/`height` 屬性(取自 SVG 根標籤、四捨五入成整數,因為 HTML 的
+  這兩個屬性只接受非負整數),SVG 抵達前就保留版位。
+- **靜態 gantt 必須寫 `todayMarker off`**:圖是 build 時渲染的,mermaid 預設畫的「今天」
+  會被凍結在渲染那一刻,從隔天起就是錯的。單元測試會掃 `data/blog` 底下每一張 gantt 強制
+  這條規則。
 - **標題**:自動產生 slug 錨點 — hover 時在標題文字**後方**顯示純文字 `#`(AnchorJS 風格,
   照搬自 Jekyll 舊站;不是前置圖標)。
 - MDX 可以執行程式碼。`data/` 底下一律視為受信任的作者內容;沒有另行安全設計前,絕不

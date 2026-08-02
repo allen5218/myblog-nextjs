@@ -6,18 +6,33 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
-import type { Root } from 'hast'
+import type { Element, Root } from 'hast'
+import { visit } from 'unist-util-visit'
 import rehypeMermaid from '../../lib/rehype-mermaid.mjs'
 import { hashDiagram, svgFileName } from '../../scripts/mermaid-shared.mjs'
 
 const DEF = 'graph TD\n  A-->B'
 let cacheDir: string
 
+// light 與 dark 刻意用**不同**的兩軸數值:現有 10 組 committed SVG 的 light/dark 尺寸
+// 剛好相同,所以「讀 light 套給 dark」的實作在 Playwright 層測不出來,只能在這裡守。
+function svgFixture(width: number, height: number) {
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`
+}
+const LIGHT = { width: 261.5546875, height: 522 }
+const DARK = { width: 263.25, height: 524.75 }
+
 beforeAll(async () => {
   cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mmd-cache-'))
   const hash = hashDiagram(DEF)
-  await fs.writeFile(path.join(cacheDir, svgFileName(hash, 'light')), '<svg/>')
-  await fs.writeFile(path.join(cacheDir, svgFileName(hash, 'dark')), '<svg/>')
+  await fs.writeFile(
+    path.join(cacheDir, svgFileName(hash, 'light')),
+    svgFixture(LIGHT.width, LIGHT.height)
+  )
+  await fs.writeFile(
+    path.join(cacheDir, svgFileName(hash, 'dark')),
+    svgFixture(DARK.width, DARK.height)
+  )
 })
 
 afterAll(async () => {
@@ -34,6 +49,23 @@ function render(markdown: string, cacheDir: string) {
     .toString()
 }
 
+/** 回傳轉換後的 HAST,讓斷言能看 property 而不是序列化字串。 */
+function transform(markdown: string, cacheDir: string): Root {
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkRehype)
+    .use(rehypeMermaid, { cacheDir, urlBase: '/mermaid' })
+  return processor.runSync(processor.parse(markdown)) as Root
+}
+
+function images(tree: Root): Element[] {
+  const found: Element[] = []
+  visit(tree, 'element', (node: Element) => {
+    if (node.tagName === 'img') found.push(node)
+  })
+  return found
+}
+
 describe('rehypeMermaid', () => {
   it('code 子節點被語法高亮套件包成巢狀 <span> 時仍能正確擷取文字算出 hash', async () => {
     // 模擬 rehype-prism-plus 之類的插件已經跑過,把 <code> 的文字子節點
@@ -45,8 +77,8 @@ describe('rehypeMermaid', () => {
     const hash = hashDiagram(nestedDef)
     const lightFile = svgFileName(hash, 'light')
     const darkFile = svgFileName(hash, 'dark')
-    await fs.writeFile(path.join(cacheDir, lightFile), '<svg/>')
-    await fs.writeFile(path.join(cacheDir, darkFile), '<svg/>')
+    await fs.writeFile(path.join(cacheDir, lightFile), svgFixture(LIGHT.width, LIGHT.height))
+    await fs.writeFile(path.join(cacheDir, darkFile), svgFixture(DARK.width, DARK.height))
 
     const tree: Root = {
       type: 'root',
@@ -103,6 +135,104 @@ describe('rehypeMermaid', () => {
     expect(html).toContain('language-mermaid')
     expect(html).not.toContain('mermaid-figure')
   })
+
+  it('每個 img 的 class、src 與整數尺寸綁在同一個節點上', () => {
+    const hash = hashDiagram(DEF)
+    // **斷言必須看 HAST property,不能看序列化後的字串。** 若實作把 property 誤寫成
+    // `dataWidth`,序列化是 `data-width="262"`,而 `includes('width="262"')` 對它是 true
+    // —— img 完全沒有尺寸屬性,字串比對卻全綠。同時比對 src 是為了擋「class、尺寸、
+    // 檔案整組錯配」的實作。
+    const tags = images(transform('```mermaid\n' + DEF + '\n```\n', cacheDir))
+    expect(tags).toHaveLength(2)
+    const light = tags.find((node) => (node.properties?.className as string[])?.includes('mermaid-light'))
+    const dark = tags.find((node) => (node.properties?.className as string[])?.includes('mermaid-dark'))
+
+    // Math.round(261.5546875) === 262(截斷會得到 261,故此值抓得到漏 round)
+    expect(light?.properties).toMatchObject({
+      src: `/mermaid/${svgFileName(hash, 'light')}`,
+      loading: 'lazy',
+      width: 262,
+      height: 522,
+    })
+    expect(dark?.properties).toMatchObject({
+      src: `/mermaid/${svgFileName(hash, 'dark')}`,
+      loading: 'lazy',
+      width: 263,
+      height: 525,
+    })
+  })
+
+  // mermaid-check 只比對檔名,對「檔案在、尺寸缺」這種狀態是綠的 —— 靜默退化
+  // 等於新增一條 render/check/build 全綠卻在 production 退化的路徑。
+  //
+  // 兩個變體各測一次:只測「兩份都壞」的話,實作只要先驗 light 就會先 throw,
+  // 「dark 的非法尺寸被靜默退化」這個 bug 照樣漏掉。
+  it.each([
+    ['light', 'graph TD\n  P-->Q'],
+    ['dark', 'graph TD\n  R-->S'],
+  ] as const)('只有 %s 變體尺寸損壞時仍丟錯並指出該檔', async (broken, def) => {
+    const hash = hashDiagram(def)
+    for (const variant of ['light', 'dark'] as const) {
+      await fs.writeFile(
+        path.join(cacheDir, svgFileName(hash, variant)),
+        variant === broken ? '<svg></svg>' : svgFixture(LIGHT.width, LIGHT.height)
+      )
+    }
+    expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(
+      new RegExp(svgFileName(hash, broken))
+    )
+  })
+
+  // 缺檔有 mermaid-check 兜底,不該遮住沒有防線的「存在但損壞」。
+  // **兩個方向都要測**:只測一邊的話,把讀取順序反過來、或對某一邊恢復短路,
+  // 都能讓「缺檔遮住損壞」重新發生而測試照樣全綠。
+  it.each([
+    ['dark', 'light', 'graph TD\n  T-->U'],
+    ['light', 'dark', 'graph TD\n  X-->Y2'],
+  ] as const)(
+    '%s 損壞、%s 缺檔時,揭露損壞的那份而不是靜默退化',
+    async (broken, _missing, def) => {
+      const hash = hashDiagram(def)
+      await fs.writeFile(path.join(cacheDir, svgFileName(hash, broken)), '<svg></svg>')
+
+      expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(
+        new RegExp(svgFileName(hash, broken))
+      )
+    }
+  )
+
+  // ENOENT 以外的讀檔錯誤(EACCES / EISDIR / ENOTDIR)**不是**快取未命中,不能退化。
+  // 少了這條,把整個 catch body 換成 `return null` 也會全綠 —— 而那正好是本次要消滅的
+  // 那一類靜默失敗:`mermaid-check` 對這些狀態同樣沒有防線。
+  it('讀檔錯誤不是 ENOENT 時原樣拋出,不當成快取未命中', async () => {
+    const def = 'graph TD\n  Z-->A2'
+    const hash = hashDiagram(def)
+    // 把快取「檔案」建成目錄,readFileSync 會丟 EISDIR。
+    await fs.mkdir(path.join(cacheDir, svgFileName(hash, 'light')), { recursive: true })
+    await fs.writeFile(
+      path.join(cacheDir, svgFileName(hash, 'dark')),
+      svgFixture(DARK.width, DARK.height)
+    )
+
+    expect(() => render('```mermaid\n' + def + '\n```\n', cacheDir)).toThrow(/EISDIR|illegal operation/i)
+  })
+
+  it.each([['light'], ['dark']] as const)(
+    '只有 %s 變體缺檔(另一份有效)時退化成程式碼區塊,不丟錯',
+    async (missing) => {
+      const def = `graph TD\n  V-->W${missing}`
+      const hash = hashDiagram(def)
+      const present = missing === 'light' ? 'dark' : 'light'
+      await fs.writeFile(
+        path.join(cacheDir, svgFileName(hash, present)),
+        svgFixture(LIGHT.width, LIGHT.height)
+      )
+
+      const html = render('```mermaid\n' + def + '\n```\n', cacheDir)
+      expect(html).toContain('language-mermaid')
+      expect(html).not.toContain('mermaid-figure')
+    }
+  )
 
   it('非 mermaid 的程式碼區塊完全不受影響', () => {
     const html = render('```js\nconst x = 1\n```\n', cacheDir)

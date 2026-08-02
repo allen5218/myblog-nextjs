@@ -108,6 +108,90 @@ export function normalizeSvg(svg) {
   return out.trim()
 }
 
+/**
+ * 從 SVG 字串的根標籤抽出固有尺寸。
+ *
+ * 回傳非 null 的契約是:**兩軸取整後都是正的 safe integer**(consumer 會 `Math.round`
+ * 後寫進 HTML 的 width/height 屬性,那是唯一真正要成立的條件)。缺尺寸、非 SVG 十進位
+ * 寫法、根元素不是 `<svg>`、opening tag 有解析不了的殘餘、屬性重複 —— 一律回傳 null。
+ *
+ * **producer 與 consumer 共用同一個實作是刻意的。** producer(mermaid-render 寫檔前)
+ * 若用瀏覽器的 DOMParser、consumer(rehype,在 Node 裡)用字串解析,兩者的接受集合不同,
+ * 就會出現「producer 驗證過關、consumer 仍解析失敗」的縫隙 —— producer 的不變量因此
+ * 只是「某個 parser 讀得到」,而不是我們真正要的「consumer 讀得到」。
+ *
+ * 回傳 null 而非丟錯,是為了讓呼叫端各自附上自己的脈絡(renderer 知道圖表 id、
+ * rehype 知道檔案路徑),並各自決定錯誤語意。
+ */
+// SVG 的 <length> 是十進位寫法。`Number()` 會接受 "0x10"、"0b10" 這類 JS 數字字面值,
+// 那不是合法的 SVG 屬性值 —— 放行等於讓瀏覽器與我們對固有尺寸的解讀不一致。
+// 小數點後必須至少一位數字 —— `10.` 不是合法寫法。允許指數是因為 SVG 的 number
+// 文法明確接受科學記號(`1e3`、`2.5E+2`),不是因為 mermaid 會不會輸出。
+const SVG_DECIMAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i
+
+function svgLength(raw) {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!SVG_DECIMAL.test(trimmed)) return null
+  // 這裡刻意**不**檢查 finite:`1e309` 會變成 Infinity,而 `isUsableDimension` 的
+  // `isSafeInteger` 本來就會拒絕它。多加一道無法被任何突變區分的檢查,只會讓讀者
+  // 誤以為那是獨立防線。詞法由 SVG_DECIMAL 守,值域由 isUsableDimension 守。
+  return Number(trimmed)
+}
+
+/**
+ * consumer 會 `Math.round` 後寫進 HTML 的 width/height 屬性,所以真正的不變量是
+ * 「**取整後**是能安全序列化成十進位整數的正數」,而不是原始值大於零:
+ *
+ * - `width="0.4"`:原始值 > 0,取整卻是 `0`,一樣保留不了版位。
+ * - `width="1e21"`:取整仍是 `1e21`,序列化成 `"1e+21"` —— 那不是 HTML 接受的整數寫法,
+ *   瀏覽器不會照我們的預期解讀。
+ */
+function isUsableDimension(value) {
+  const rounded = Math.round(value)
+  return Number.isSafeInteger(rounded) && rounded > 0
+}
+
+export function parseSvgRootDimensions(svg) {
+  // 必須是文件的**第一個**元素:不錨定的話 `<xyz width="10" height="20"><svg/></xyz>`
+  // 會從前綴元素身上讀走尺寸,而它不是能直接餵給 <img> 的 SVG 資源。
+  //
+  // (`normalizeSvg` 只保證 `trim()`;「以 `<svg` 開頭」是 mermaid 輸出本來就有的性質、
+  // 被原樣保留,不是 `normalizeSvg` 強制的。所以這裡是自己驗,不是信賴上游契約。)
+  const opening = /^<svg(?=[\s/>])/i.exec(svg)
+  if (!opening) return null
+
+  // 循序吃 name="value" / name='value'。**不能**直接對整段字串搜尋 ` width="` ——
+  // `data-note=' width="999"'` 這種屬性值裡的假字串會被當成真的 width 抓走。
+  // 循序掃描會把引號內容整段吃掉,假字串因此不可能被誤認成屬性。
+  const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
+  // 用 `opening.index + …` 而不是只用長度:兩者目前等價(錨定保證 index 為 0),但寫死
+  // 「從 4 開始」會讓錨定變成隱性承重 —— 日後若為了支援前置 XML declaration 放寬錨定,
+  // 游標會靜默錯位到前一個元素身上,從它讀走 width/height。
+  attribute.lastIndex = opening.index + opening[0].length
+  const found = new Map()
+  let cursor = attribute.lastIndex
+  let match
+  while ((match = attribute.exec(svg)) !== null) {
+    const name = match[1].toLowerCase()
+    // 同一個屬性出現兩次時哪一個生效由 parser 自己決定,不同實作可能不一致。
+    // 與其猜,不如拒絕 —— 這是 fail-loud 而不是靜默選一個。
+    if (found.has(name)) return null
+    found.set(name, match[2] ?? match[3])
+    cursor = attribute.lastIndex
+  }
+  // sticky 掃描停下來的原因**不只是**遇到標籤結尾,任何解析不了的 token 都會讓它停。
+  // 少了這道檢查,`<svg width="10" height="20" BROKEN>` 會因為尺寸已先讀到而過關,
+  // 後面的垃圾被靜默忽略。要求剩餘內容真的是標籤結尾,循序掃描的契約才成立。
+  if (!/^\s*\/?>/.test(svg.slice(cursor))) return null
+
+  const width = svgLength(found.get('width'))
+  const height = svgLength(found.get('height'))
+  if (width === null || height === null) return null
+  if (!isUsableDimension(width) || !isUsableDimension(height)) return null
+  return { width, height }
+}
+
 export function extractMermaidDefinitions(markdown) {
   const { content } = matter(markdown)
   const tree = remark().parse(content)

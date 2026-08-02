@@ -49,6 +49,7 @@ sequenceDiagram
 gantt
     title 專案時程表
     dateFormat  YYYY-MM-DD
+    todayMarker off
     section 階段一
     需求分析    :done,    des1, 2025-01-01,2025-01-15
     系統設計    :done,    des2, 2025-01-10,2025-01-25

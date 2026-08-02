@@ -4,6 +4,7 @@ import {
   normalizeDefinition,
   svgFileName,
   normalizeSvg,
+  parseSvgRootDimensions,
   extractMermaidDefinitions,
   LIGHT_THEME,
   DARK_THEME,
@@ -97,6 +98,128 @@ describe('extractMermaidDefinitions', () => {
     expect(defs).toHaveLength(2)
     expect(defs[0]).toContain('graph TD')
     expect(defs[1]).toContain('sequenceDiagram')
+  })
+})
+
+describe('parseSvgRootDimensions', () => {
+  // producer(render 寫檔前)與 consumer(rehype 產生 <img>)共用同一個實作是刻意的:
+  // 兩邊各一套 parser 會出現「producer 過關、consumer 仍解析失敗」的縫隙。
+  it('抽出小數尺寸(mermaid 的 viewBox 幾乎都是小數,現有 10 組有 7 組)', () => {
+    const svg =
+      '<svg height="461.63739013671875" width="722.8872680664062" viewBox="0 0 722.8872680664062 461.63739013671875"></svg>'
+    expect(parseSvgRootDimensions(svg)).toEqual({
+      width: 722.8872680664062,
+      height: 461.63739013671875,
+    })
+  })
+
+  it('屬性順序與夾雜的其他屬性不影響抽取', () => {
+    const svg = '<svg id="mmd-abc-dark" class="classDiagram" width="650" role="img" height="355">'
+    expect(parseSvgRootDimensions(svg)).toEqual({ width: 650, height: 355 })
+  })
+
+  it('缺 width 或缺 height 回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10"></svg>')).toBeNull()
+  })
+
+  it('非數字(例如未被清掉的 width="100%")回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="100%" height="10"></svg>')).toBeNull()
+  })
+
+  it('零或負值回傳 null —— 零尺寸保留不了版位,與缺尺寸同樣有害', () => {
+    expect(parseSvgRootDimensions('<svg width="0" height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="-5"></svg>')).toBeNull()
+  })
+
+  // consumer 會 Math.round 後寫進 HTML 屬性,所以不變量必須是「取整後仍為正」。
+  // 只檢查原始值 > 0 的話,0.4 會通過 parser 卻輸出 width="0"。
+  it('取整後會變成 0 的尺寸回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="0.4" height="10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="0.49"></svg>')).toBeNull()
+    // 0.5 取整是 1,仍然可用 —— 邊界不能連坐。
+    expect(parseSvgRootDimensions('<svg width="0.5" height="10"></svg>')).toEqual({
+      width: 0.5,
+      height: 10,
+    })
+  })
+
+  // Number() 接受 JS 數字字面值,但 SVG 的 <length> 只有十進位寫法。
+  it('hex / binary 等非 SVG 十進位寫法回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="0x10" height="0b10"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="1_0" height="10"></svg>')).toBeNull()
+  })
+
+  it('小數點後沒有數字(10.)回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="10." height="20"></svg>')).toBeNull()
+  })
+
+  // SVG 的 number 文法明確允許科學記號,即使 mermaid 目前不輸出。
+  it('科學記號可以解析', () => {
+    expect(parseSvgRootDimensions('<svg width="1e3" height="2.5E+2"></svg>')).toEqual({
+      width: 1000,
+      height: 250,
+    })
+  })
+
+  // 接受科學記號就必須守住它的上界:取整後仍是 1e21 的值會被序列化成 "1e+21",
+  // 那不是 HTML 接受的整數寫法。1e309 則會變成 Infinity。
+  it('大到無法安全序列化成整數的尺寸回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="1e21" height="20"></svg>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="1e309" height="20"></svg>')).toBeNull()
+    // 精確邊界:2^53 - 1 接受、2^53 拒絕。1e21 能殺死突變但不是緊鄰上界的案例。
+    expect(parseSvgRootDimensions('<svg width="9007199254740991" height="20"></svg>')).toEqual({
+      width: 9007199254740991,
+      height: 20,
+    })
+    expect(parseSvgRootDimensions('<svg width="9007199254740992" height="20"></svg>')).toBeNull()
+  })
+
+  // sticky 掃描停下來的原因不只是遇到標籤結尾,任何解析不了的 token 都會讓它停。
+  // 少了邊界檢查,尺寸已先讀到就會讓後面的垃圾被靜默忽略。
+  it('opening tag 有解析不了的殘餘時回傳 null', () => {
+    expect(parseSvgRootDimensions('<svg width="10" height="20" BROKEN>')).toBeNull()
+    expect(parseSvgRootDimensions('<svg width="10" height="20" data-x=nope>')).toBeNull()
+  })
+
+  it('屬性重複出現時回傳 null(哪一個生效因實作而異,不猜)', () => {
+    expect(parseSvgRootDimensions('<svg width="10" width="99" height="20">')).toBeNull()
+  })
+
+  // 直接對整段搜尋 ` width="` 會抓到別的屬性值裡的假字串。
+  it('屬性值內含假的 width= 字串時不被穿透', () => {
+    expect(
+      parseSvgRootDimensions(`<svg data-note=' width="999"' width="10" height="20"></svg>`)
+    ).toEqual({ width: 10, height: 20 })
+  })
+
+  // 根元素不是 <svg> 的文件不能當成可直接餵給 <img> 的資源。
+  //
+  // 拿掉 `^` 時變紅的是**第一條**(`<wrapper>`):游標從 `opening.index` 起算,
+  // 掃到的是內層 `<svg>` 自己的尺寸,於是回傳 {10,20} 而非 null。
+  //
+  // 第二條守的是**游標算術與錨定的組合**:若有人同時放寬錨定又把游標改回寫死長度,
+  // 掃描會錯位到前綴元素身上、從 `<xyz>` 讀走 width/height。單獨看它現在是綠的,
+  // 但它記錄了那個具體的損壞形態,兩條合起來才把這段邏輯釘住。
+  it.each([
+    ['前綴元素沒有尺寸', '<wrapper><svg width="10" height="20"></svg></wrapper>'],
+    ['前綴元素自己帶尺寸', '<xyz width="10" height="20"><svg/></xyz>'],
+  ])('svg 不是文件第一個元素時回傳 null(%s)', (_label, svg) => {
+    expect(parseSvgRootDimensions(svg)).toBeNull()
+  })
+
+  it('沒有 svg 根標籤回傳 null', () => {
+    expect(parseSvgRootDimensions('<html><body>nope</body></html>')).toBeNull()
+  })
+
+  // mermaid 只輸出雙引號。單引號能通過是「引號感知掃描」的副產物 —— 為了不被
+  // `data-note='…'` 這類屬性誤導,掃描本來就必須認得兩種引號,額外再去拒絕單引號的
+  // width/height 只會多一條沒人需要的規則。這裡把這個副產物釘住,避免日後誤以為是 bug。
+  it('單引號的 width/height 也能解析(引號感知掃描的副產物)', () => {
+    expect(parseSvgRootDimensions("<svg width='10' height='20'></svg>")).toEqual({
+      width: 10,
+      height: 20,
+    })
   })
 })
 

@@ -115,29 +115,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   PAT;先申請沙箱外權限重跑 `gh auth status && gh api user --jq .login`。確認成功後,
   後續 `gh` 命令使用沙箱外執行;若仍無法使用,PR、Issue、CI、review 等 GitHub API
   操作可改走已安裝的 GitHub MCP,本機修改、commit、push 仍使用 Git/沙箱外 `gh`。
-- Mermaid 渲染需 headless Chromium,**不能在 Vercel build 跑**;offload 到
-  `yarn mermaid:render`,雙主題 SVG 快取 commit 在 `public/mermaid/`。**任何會跑渲染的新
-  workflow 記得 `yarn playwright install --with-deps chromium`**。
-- **任何影響渲染輸出的改動**(升級 mermaid、改 `LIGHT_THEME`/`DARK_THEME`、改
-  `normalizeSvg` 或 render 邏輯)都要 bump `scripts/mermaid-shared.mjs` 的 `CACHE_VERSION`,
-  再重跑 `yarn mermaid:render` 後 commit。**這是唯一防線**:`mermaid-check` 改成結構檢查後
-  (見下)不再比對 SVG 內容,只要 hash 沒變、檔案還在就綠燈 —— 忘了 bump,過時的 SVG 會
-  悄悄留著、CI 抓不到。升級 mermaid 後另外**目視**確認幾張圖(結構檢查不會替你發現輸出跑掉)。
-- `mermaid-check` 是**警告級非必過**檢查(純結構 hash 比對、刻意不重新渲染,故不需
-  Chromium、也跨平台穩定)。它**抓不到過時的 SVG** —— 那是上一條 `CACHE_VERSION` 的責任。
-- **mermaid fence 靜默退化成程式碼區塊**時(全都不報錯,是刻意的優雅降級),先照
-  `openwiki/operations/runbook.md` 的四點排查(忘了 render / `.contentlayer` 快取卡住 /
-  寫成 `mermaid:標題` / fence 不在 `data/blog`),**不要直接當渲染 bug 追**。
-- **產品端是用 `<img src>` 引 SVG,所以那些 SVG 必須是合法 XML。** `<img>` 載入的 SVG 走
-  **嚴格 XML 解析**,一個裸 void element 就讓整份文件解析失敗:圖塌成沒有固有尺寸的細線,
-  但**請求是 200、沒有 console 錯誤、`mermaid-check` 照樣綠燈**(它不解析輸出)。
-  2026-07-25 踩過:節點標籤寫 `<br/>` 做多行,mermaid 會把它序列化成裸 `<br>` 塞進
-  foreignObject,圖就這樣一路上了 production。`normalizeSvg` 現在會把裸 `<br>` 補成自閉合,
-  `mermaid-render.mjs` 也在 render 當下用同一顆瀏覽器的 `DOMParser` 擋(不合法就直接丟錯)。
-  **診斷「mermaid 顯示不了」時第一個看 `img.naturalWidth`** —— 0 就是 SVG 沒被瀏覽器接受,
-  不是 CSS 或路徑問題;它塌成細線而不是破圖,所以肉眼很容易誤判成「圖沒出來」。
-  回歸測試在 `tests/playwright/mermaid.spec.ts`(必須同時涵蓋各圖種測試文**和**含多行標籤
-  的文章 —— 前者沒有 `<br/>`,單靠它抓不到)。
+- **Mermaid 管線的環境陷阱與不變量在
+  [`docs/lessons/mermaid-pipeline.md`](docs/lessons/mermaid-pipeline.md)。**
+  動到 `scripts/mermaid-*.mjs`、`lib/rehype-mermaid.mjs`、`public/mermaid/` 的產物、
+  mermaid 測試,或排查「圖沒出來 / 圖跑掉」之前**先讀它**。裡面有六個會靜默失敗的坑
+  (`mermaid-check` 只比對檔名、`.contentlayer` 快取、Playwright 的 service worker
+  預設值等),每一個都是實際踩過才寫下來的。**單純在文章裡寫 mermaid fence 不必讀** ——
+  該擋的都有測試機器強制。
 - **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
   原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
   ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**

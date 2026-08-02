@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 // 隱藏文章可用直接 URL 路由到(只是不列在清單),含多種圖種,適合當夾具。
 const mermaidPath = '/2025/08/29/mermaid-v10-test/'
@@ -81,3 +81,151 @@ for (const [label, urlPath] of [
     expect(broken, `這些 SVG 沒有固有尺寸(很可能不是合法 XML):${broken.join(', ')}`).toEqual([])
   })
 }
+
+async function settle(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+  )
+}
+
+async function measure(image: Locator) {
+  return image.evaluate((node) => {
+    const img = node as HTMLImageElement
+    const rect = img.getBoundingClientRect()
+    const sentinel = document.querySelector('[data-mermaid-sentinel]') as HTMLElement
+    return {
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      widthAttribute: img.getAttribute('width'),
+      heightAttribute: img.getAttribute('height'),
+      rect: { width: rect.width, height: rect.height },
+      // 加上 scrollY 換算成文件絕對座標:版位變動可能連帶改變捲動位置,
+      // 只用 viewport 相對座標會把兩種效應混在一起。
+      sentinelTop: sentinel.getBoundingClientRect().top + window.scrollY,
+    }
+  })
+}
+
+// 2026-08-01:<img> 原本只帶 class/src/alt/loading,而 CSS 是 max-width:none + height:auto
+// 且沒有 width —— SVG 抵達前完全不保留版位。尺寸其實一直都在 committed SVG 的根標籤上。
+//
+// 這個測試把 SVG 回應「閘住」,在資源尚未送達的那一刻量版位,再放行量第二次。
+// 三組斷言各守不同鏈結,缺一不可(每一組都有其他組抓不到的突變,見設計文件的突變矩陣)。
+test('SVG 抵達前就保留正確版位', async ({ browser, baseURL }) => {
+  // 站台的 service worker 對 .svg 掛 StaleWhileRevalidate,而 Playwright 預設
+  // serviceWorkers: 'allow' —— 不 block 的話量到的是 SW 快取行為而不是 markup,
+  // 且 SW claim client 與首次影像請求是競態,會得到時好時壞的結果。
+  const context = await browser.newContext({ baseURL, serviceWorkers: 'block' })
+  try {
+    let release!: () => void
+    const responseGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // 記錄**哪些** URL 被攔到,而不是只記「有東西被攔到」。這一頁有多張圖、每張兩個
+    // 變體,若只等「任一請求」,「別張圖被攔到、被量測的這張還沒開始請求」也會滿足
+    // 正控制 —— 那樣它就證明不了「這張圖的回應確實被擋著」。
+    const intercepted = new Set<string>()
+
+    await context.route('**/mermaid/*.svg', async (route) => {
+      intercepted.add(new URL(route.request().url()).pathname)
+      await responseGate
+      await route.continue()
+    })
+
+    const page = await context.newPage()
+    await page.goto(mermaidPath, { waitUntil: 'domcontentloaded' })
+
+    const figure = page.locator('.mermaid-figure').first()
+
+    // 不能用 :visible 選變體 —— Playwright 的可見性要求寬高皆 > 0,零高度元素
+    // 會讓 locator 直接找不到,把「版位退化成零」偽裝成「元素不存在」。
+    const shownIndex = await figure
+      .locator('img')
+      .evaluateAll((nodes) => nodes.findIndex((n) => getComputedStyle(n).display !== 'none'))
+    expect(shownIndex).toBeGreaterThanOrEqual(0)
+    const image = figure.locator('img').nth(shownIndex)
+
+    // 保留 production 的 lazy 行為,不改成 eager。
+    expect(await image.getAttribute('loading')).toBe('lazy')
+
+    const source = await image.getAttribute('src')
+    expect(source).toBeTruthy()
+
+    await figure.evaluate((node) => {
+      // 捲動目標必須是獨立的 1×1 元素,不能是圖片本身 —— 否則「移除 height 屬性」
+      // 的突變會讓 lazy 觸發失效,測試變成因為別的原因紅。
+      const scrollTarget = document.createElement('span')
+      scrollTarget.style.cssText = 'display:block;width:1px;height:1px'
+      node.prepend(scrollTarget)
+      const downstream = document.createElement('div')
+      downstream.dataset.mermaidSentinel = ''
+      node.after(downstream)
+      scrollTarget.scrollIntoView({ behavior: 'instant', block: 'center' })
+    })
+
+    // 等**這張圖自己**的請求被攔到:證明 sentinel 確實觸發了它的 lazy 載入,
+    // 而且此刻它的回應正被閘門擋著。
+    await expect.poll(() => intercepted.has(source!), { timeout: 10_000 }).toBe(true)
+    await settle(page)
+    const before = await measure(image)
+
+    // 正控制:證明量到的確實是「資源尚未抵達」的狀態。少了這條,若 route 沒攔成功
+    // (或被 SW 繞過),before 量到的其實是 after,整組斷言會無聲空轉通過。
+    expect(before.naturalWidth).toBe(0)
+    expect(before.naturalHeight).toBe(0)
+
+    // A 組:版位有沒有被保留
+    expect(before.widthAttribute).not.toBeNull()
+    expect(before.heightAttribute).not.toBeNull()
+    expect(before.rect.height).toBeGreaterThan(0)
+    expect(before.rect.height).toBeCloseTo(
+      before.rect.width * (Number(before.heightAttribute) / Number(before.widthAttribute)),
+      1
+    )
+
+    release()
+    await image.evaluate((node) => (node as HTMLImageElement).decode())
+    await settle(page)
+    const after = await measure(image)
+
+    // 容差 2px 是刻意的,不是隨手挑的數字。HTML 屬性只能是整數而 SVG 的固有尺寸是小數,
+    // 所以載入後改用真實比例時必然有次像素更新:實測這張圖是 0.7px(333 × 470/332.5 − 470),
+    // 現有 20 個產物的最壞情況約 0.889px。取 1px 只剩 0.11px 餘裕,會變成隨機假紅。
+    //
+    // 放寬後 A 組就抓不到「兩軸同時 ×2」了(等比縮放的殘留仍在容差內),那本來就該由
+    // B 組結構性地抓 —— A 組守「有沒有保留形狀對的版位」,B 組守「絕對尺寸對不對」。
+    expect(Math.abs(after.rect.height - before.rect.height)).toBeLessThan(2)
+    expect(Math.abs(after.sentinelTop - before.sentinelTop)).toBeLessThan(2)
+
+    // B 組:保留的版位是不是對的絕對尺寸。單獨守不住 height="1"(A 組負責),
+    // 但 A 組守不住 width/height 同時 ×2 —— 那會比例自洽、前後一致,圖卻被放大兩倍。
+    expect(after.naturalWidth).toBeGreaterThan(0)
+    expect(Math.abs(after.naturalWidth - Number(before.widthAttribute))).toBeLessThanOrEqual(1)
+    expect(Math.abs(after.naturalHeight - Number(before.heightAttribute))).toBeLessThanOrEqual(1)
+
+    // C 組:產物自己的尺寸契約。B 組守不住「normalizeSvg 把 root 寫成 2W×2H」——
+    // 那時 naturalWidth 也是 2W,與屬性一致。這裡錨到 viewBox 才切得開。
+    // 注意這不是 SVG 的普遍規則(root viewport 與 viewBox 允許不同尺度),
+    // 守的是 normalizeSvg 明確選定的契約:root 尺寸 = viewBox extent。
+    const resource = await image.evaluate(async (node) => {
+      const text = await fetch((node as HTMLImageElement).currentSrc).then((r) => r.text())
+      const root = new DOMParser().parseFromString(text, 'image/svg+xml')
+        .documentElement as unknown as SVGSVGElement
+      return {
+        rootWidth: root.width.baseVal.value,
+        rootHeight: root.height.baseVal.value,
+        viewBoxWidth: root.viewBox.baseVal.width,
+        viewBoxHeight: root.viewBox.baseVal.height,
+      }
+    })
+    expect(resource.rootWidth).toBeCloseTo(resource.viewBoxWidth, 6)
+    expect(resource.rootHeight).toBeCloseTo(resource.viewBoxHeight, 6)
+    expect(Number(before.widthAttribute)).toBe(Math.round(resource.viewBoxWidth))
+    expect(Number(before.heightAttribute)).toBe(Math.round(resource.viewBoxHeight))
+  } finally {
+    await context.close()
+  }
+})
