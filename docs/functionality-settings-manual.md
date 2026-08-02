@@ -292,7 +292,8 @@ everything else (including real years such as `/2025/`).
 
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
   excludes draft and hidden posts. The index is public — never put secrets in listed posts.
-  Active result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
+  Selected/hovered results and the `Content` section label use the control cyan
+  (`--hux-control-accent`, `#3A839E`) without changing the broader brand palette.
 - **Comments**: giscus (GitHub Discussions on `allen5218/myblog`) loads automatically once its
   container is within 1000px before or after the viewport; there is no "Load Comments" button.
   Browsers without `IntersectionObserver` load it automatically so comments cannot disappear

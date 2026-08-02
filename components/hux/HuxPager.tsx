@@ -14,12 +14,18 @@ export default function HuxPager({ next, prev }: { next?: PagerLink; prev?: Page
     <ul className="pager">
       {prev && (
         <li className="previous">
-          <Link href={prev.href}>← {prev.title}</Link>
+          <Link href={prev.href}>
+            <span className="pager-label">Previous</span>
+            <span className="pager-title">{prev.title}</span>
+          </Link>
         </li>
       )}
       {next && (
         <li className="next">
-          <Link href={next.href}>{next.title} →</Link>
+          <Link href={next.href}>
+            <span className="pager-label">Next</span>
+            <span className="pager-title">{next.title}</span>
+          </Link>
         </li>
       )}
     </ul>

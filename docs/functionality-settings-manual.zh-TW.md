@@ -257,8 +257,8 @@ dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共�
 ## 5. 搜尋、留言、分析
 
 - **搜尋**:Pliny KBar(`⌘K` / `Ctrl+K`)。索引在 `/search.json`,build 時產生,排除草稿與
-  隱藏文章。索引是公開的 — 列出的文章絕不可含機密。選中結果的高亮色是品牌青色
-  (`--color-primary-600`,`#4db8d1`)。
+  隱藏文章。索引是公開的 — 列出的文章絕不可含機密。選中／滑過結果與 `Content` 分段標籤
+  使用控制項青色(`--hux-control-accent`,`#3A839E`),不影響其他品牌色。
 - **留言**:giscus(`allen5218/myblog` 的 GitHub Discussions),留言容器距離 viewport 前後
   1000px 時才自動載入,不需要「Load Comments」按鈕；不支援 `IntersectionObserver` 的瀏覽器會
   自動載入,避免留言永久消失。對應方式是 `pathname` — 留言串綁定確切的

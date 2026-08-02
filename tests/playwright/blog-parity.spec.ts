@@ -74,7 +74,7 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   expect(projects.status()).toBe(404)
 })
 
-test('starter KBar search opens with cyan active result and legacy navigation', async ({
+test('starter KBar search opens with the control-accent active result and legacy navigation', async ({
   page,
 }) => {
   await page.goto('/')
@@ -82,16 +82,9 @@ test('starter KBar search opens with cyan active result and legacy navigation', 
   await page.locator('.navbar-links').getByLabel('Search').click()
   await page.keyboard.type('AI')
 
-  await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const activeResult = [...document.querySelectorAll('div')].find(
-          (element) => getComputedStyle(element).backgroundColor === 'rgb(77, 184, 209)'
-        )
-        return activeResult?.textContent?.trim() || ''
-      })
-    )
-    .toContain('課程啟動 - AI 跨領域學習社群')
+  const activeResult = page.locator('#kbar-listbox [role="option"][aria-selected="true"] > div')
+  await expect(activeResult).toHaveCSS('background-color', 'rgb(58, 131, 158)')
+  await expect(activeResult).toContainText('課程啟動 - AI 跨領域學習社群')
   await expect(page.locator('.hux-search-overlay')).toHaveCount(0)
   await expect(page.getByText('Catalog Test')).toHaveCount(0)
 
