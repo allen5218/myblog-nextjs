@@ -97,9 +97,13 @@ describe('gantt today marker', () => {
       for (const variant of ['light', 'dark'] as const) {
         const file = path.join(PUBLIC_MERMAID_DIR, svgFileName(hash, variant))
         const svg = await fs.readFile(file, 'utf8')
-        expect(classTokens(svg), `${source} 的 ${variant} 變體仍含 today marker`).not.toContain(
-          'today'
-        )
+        const tokens = classTokens(svg)
+        // 正控制,與本 describe 第一條同一個道理再往下套一層:`not.toContain` 對空陣列
+        // 恆真,所以 parser 若對真實產物產出空樹(換版、解析失敗、讀到空檔),
+        // 下面那條會**空轉通過**。gantt 一定會有 task/section 之類的 class,
+        // 這條讓「解析出來是空的」變成紅燈而不是假綠。
+        expect(tokens.length, `${source} 的 ${variant} 變體解析後沒有任何 class`).toBeGreaterThan(0)
+        expect(tokens, `${source} 的 ${variant} 變體仍含 today marker`).not.toContain('today')
       }
     }
   })

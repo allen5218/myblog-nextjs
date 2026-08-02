@@ -55,6 +55,7 @@ Known issues to keep tracked in the backlog:
 
 - **Mermaid image dimensions — fixed 2026-08-01.** The emitted `<img>` now carries `width`/`height` read from the committed SVG root and rounded to integers, so a box is reserved before the SVG arrives. **There is still no manifest in the Mermaid pipeline** — do not propose persisting dimensions into one; the root element already declares them. The remaining gap is narrower: both theme variants carry `loading="lazy"`, including the `display:none` one, so switching themes on a slow connection can briefly leave a correctly-sized but empty box.
 - **Mermaid render is fail-loud.** A single syntax error aborts the entire `yarn mermaid:render` run. Nothing is written until every diagram renders successfully, so a failed run never corrupts the existing committed cache.
+
 Mermaid facts that must not be misstated:
 
 - **A cache miss and an unusable cached file are different failure modes.** `ENOENT` still degrades gracefully to a code block, because `runCheck` reports missing files. A file that exists whose root has no usable `width`/`height` **fails loudly** at both ends — `renderVariant` refuses to write it and `rehype-mermaid` throws — because `runCheck` compares filenames only and would never report that state. Do not describe the invalid case as degrading gracefully.

@@ -119,7 +119,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `yarn mermaid:render`,雙主題 SVG 快取 commit 在 `public/mermaid/`。**任何會跑渲染的新
   workflow 記得 `yarn playwright install --with-deps chromium`**。
 - **任何影響渲染輸出的改動**(升級 mermaid、改 `LIGHT_THEME`/`DARK_THEME`、改
-  `normalizeSvg` 或 render 邏輯)都要 bump `scripts/mermaid-shared.mjs` 的 `CACHE_VERSION`,
+  `normalizeSvg`,或改 render 邏輯中**會改變輸出**的部分 —— 純驗證關卡的例外見下)
+  都要 bump `scripts/mermaid-shared.mjs` 的 `CACHE_VERSION`,
   再重跑 `yarn mermaid:render` 後 commit。**這是唯一防線**:`mermaid-check` 改成結構檢查後
   (見下)不再比對 SVG 內容,只要 hash 沒變、檔案還在就綠燈 —— 忘了 bump,過時的 SVG 會
   悄悄留著、CI 抓不到。升級 mermaid 後另外**目視**確認幾張圖(結構檢查不會替你發現輸出跑掉)。
@@ -141,8 +142,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - **HTML 的 `width`/`height` 內容屬性是非負整數,而 mermaid 的 viewBox 幾乎都是小數**
   (現有 10 組有 7 組至少一軸是小數)。寫進 `<img>` 屬性前一定要 `Math.round`,不要依賴
   瀏覽器對非法值的容錯行為。因此**驗證「尺寸可用」必須看取整後的值**:`width="0.4"` 原始值
-  大於 0,取整卻是 `0`,一樣保留不了版位。代價是載入前後最多約 0.889px 的次像素更新
-  (實測那張是 0.7px),所以幾何斷言的容差**不能設 1px**,那只剩 0.11px 餘裕會隨機假紅。
+  大於 0,取整卻是 `0`,一樣保留不了版位。代價有兩層:①載入前後最多約 0.889px 的次像素
+  更新(實測那張是 0.7px),所以幾何斷言的容差**不能設 1px**,那只剩 0.11px 餘裕會隨機
+  假紅;②圖的最終渲染寬度**永久**比取整前多最多 0.5px(`width` 屬性成為 used width),
+  這不是暫態。兩者都在次像素等級,是刻意接受的取捨。
 - **`mermaid-check` 只比對檔名,「檔案在、根標籤沒有合法尺寸」這種狀態它完全不會回報。**
   所以那個情況在 producer(`mermaid-render.mjs` 寫檔前)與 consumer(`rehype-mermaid.mjs`)
   **兩端都 fail-loud**,只有 `ENOENT` 才退化成程式碼區塊(缺檔有 `mermaid-check` 兜底)。

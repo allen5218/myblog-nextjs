@@ -1,5 +1,13 @@
 # Mermaid 圖表固有尺寸與渲染決定性 實作計畫
 
+> ⚠️ **已執行完畢,且多處被審查推翻。本檔的程式碼片段不可複製使用。**
+> 實作過程經過 6 輪外部審查,以下片段在合併前全部被換掉,因為它們各自帶著這個分支
+> 最終消滅的假綠:Task 2 的 `parseSvgRootDimensions`(未錨定、屬性值可穿透、接受 `0x10`、
+> 只檢查原始值 `> 0`)、Task 1 的 `startsWith('gantt')` + 單一 fixture + 精確字串
+> `class="today"`、Task 4 的 `html.match(/<img[^>]*>/g)` + 逐值 `toContain`。
+> **現況以 `docs/superpowers/specs/2026-08-01-mermaid-image-dimensions-design.md` 的
+> 「實作修正(審查後)」區塊與已合併的程式碼為準。**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 讓 mermaid 的 `<img>` 在 SVG 抵達前就保留正確版位(消除 CLS),並讓 gantt 的渲染輸出不再依賴系統時鐘。
