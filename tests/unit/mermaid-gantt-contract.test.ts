@@ -41,23 +41,36 @@ async function ganttDefinitions(): Promise<{ source: string; definition: string 
  * **也不能用單一 regex 直接找 `class="…"`。** `<[a-z][^>]*\sclass=` 裡的 `[^>]*` 是
  * greedy,會回溯到標籤內**最後一個** ` class=`,於是
  * `<g class="today" data-note=' class="other"'>` 只抓得到屬性值裡的假 class,真正的
- * today 反而被漏掉。改成逐標籤、標籤內**循序**掃屬性:引號內容被整段吃掉,假字串
- * 就不可能被誤認 —— 與 `parseSvgRootDimensions` 是同一個技術、同一個理由。
+ * today 反而被漏掉。
+ *
+ * 這裡是**單向前掃**:剝掉註解與 CDATA,逐標籤循序吃屬性,吃完把游標推過整個
+ * opening tag —— 屬性值裡的 `<fake class='today'>` 因此不會被當成新標籤。
+ *
+ * **已知限制(刻意不處理)**:實體編碼的 class(`class="to&#100;ay"`)看不出來,
+ * 那需要真正的 XML parser。mermaid 不會這樣輸出 today marker,為此加一個依賴不划算;
+ * mermaid 升級本來就另有「目視確認幾張圖」的守則(見 AGENTS.md)。
  */
 function classTokens(svg: string): string[] {
   const tokens = new Set<string>()
-  const tag = /<[a-z][a-z0-9-]*/gi
+  const source = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
+  // 標籤名要吃得下 namespace 前綴(`<s:g>`),否則內層掃描會對不上而**漏掉**該標籤的 class。
+  const tagStart = /<([a-z_:][-a-z0-9_:.]*)/gi
+  const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
   let opening: RegExpExecArray | null
-  while ((opening = tag.exec(svg)) !== null) {
-    const attribute = /\s+([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/giy
-    attribute.lastIndex = opening.index + opening[0].length
+  while ((opening = tagStart.exec(source)) !== null) {
+    let cursor = opening.index + opening[0].length
+    attribute.lastIndex = cursor
     let match: RegExpExecArray | null
-    while ((match = attribute.exec(svg)) !== null) {
+    while ((match = attribute.exec(source)) !== null) {
+      cursor = attribute.lastIndex
       if (match[1].toLowerCase() !== 'class') continue
       for (const token of (match[2] ?? match[3] ?? '').split(/\s+/)) {
         if (token) tokens.add(token)
       }
     }
+    // 把外層掃描推過已消化的 opening tag。sticky regex 在 exec 回傳 null 時會把
+    // lastIndex 歸零,所以游標必須自己在迴圈內累進,不能事後讀 attribute.lastIndex。
+    tagStart.lastIndex = Math.max(tagStart.lastIndex, cursor)
   }
   return [...tokens]
 }
@@ -110,9 +123,25 @@ describe('classTokens', () => {
     expect(classTokens(svg)).toContain('today')
   })
 
-  it('不把 <style> 區塊裡的 .today 規則當成 today token', () => {
-    expect(classTokens('<svg><style>#mmd .today{fill:none;stroke:red}</style><g/></svg>')).toEqual(
-      []
-    )
+  // namespace 前綴若沒被標籤名 regex 吃下,內層掃描會對不上 —— 那是**假綠**,
+  // 也就是 today marker 真的在產物裡卻沒被抓到,比假紅危險得多。
+  it('帶 namespace 前綴的標籤也抓得到 today token', () => {
+    expect(classTokens('<s:g class="today"><s:line/></s:g>')).toContain('today')
+  })
+
+  // 以下三種都是**假紅**來源:`today` 出現在不是 class 屬性的地方。
+  it.each([
+    ['<style> 裡的樣式規則', '<svg><style>#mmd .today{fill:none;stroke:red}</style><g/></svg>'],
+    ['XML 註解裡的標籤', '<svg><!-- <g class="today"> --><g/></svg>'],
+    ['CDATA 裡的標籤', `<svg><style><![CDATA[content: "<g class='today'>";]]></style><g/></svg>`],
+    ['屬性值裡的假標籤', `<svg><g data-note="<fake class='today'>"/></svg>`],
+  ])('不把 %s 當成 today token', (_label, svg) => {
+    expect(classTokens(svg)).not.toContain('today')
+  })
+
+  // 刻意記錄的已知限制:實體編碼看不出來,那需要真正的 XML parser。
+  // 寫成測試是為了讓限制**可見**,而不是讓它靜靜地待在註解裡等人踩。
+  it('已知限制:實體編碼的 class 抓不到(需要真正的 XML parser)', () => {
+    expect(classTokens('<g class="to&#100;ay"/>')).not.toContain('today')
   })
 })

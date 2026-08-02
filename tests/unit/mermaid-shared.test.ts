@@ -167,11 +167,12 @@ describe('parseSvgRootDimensions', () => {
   it('大到無法安全序列化成整數的尺寸回傳 null', () => {
     expect(parseSvgRootDimensions('<svg width="1e21" height="20"></svg>')).toBeNull()
     expect(parseSvgRootDimensions('<svg width="1e309" height="20"></svg>')).toBeNull()
-    // 2^53 - 1 仍是安全整數,邊界不能連坐。
+    // 精確邊界:2^53 - 1 接受、2^53 拒絕。1e21 能殺死突變但不是緊鄰上界的案例。
     expect(parseSvgRootDimensions('<svg width="9007199254740991" height="20"></svg>')).toEqual({
       width: 9007199254740991,
       height: 20,
     })
+    expect(parseSvgRootDimensions('<svg width="9007199254740992" height="20"></svg>')).toBeNull()
   })
 
   // sticky 掃描停下來的原因不只是遇到標籤結尾,任何解析不了的 token 都會讓它停。

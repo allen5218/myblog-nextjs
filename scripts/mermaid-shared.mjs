@@ -109,7 +109,11 @@ export function normalizeSvg(svg) {
 }
 
 /**
- * 從 SVG 字串的根標籤抽出固有尺寸。回傳 null 代表根標籤缺尺寸、非數字、或不是有限正數。
+ * 從 SVG 字串的根標籤抽出固有尺寸。
+ *
+ * 回傳非 null 的契約是:**兩軸取整後都是正的 safe integer**(consumer 會 `Math.round`
+ * 後寫進 HTML 的 width/height 屬性,那是唯一真正要成立的條件)。缺尺寸、非 SVG 十進位
+ * 寫法、根元素不是 `<svg>`、opening tag 有解析不了的殘餘、屬性重複 —— 一律回傳 null。
  *
  * **producer 與 consumer 共用同一個實作是刻意的。** producer(mermaid-render 寫檔前)
  * 若用瀏覽器的 DOMParser、consumer(rehype,在 Node 裡)用字串解析,兩者的接受集合不同,
@@ -129,11 +133,10 @@ function svgLength(raw) {
   if (typeof raw !== 'string') return null
   const trimmed = raw.trim()
   if (!SVG_DECIMAL.test(trimmed)) return null
-  const value = Number(trimmed)
-  // 這道 finite 檢查目前**與 `isUsableDimension` 的 `isSafeInteger` 重疊**:`1e309` 只靠
-  // 後者也會被擋下,單獨拿掉這行不會有任何測試變紅。保留是為了讓 `svgLength` 自己的
-  // 契約成立(回傳有限數或 null),**不是**一道獨立防線 —— 別把它當成第二層保護。
-  return Number.isFinite(value) ? value : null
+  // 這裡刻意**不**檢查 finite:`1e309` 會變成 Infinity,而 `isUsableDimension` 的
+  // `isSafeInteger` 本來就會拒絕它。多加一道無法被任何突變區分的檢查,只會讓讀者
+  // 誤以為那是獨立防線。詞法由 SVG_DECIMAL 守,值域由 isUsableDimension 守。
+  return Number(trimmed)
 }
 
 /**

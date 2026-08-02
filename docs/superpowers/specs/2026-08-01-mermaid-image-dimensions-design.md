@@ -86,7 +86,7 @@ SVG bytes。(AGENTS.md 的規則文字含「改 render 邏輯」,但該規則自
 把現有的 `fs.existsSync` 換成一次讀取:
 
 ```
-existsSync(path) → 布林          ▶  讀檔頭 → { width, height } | ENOENT | 無效
+existsSync(path) → 布林          ▶  readFileSync → { width, height } | ENOENT | 無效
 ```
 
 - 讀 `width`/`height` 而非 `viewBox`:兩者等價,但前者是產物**實際宣告的固有尺寸**
@@ -106,8 +106,13 @@ CSS `width` 宣告,所以 used width 仍是屬性寬,與現況(SVG 固有寬)一
 | 情況 | 行為 | 理由 |
 | --- | --- | --- |
 | `ENOENT`(檔案不存在) | `return`,保留原節點 → 退化成程式碼區塊 | 維持現有行為;`mermaid-check` **會**回報缺檔,有防線 |
-| 檔案存在但不可讀 | throw,附路徑 | 非預期狀態 |
-| 根標籤缺尺寸、非有限數、`<= 0` | throw,附路徑與讀到的值 | **`mermaid-check` 不會回報這種情況**,靜默 fallback 等於新增一條全綠卻退化的路徑 |
+| 檔案存在但不可讀(`EACCES`/`EISDIR`/`ENOTDIR`) | 原樣拋出 | 非預期狀態,不是快取未命中 |
+| 根標籤讀不到可用尺寸 | throw,附路徑 | **`mermaid-check` 不會回報這種情況**,靜默 fallback 等於新增一條全綠卻退化的路徑 |
+
+「可用尺寸」的完整定義(**取整後**都要成立,因為那才是真正寫進 HTML 屬性的值):
+缺 `width`/`height`、非 SVG 十進位寫法(`0x10`、`10.`)、根元素不是 `<svg>`、
+opening tag 有解析不了的殘餘、屬性重複、取整後 `<= 0`(`0.4`)、
+取整後不是 safe integer(`1e21`)—— 任一成立即視為不可用。
 
 這正是本 repo 為裸 `<br>` 付過學費的形狀:請求 200、無 console 錯誤、`mermaid-check` 綠燈,
 缺陷一路上 production。
@@ -211,7 +216,8 @@ C 組**不是**把 viewBox 當 SVG 的普遍規則(root viewport 與 viewBox 本
 | --- | --- |
 | 產出 img 的 width/height 是**整數**,且等於各自 fixture 的 round 值 | 拿掉 `Math.round` → 紅 |
 | light 與 dark 各自拿到**自己的**尺寸 | 讀 light 套給 dark → 紅 |
-| 根標籤缺尺寸 / 非有限數 / `<= 0` → **throw** 且訊息含路徑 | 改回靜默 fallback → 紅 |
+| 根標籤讀不到可用尺寸(定義見 §3)→ **throw** 且訊息含路徑 | 改回靜默 fallback → 紅 |
+| `ENOENT` 以外的讀檔錯誤(`EISDIR`)→ **原樣拋出** | catch 改成一律 `return null` → 紅 |
 | `ENOENT` → 保留原 `pre` 節點,**不 throw** | 改成 throw → 紅(既有測試,行為不得變) |
 
 ### §7 A-3 回歸測試
