@@ -74,22 +74,32 @@ for (const theme of ['light', 'dark'] as const) {
 
     const pager = page.locator('.post-container > .pager > .previous > a')
     const title = pager.locator('.pager-title')
+    const label = pager.locator('.pager-label')
     await expect(title).toHaveCSS('color', theme === 'light' ? 'rgb(128, 128, 128)' : 'rgb(136, 136, 136)')
     await expect(pager).toHaveCSS('font-size', '13px')
-    await expect(pager).toHaveCSS('padding-top', '10px')
-    await expect(pager).toHaveCSS('padding-right', '10px')
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      await expect(pager).toHaveCSS(`padding-${side}`, '10px')
+    }
 
     await pager.hover()
     await expect(title).toHaveCSS('color', 'rgb(255, 255, 255)')
+    await expect(label).toHaveCSS('color', 'rgb(255, 255, 255)')
     await page.mouse.move(0, 0)
     await focusWithKeyboard(page, pager)
     await expect(pager).toBeFocused()
     await expect(title).toHaveCSS('color', 'rgb(255, 255, 255)')
+    await expect(label).toHaveCSS('color', 'rgb(255, 255, 255)')
 
     await page.setViewportSize({ width: 1280, height: 900 })
     await expect(pager).toHaveCSS('font-size', '14px')
-    await expect(pager).toHaveCSS('padding-top', '15px')
-    await expect(pager).toHaveCSS('padding-right', '25px')
+    for (const [side, value] of [
+      ['top', '15px'],
+      ['right', '25px'],
+      ['bottom', '15px'],
+      ['left', '25px'],
+    ]) {
+      await expect(pager).toHaveCSS(`padding-${side}`, value)
+    }
   })
 
   test(`${theme}: pager and Back to top use one control accent for hover and keyboard focus`, async ({
@@ -123,7 +133,13 @@ for (const theme of ['light', 'dark'] as const) {
     const hoveredOption = options.nth(2)
     await expect(hoveredOption).toHaveAttribute('aria-selected', 'false')
     const hoveredResult = hoveredOption.locator(':scope > div')
+    // KBar 的 pointermove 預設會把滑過項同步成 active,會讓 active selector 代償 hover。
+    // 在 capture phase 攔下事件仍保留瀏覽器的 :hover,但隔離 KBar 的 selection state。
+    await page.evaluate(() =>
+      document.addEventListener('pointermove', (event) => event.stopPropagation(), { capture: true })
+    )
     await hoveredResult.hover()
+    await expect(hoveredOption).toHaveAttribute('aria-selected', 'false')
     await expect(hoveredResult).toHaveCSS('background-color', accent)
 
     const contentLabel = page.locator('#kbar-listbox .text-primary-600')
