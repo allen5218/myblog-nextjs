@@ -21,7 +21,11 @@ async function scrollPastBackTopThreshold(page: Page) {
   )
 }
 
-async function expectHoverAndKeyboardFocusAccent(page: Page, target: Locator, property = 'background-color') {
+async function expectHoverAndKeyboardFocusAccent(
+  page: Page,
+  target: Locator,
+  property = 'background-color'
+) {
   await target.hover()
   await expect(target).toHaveCSS(property, accent)
 
@@ -59,8 +63,94 @@ test('article pager keeps the two-line classic Previous and Next contract withou
     expect(await link.textContent()).not.toMatch(/[←→]/)
     await expect(link.locator('.pager-label')).toHaveCSS('display', 'block')
     await expect(link.locator('.pager-title')).toHaveCSS('display', 'block')
+    await expect(link.locator('.pager-label')).toHaveCSS('font-weight', '800')
     await expect(link.locator('.pager-title')).toHaveCSS('font-weight', '400')
     await expect(link.locator('.pager-title')).toHaveCSS('letter-spacing', '0.5px')
+  }
+})
+
+test('list and article pagers keep their distinct Hux markup and responsive geometry', async ({
+  page,
+}) => {
+  for (const [width, pagerWidth, slotWidth] of [
+    [375, 345, 165.6],
+    [768, 697.5, 334.8],
+    [1200, 706.5, 339.12],
+  ]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto(middleArticlePath)
+
+    const articlePager = page.locator('.post-container > .pager-article')
+    const articleItems = articlePager.locator(':scope > li')
+    await expect(articleItems).toHaveCount(2)
+    await expect(articlePager.locator('.pager-label, .pager-title')).toHaveCount(4)
+    const articleGeometry = await articlePager.evaluate((pager) => {
+      const pagerRect = pager.getBoundingClientRect()
+      const items = Array.from(pager.children).map((item) => {
+        const itemRect = item.getBoundingClientRect()
+        const linkRect = item.querySelector('a')!.getBoundingClientRect()
+        return { width: itemRect.width, linkWidth: linkRect.width }
+      })
+      return { width: pagerRect.width, items }
+    })
+    expect(articleGeometry.width).toBeCloseTo(pagerWidth, 1)
+    for (const item of articleGeometry.items) {
+      expect(item.width).toBeCloseTo(slotWidth, 1)
+      expect(item.linkWidth).toBeCloseTo(slotWidth, 1)
+    }
+
+    const articleLink = articlePager.locator('.previous > a')
+    await expect(articleLink).toHaveCSS('font-size', width < 768 ? '13px' : '14px')
+    await expect(articleLink).toHaveCSS('line-height', width < 768 ? '22.1px' : '23.8px')
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      await expect(articleLink).toHaveCSS(
+        `padding-${side}`,
+        width < 768 ? '10px' : side === 'left' || side === 'right' ? '25px' : '15px'
+      )
+    }
+  }
+
+  for (const [path, className, text] of [
+    ['/', 'next', 'Older Posts →'],
+    ['/page2/', 'previous', '← Newer Posts'],
+  ] as const) {
+    for (const width of [375, 768, 1200]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto(path)
+      const listPager = page.locator('.postlist-container > .pager-list')
+      const link = listPager.locator(`.${className} > a`)
+      await expect(link).toHaveText(text)
+      await expect(link.locator(':scope > *')).toHaveCount(0)
+      await expect(listPager.locator('.pager-label, .pager-title')).toHaveCount(0)
+      await expect(link).toHaveCSS('white-space', 'nowrap')
+      await expect(link).toHaveCSS('font-size', width < 768 ? '13px' : '14px')
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        await expect(link).toHaveCSS(
+          `padding-${side}`,
+          width < 768 ? '10px' : side === 'left' || side === 'right' ? '25px' : '15px'
+        )
+      }
+      const geometry = await listPager.evaluate((pager, itemClass) => {
+        const pagerRect = pager.getBoundingClientRect()
+        const itemRect = pager.querySelector(`.${itemClass}`)!.getBoundingClientRect()
+        const linkRect = pager.querySelector(`.${itemClass} a`)!.getBoundingClientRect()
+        return {
+          pagerLeft: pagerRect.left,
+          pagerRight: pagerRect.right,
+          itemLeft: itemRect.left,
+          itemRight: itemRect.right,
+          linkLeft: linkRect.left,
+          linkRight: linkRect.right,
+        }
+      }, className)
+      if (className === 'previous') {
+        expect(geometry.itemLeft).toBeCloseTo(geometry.pagerLeft, 1)
+        expect(geometry.linkLeft).toBeCloseTo(geometry.pagerLeft, 1)
+      } else {
+        expect(geometry.itemRight).toBeCloseTo(geometry.pagerRight, 1)
+        expect(geometry.linkRight).toBeCloseTo(geometry.pagerRight, 1)
+      }
+    }
   }
 })
 
@@ -75,7 +165,12 @@ for (const theme of ['light', 'dark'] as const) {
     const pager = page.locator('.post-container > .pager > .previous > a')
     const title = pager.locator('.pager-title')
     const label = pager.locator('.pager-label')
-    await expect(title).toHaveCSS('color', theme === 'light' ? 'rgb(128, 128, 128)' : 'rgb(136, 136, 136)')
+    await expect(title).toHaveCSS('color', 'rgb(163, 163, 163)')
+    await expect(pager).toHaveCSS(
+      'background-color',
+      theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(45, 45, 45)'
+    )
+    await expect(pager).toHaveCSS('border-color', 'rgb(221, 221, 221)')
     await expect(pager).toHaveCSS('font-size', '13px')
     for (const side of ['top', 'right', 'bottom', 'left']) {
       await expect(pager).toHaveCSS(`padding-${side}`, '10px')
@@ -125,18 +220,22 @@ for (const theme of ['light', 'dark'] as const) {
     await openKBar(page)
     await page.locator('input[aria-controls="kbar-listbox"]').fill('AI')
 
-    const activeResult = page.locator('#kbar-listbox [role="option"][aria-selected="true"] > div')
+    const activeResult = page.locator(
+      '#kbar-listbox [role="option"][aria-selected="true"] > div > .cursor-pointer'
+    )
     await expect(activeResult).toHaveCSS('background-color', accent)
 
     const options = page.locator('#kbar-listbox [role="option"]')
     await expect.poll(() => options.count()).toBeGreaterThanOrEqual(3)
     const hoveredOption = options.nth(2)
     await expect(hoveredOption).toHaveAttribute('aria-selected', 'false')
-    const hoveredResult = hoveredOption.locator(':scope > div')
+    const hoveredResult = hoveredOption.locator(':scope > div > .cursor-pointer')
     // KBar 的 pointermove 預設會把滑過項同步成 active,會讓 active selector 代償 hover。
     // 在 capture phase 攔下事件仍保留瀏覽器的 :hover,但隔離 KBar 的 selection state。
     await page.evaluate(() =>
-      document.addEventListener('pointermove', (event) => event.stopPropagation(), { capture: true })
+      document.addEventListener('pointermove', (event) => event.stopPropagation(), {
+        capture: true,
+      })
     )
     await hoveredResult.hover()
     await expect(hoveredOption).toHaveAttribute('aria-selected', 'false')

@@ -82,7 +82,9 @@ test('starter KBar search opens with the control-accent active result and legacy
   await page.locator('.navbar-links').getByLabel('Search').click()
   await page.keyboard.type('AI')
 
-  const activeResult = page.locator('#kbar-listbox [role="option"][aria-selected="true"] > div')
+  const activeResult = page.locator(
+    '#kbar-listbox [role="option"][aria-selected="true"] > div > .cursor-pointer'
+  )
   await expect(activeResult).toHaveCSS('background-color', 'rgb(58, 131, 158)')
   await expect(activeResult).toContainText('課程啟動 - AI 跨領域學習社群')
   await expect(page.locator('.hux-search-overlay')).toHaveCount(0)
@@ -339,10 +341,11 @@ test('mobile article pagers reserve boundary slots for every article position', 
     }, items)
 
     expect(geometry.pagerWidth).toBe(360)
+    const expectedSlotWidth = geometry.pagerWidth * 0.48
     for (const item of geometry.items) {
-      expect(item.width).toBe(172)
-      expect(item.linkLeft).toBeGreaterThanOrEqual(item.left)
-      expect(item.linkRight).toBeLessThanOrEqual(item.right)
+      expect(item.width).toBeCloseTo(expectedSlotWidth, 1)
+      expect(item.linkLeft).toBeCloseTo(item.left, 1)
+      expect(item.linkRight).toBeCloseTo(item.right, 1)
     }
 
     const previous = geometry.items.find((item) => item.itemClass === 'previous')

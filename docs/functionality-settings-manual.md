@@ -273,6 +273,12 @@ own**. Never assemble a pagination path inside a page component — `/` and `/bl
 used to slice the first 5 posts independently, silently becoming the same page, so "Older
 Posts" advanced zero pages and users had to click it twice.
 
+List and article pagers intentionally use different Hux presentations: the home list has only
+`Older Posts →` at the right edge, and the final list page has only `← Newer Posts` at the left,
+both on one line. Articles retain fixed left/right slots with two lines: `Previous`/`Next` and
+the post title. Every `HuxPager` call site must explicitly choose `variant="list"` or
+`variant="article"`; there is no shared default.
+
 `/pageN/` lives in `app/[year]/page.tsx`: the App Router forbids two differently-named
 dynamic segments at the same level, and the root level is already taken by `[year]` from
 the post URLs. Pagination therefore shares that slot, accepts only `pageN`, and 404s

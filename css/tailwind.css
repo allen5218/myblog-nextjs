@@ -1122,22 +1122,26 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   list-style: none;
 }
 
-.pager li {
-  flex: 1;
+.pager-list {
+  gap: 0;
 }
 
-@media (max-width: 767.98px) {
-  .post-shell:not(.about-shell) > .post-container > .pager > li {
-    flex: 0 0 calc((100% - 16px) / 2);
-  }
-
-  .post-shell:not(.about-shell) > .post-container > .pager > .next {
-    margin-left: auto;
-  }
+.pager-list li {
+  flex: 0 0 auto;
 }
 
-.pager .next {
+.pager-list .next,
+.pager-article .next {
+  margin-left: auto;
   text-align: right;
+}
+
+.pager-article {
+  gap: 4%;
+}
+
+.pager-article li {
+  flex: 0 0 48%;
 }
 
 .pager a {
@@ -1153,13 +1157,25 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   transition: all 0.3s ease;
 }
 
-.pager-label,
-.pager-title {
+.pager-article a {
+  display: block;
+  max-width: none;
+  background-color: #fff;
+  line-height: 1.7;
+}
+
+.pager-list a {
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.pager-article .pager-label,
+.pager-article .pager-title {
   display: block;
 }
 
-.pager-title {
-  color: var(--hux-muted);
+.pager-article .pager-title {
+  color: #a3a3a3;
   font-weight: 400;
   letter-spacing: 0.5px;
   text-transform: none;
@@ -1177,6 +1193,10 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   border-color: #dddddd;
 }
 
+.dark .pager-article a {
+  background-color: #2d2d2d;
+}
+
 .pager a:hover,
 .pager a:focus {
   background-color: var(--hux-control-accent);
@@ -1184,8 +1204,8 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   color: #fff;
 }
 
-.pager a:hover .pager-title,
-.pager a:focus .pager-title {
+.pager-article a:hover .pager-title,
+.pager-article a:focus .pager-title {
   color: #fff;
 }
 
@@ -1547,8 +1567,8 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
 }
 
 /* Pliny 的 KBar portal 掛在 app 外;只在它的 listbox 內覆寫原本的 primary utility。 */
-#kbar-listbox [role='option'][aria-selected='true'] > div,
-#kbar-listbox [role='option']:hover > div {
+#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer,
+#kbar-listbox [role='option']:hover > div > .cursor-pointer {
   background-color: var(--hux-control-accent);
 }
 

@@ -238,7 +238,7 @@ describe('scoped control accent', () => {
   test('--hux-control-accent has only the requested effective CSS consumers', () => {
     expect(consumedBy('--hux-control-accent')).toEqual([
       '#kbar-listbox .text-primary-600 :: color',
-      "#kbar-listbox [role='option'][aria-selected='true'] > div, #kbar-listbox [role='option']:hover > div :: background-color",
+      "#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer, #kbar-listbox [role='option']:hover > div > .cursor-pointer :: background-color",
       '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: background-color',
       '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: border-color',
       '.pager a:hover, .pager a:focus :: background-color',

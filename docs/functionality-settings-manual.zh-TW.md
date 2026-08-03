@@ -248,6 +248,11 @@ Updated/Posted 日期資訊下方;正文連結則在全站原有
 不要在頁面元件裡拼分頁路徑 —— 過去 `/` 與 `/blog/` 各自切前 5 篇,悄悄變成同一頁,
 使用者按「Older Posts」得按兩次才會真的翻頁。
 
+列表 pager 與文章 pager 是刻意不同的 Hux 版型：首頁列表只在右側顯示 `Older Posts →`，
+最後一頁只在左側顯示 `← Newer Posts`，兩者皆為單行；文章則在固定左右欄位中以兩行顯示
+`Previous`／`Next` 與文章標題。`HuxPager` 的呼叫端必須明確指定 `variant="list"` 或
+`variant="article"`，不可依賴共用預設值。
+
 `/pageN/` 實作在 `app/[year]/page.tsx`:App Router 不允許同一層有兩個名字不同的
 dynamic segment,而根層已被文章網址的 `[year]` 佔用,因此分頁共用該 slot,只接受
 `pageN`,其餘(含真正的年份 `/2025/`)一律 404。
