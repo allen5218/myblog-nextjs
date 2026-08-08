@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { contrastRatio, parseColor } from '../helpers/color'
 import { focusWithKeyboard } from '../helpers/focus'
 
 const accent = 'rgb(58, 131, 158)'
@@ -253,6 +254,31 @@ test('single article pager links keep their classic boundary slots without overf
   }
 })
 
+test('plain 404 and offline pagers keep their single action centered', async ({ page }) => {
+  for (const path of ['/pager-missing-page/', '/offline/']) {
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(path)
+
+      const geometry = await page.locator('ul.pager').evaluate((pager) => {
+        const pagerRect = pager.getBoundingClientRect()
+        const itemRect = pager.querySelector(':scope > li')!.getBoundingClientRect()
+        const linkRect = pager.querySelector(':scope > li > a')!.getBoundingClientRect()
+        return {
+          itemCount: pager.children.length,
+          pagerCenter: pagerRect.left + pagerRect.width / 2,
+          itemCenter: itemRect.left + itemRect.width / 2,
+          linkCenter: linkRect.left + linkRect.width / 2,
+        }
+      })
+
+      expect(geometry.itemCount).toBe(1)
+      expect(geometry.itemCenter).toBeCloseTo(geometry.pagerCenter, 1)
+      expect(geometry.linkCenter).toBeCloseTo(geometry.pagerCenter, 1)
+    }
+  }
+})
+
 for (const theme of ['light', 'dark'] as const) {
   test(`${theme}: pager title keeps its muted rest style, white active style, and responsive link metrics`, async ({
     page,
@@ -264,11 +290,21 @@ for (const theme of ['light', 'dark'] as const) {
     const pager = page.locator('.post-container > .pager > .previous > a')
     const title = pager.locator('.pager-title')
     const label = pager.locator('.pager-label')
-    await expect(title).toHaveCSS('color', 'rgb(163, 163, 163)')
     await expect(pager).toHaveCSS(
       'background-color',
       theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(45, 45, 45)'
     )
+    const restingColors = await title.evaluate((element) => {
+      const titleStyle = getComputedStyle(element)
+      const linkStyle = getComputedStyle(element.closest('a')!)
+      return { foreground: titleStyle.color, background: linkStyle.backgroundColor }
+    })
+    expect(restingColors.foreground).toBe(
+      theme === 'light' ? 'rgb(115, 115, 115)' : 'rgb(163, 163, 163)'
+    )
+    expect(
+      contrastRatio(parseColor(restingColors.foreground), parseColor(restingColors.background))
+    ).toBeGreaterThanOrEqual(4.5)
     await expect(pager).toHaveCSS('border-color', 'rgb(221, 221, 221)')
     await expect(pager).toHaveCSS('font-size', '13px')
     for (const side of ['top', 'right', 'bottom', 'left']) {
