@@ -120,7 +120,8 @@ function declaredValues(token: string): string[] {
   stylesheet.walkDecls(token, (declaration) => {
     const parent = declaration.parent
     if (parent instanceof Rule) declarations.push(`${scopeOf(parent)} :: ${declaration.value}`)
-    else if (parent instanceof AtRule) declarations.push(`@${parent.name} ${parent.params} :: ${declaration.value}`)
+    else if (parent instanceof AtRule)
+      declarations.push(`@${parent.name} ${parent.params} :: ${declaration.value}`)
   })
   return declarations.sort()
 }

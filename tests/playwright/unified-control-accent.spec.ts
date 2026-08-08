@@ -73,7 +73,8 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
   page,
 }) => {
   for (const [width, pagerWidth, slotWidth] of [
-    [375, 345, 165.6],
+    [320, 275, 132],
+    [390, 345, 165.6],
     [768, 697.5, 334.8],
     [1200, 706.5, 339.12],
   ]) {
@@ -89,7 +90,7 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
       const items = Array.from(pager.children).map((item) => {
         const itemRect = item.getBoundingClientRect()
         const linkRect = item.querySelector('a')!.getBoundingClientRect()
-        return { width: itemRect.width, linkWidth: linkRect.width }
+        return { width: itemRect.width, linkWidth: linkRect.width, linkHeight: linkRect.height }
       })
       return { width: pagerRect.width, items }
     })
@@ -98,8 +99,10 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
       expect(item.width).toBeCloseTo(slotWidth, 1)
       expect(item.linkWidth).toBeCloseTo(slotWidth, 1)
     }
+    expect(articleGeometry.items[1].linkHeight).toBeGreaterThan(articleGeometry.items[0].linkHeight)
 
     const articleLink = articlePager.locator('.previous > a')
+    await expect(articleLink).toHaveCSS('text-align', 'center')
     await expect(articleLink).toHaveCSS('font-size', width < 768 ? '13px' : '14px')
     await expect(articleLink).toHaveCSS('line-height', width < 768 ? '22.1px' : '23.8px')
     for (const side of ['top', 'right', 'bottom', 'left']) {
@@ -114,7 +117,7 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
     ['/', 'next', 'Older Posts →'],
     ['/page2/', 'previous', '← Newer Posts'],
   ] as const) {
-    for (const width of [375, 768, 1200]) {
+    for (const width of [320, 375, 768, 1200]) {
       await page.setViewportSize({ width, height: 844 })
       await page.goto(path)
       const listPager = page.locator('.postlist-container > .pager-list')
@@ -149,6 +152,102 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
       } else {
         expect(geometry.itemRight).toBeCloseTo(geometry.pagerRight, 1)
         expect(geometry.linkRight).toBeCloseTo(geometry.pagerRight, 1)
+      }
+    }
+  }
+})
+
+test('two-sided list pager wraps only at 320px with no gap between rows', async ({ page }) => {
+  for (const width of [320, 321, 375]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/')
+    await page.locator('.postlist-container > .pager-list').evaluate((pager) => {
+      const item = document.createElement('li')
+      item.className = 'previous'
+      const link = document.createElement('a')
+      link.href = '#'
+      link.textContent = '← Newer Posts'
+      item.append(link)
+      pager.prepend(item)
+    })
+
+    const geometry = await page.locator('.postlist-container > .pager-list').evaluate((pager) => {
+      const pagerRect = pager.getBoundingClientRect()
+      const previousRect = pager.querySelector(':scope > .previous')!.getBoundingClientRect()
+      const nextRect = pager.querySelector(':scope > .next')!.getBoundingClientRect()
+      const previousLinkRect = pager
+        .querySelector(':scope > .previous > a')!
+        .getBoundingClientRect()
+      const nextLinkRect = pager.querySelector(':scope > .next > a')!.getBoundingClientRect()
+      return {
+        rowGap: getComputedStyle(pager).rowGap,
+        pagerLeft: pagerRect.left,
+        pagerRight: pagerRect.right,
+        pagerWidth: pagerRect.width,
+        previousTop: previousRect.top,
+        previousBottom: previousRect.bottom,
+        previousWidth: previousRect.width,
+        previousLinkLeft: previousLinkRect.left,
+        nextTop: nextRect.top,
+        nextWidth: nextRect.width,
+        nextLinkRight: nextLinkRect.right,
+      }
+    })
+
+    expect(geometry.previousLinkLeft).toBeCloseTo(geometry.pagerLeft, 1)
+    expect(geometry.nextLinkRight).toBeCloseTo(geometry.pagerRight, 1)
+    if (width === 320) {
+      expect(geometry.rowGap).toBe('0px')
+      expect(geometry.previousWidth).toBeCloseTo(geometry.pagerWidth, 1)
+      expect(geometry.nextWidth).toBeCloseTo(geometry.pagerWidth, 1)
+      expect(geometry.nextTop).toBeCloseTo(geometry.previousBottom, 1)
+    } else {
+      expect(geometry.nextTop).toBeCloseTo(geometry.previousTop, 1)
+    }
+  }
+})
+
+test('single article pager links keep their classic boundary slots without overflow', async ({
+  page,
+}) => {
+  for (const [path, itemClass] of [
+    ['/2026/07/25/openwiki-tame-agents-md/', 'previous'],
+    ['/2021/04/30/typora-latex-mathjax/', 'next'],
+  ] as const) {
+    for (const width of [320, 390, 768, 1200]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto(path)
+
+      const geometry = await page
+        .locator('.post-container > .pager-article')
+        .evaluate((pager, expectedClass) => {
+          const pagerRect = pager.getBoundingClientRect()
+          const item = pager.querySelector(`:scope > .${expectedClass}`)!
+          const itemRect = item.getBoundingClientRect()
+          const linkRect = item.querySelector('a')!.getBoundingClientRect()
+          return {
+            itemCount: pager.children.length,
+            pagerLeft: pagerRect.left,
+            pagerRight: pagerRect.right,
+            pagerWidth: pagerRect.width,
+            itemLeft: itemRect.left,
+            itemRight: itemRect.right,
+            itemWidth: itemRect.width,
+            linkLeft: linkRect.left,
+            linkRight: linkRect.right,
+            linkWidth: linkRect.width,
+          }
+        }, itemClass)
+
+      expect(geometry.itemCount).toBe(1)
+      expect(geometry.itemWidth).toBeCloseTo(geometry.pagerWidth * 0.48, 1)
+      expect(geometry.linkWidth).toBeCloseTo(geometry.itemWidth, 1)
+      expect(geometry.linkLeft).toBeGreaterThanOrEqual(geometry.pagerLeft)
+      expect(geometry.linkRight).toBeLessThanOrEqual(geometry.pagerRight)
+      if (itemClass === 'previous') {
+        expect(geometry.itemLeft).toBeCloseTo(geometry.pagerLeft, 1)
+      } else {
+        expect(geometry.itemRight).toBeCloseTo(geometry.pagerRight, 1)
       }
     }
   }

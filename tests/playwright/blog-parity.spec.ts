@@ -340,7 +340,7 @@ test('mobile article pagers reserve boundary slots for every article position', 
       }
     }, items)
 
-    expect(geometry.pagerWidth).toBe(360)
+    expect(geometry.pagerWidth).toBe(345)
     const expectedSlotWidth = geometry.pagerWidth * 0.48
     for (const item of geometry.items) {
       expect(item.width).toBeCloseTo(expectedSlotWidth, 1)

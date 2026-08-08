@@ -1133,6 +1133,9 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
 .pager-list .next,
 .pager-article .next {
   margin-left: auto;
+}
+
+.pager-list .next {
   text-align: right;
 }
 
@@ -1162,6 +1165,7 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   max-width: none;
   background-color: #fff;
   line-height: 1.7;
+  text-align: center;
 }
 
 .pager-list a {
@@ -1185,6 +1189,21 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   .pager a {
     font-size: 13px;
     padding: 10px;
+  }
+
+  .pager-article {
+    margin-right: 7.5px;
+    margin-left: 7.5px;
+  }
+}
+
+@media (max-width: 320px) {
+  .pager-list:has(> .previous):has(> .next) {
+    flex-wrap: wrap;
+  }
+
+  .pager-list:has(> .previous):has(> .next) > li {
+    flex-basis: 100%;
   }
 }
 
