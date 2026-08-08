@@ -16,6 +16,27 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   沒這檔案全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
+- **驗證前先確認 port 上的伺服器真的是自己那一份。** 2026-08-08 實測:本機另一個 worktree
+  (`/private/tmp/myblog-nextjs-unified-accent/`)佔著 3012,`next start` 靜默吃到
+  `EADDRINUSE` 退出,而 `curl` 照樣回 200 —— 96 組量測全部打在別人的分支上,還「乾淨地」
+  給出全綠。**`playwright.config.ts` 預設 port 3012 且 `reuseExistingServer: true`,會放大
+  這個坑**。查法:`lsof -nP -iTCP:<port> -sTCP:LISTEN` 看 PID 的執行路徑,或直接抓
+  `/_next/static/chunks/*.css` 比對本次改動的字串。多 worktree 並行時一律用
+  `PLAYWRIGHT_BASE_URL` 明確指向自己的 port,不要依賴預設值。
+- **headless Chromium 一律是 overlay 捲軸,量不到「捲軸佔版面」才會出現的版面 bug。**
+  2026-08-08 實測 `innerWidth - clientWidth`:headless(含
+  `--disable-features=OverlayScrollbar,FluentOverlayScrollbar`)一律 `0`,只有
+  `headless: false` 給 `15`。`html::-webkit-scrollbar { width: 15px }` 這個常見手法在
+  headless 下**完全無效**。因此 `100vw`(含捲軸寬)與 `clientWidth`(不含)的落差類
+  bug,既有 `tests/playwright/*` 在結構上不可能重現 —— 2026-07-10 那次修 full-bleed 溢出
+  跑遍 6 種寬度兩種引擎仍漏掉,就是這個原因。這類不變量的護欄要放在 `test:unit`
+  (見 `tests/unit/css-viewport-width-contract.test.ts`);需要實測時用 headed Chromium。
+- **水平尺寸不要用 `vw` 量。** `100vw` 依規範包含傳統捲軸寬度,百分比 / auto margin /
+  `left:right:0` 讀的 containing block 不含。macOS「顯示捲軸」預設「依滑鼠或觸控板自動
+  決定」,**接上滑鼠就會全系統切成佔版面的傳統捲軸**,於是同一份程式碼時好時壞、
+  Edge 與 Safari 都中、Playwright 測不出來。症狀是整組元素左偏半個捲軸寬、右側溢出同量
+  (LTR 下左側溢出不產生捲軸,所以只看得到「多一條水平捲軸」)。`.hux-full-bleed` /
+  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由上述 unit test 擋。
 - **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
   沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
   新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、

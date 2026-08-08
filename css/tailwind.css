@@ -212,16 +212,25 @@ body {
   color: var(--hux-text);
 }
 
+/* 滿版出血(navbar / hero / footer)。這裡刻意不用 `left:50%` + `width:100vw` +
+   `margin-left:-50vw` 的逃脫技巧:`100vw` 依規範「包含」傳統捲軸寬度,而 `50%` 讀的
+   containing block 不含,兩把尺在「顯示捲軸=總是」的系統(macOS 接上滑鼠即會切換)
+   差一個捲軸寬,整組元素左偏半個捲軸、右側溢出同量並產生水平捲軸。
+   這三個元素的 containing block 本來就已經滿寬(見 components/SectionContainer.tsx),
+   滿版交由 block 佈局自然達成即可。position:relative 留著給 .intro-header-content
+   的絕對定位當參照。 */
 .hux-full-bleed {
   position: relative;
-  left: 50%;
-  width: 100vw;
-  margin-left: -50vw;
 }
 
 .navbar-custom {
   position: absolute;
   top: 0;
+  /* absolute(及 .is-fixed 的 fixed)下 width:auto 是 shrink-to-fit,滿寬必須靠左右
+     歸零達成。兩種模式的 containing block 都是 initial containing block,寬度等於
+     documentElement.clientWidth(不含捲軸),所以不會重蹈上面 100vw 的覆轍。 */
+  left: 0;
+  right: 0;
   z-index: 30;
   min-height: 56px;
   color: var(--navbar-fg);
@@ -560,10 +569,13 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   border-color: var(--hero-border);
 }
 
+/* 用 100% 而非 100vw 量可用寬度、用 auto margin 置中:同 .hux-full-bleed 的理由,
+   `100vw` 含傳統捲軸寬,窄於 1170px 的視窗會讓本容器溢出半個捲軸寬。 */
 .hux-home-layout {
   display: block;
-  width: min(1170px, 100vw);
-  margin-left: calc(50% - min(585px, 50vw));
+  width: min(1170px, 100%);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 /* 手機版預設就要有跟舊站 Bootstrap .container 一樣的左右留白(0 15px),
@@ -918,10 +930,13 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   }
 }
 
+/* 同 .hux-home-layout:改用 100% + auto margin,避免 100vw 在傳統捲軸下多算一個
+   捲軸寬。768–1199px 有各自的固定欄寬覆寫,這條主要作用在 <768px 與 ≥1200px。 */
 .post-shell {
   display: block;
-  width: min(1170px, 100vw);
-  margin-left: calc(50% - min(585px, 50vw));
+  width: min(1170px, 100%);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .post-container {
