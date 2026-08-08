@@ -273,6 +273,12 @@ own**. Never assemble a pagination path inside a page component — `/` and `/bl
 used to slice the first 5 posts independently, silently becoming the same page, so "Older
 Posts" advanced zero pages and users had to click it twice.
 
+List and article pagers intentionally use different Hux presentations: the home list has only
+`Older Posts →` at the right edge, and the final list page has only `← Newer Posts` at the left,
+both on one line. Articles retain fixed left/right slots with two lines: `Previous`/`Next` and
+the post title. Every `HuxPager` call site must explicitly choose `variant="list"` or
+`variant="article"`; there is no shared default.
+
 `/pageN/` lives in `app/[year]/page.tsx`: the App Router forbids two differently-named
 dynamic segments at the same level, and the root level is already taken by `[year]` from
 the post URLs. Pagination therefore shares that slot, accepts only `pageN`, and 404s
@@ -292,7 +298,8 @@ everything else (including real years such as `/2025/`).
 
 - **Search**: Pliny KBar (`⌘K` / `Ctrl+K`). Index at `/search.json`, generated at build,
   excludes draft and hidden posts. The index is public — never put secrets in listed posts.
-  Active result highlight uses the brand cyan (`--color-primary-600`, `#4db8d1`).
+  Selected/hovered results and the `Content` section label use the control cyan
+  (`--hux-control-accent`, `#3A839E`) without changing the broader brand palette.
 - **Comments**: giscus (GitHub Discussions on `allen5218/myblog`) loads automatically once its
   container is within 1000px before or after the viewport; there is no "Load Comments" button.
   Browsers without `IntersectionObserver` load it automatically so comments cannot disappear

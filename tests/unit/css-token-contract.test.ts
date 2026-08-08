@@ -112,6 +112,20 @@ function consumedBy(token: string): string[] {
   return sites.sort()
 }
 
+/**
+ * 讀出 token 的最後宣告座標和值；@theme 不是 Rule,所以也必須保留它的 at-rule scope。
+ */
+function declaredValues(token: string): string[] {
+  const declarations: string[] = []
+  stylesheet.walkDecls(token, (declaration) => {
+    const parent = declaration.parent
+    if (parent instanceof Rule) declarations.push(`${scopeOf(parent)} :: ${declaration.value}`)
+    else if (parent instanceof AtRule)
+      declarations.push(`@${parent.name} ${parent.params} :: ${declaration.value}`)
+  })
+  return declarations.sort()
+}
+
 const NAVBAR_TOKEN_SCOPES = [
   '.navbar-custom',
   '@media (max-width: 767.98px) | body:has(main .intro-header-post.intro-header-text) .navbar-custom',
@@ -214,6 +228,27 @@ describe('paired interactive tokens', () => {
         '.intro-header-text :: --hero-link-hover',
       ].sort()
     )
+  })
+})
+
+describe('scoped control accent', () => {
+  test('--hux-control-accent only declares the fixed requested value', () => {
+    expect(declaredValues('--hux-control-accent')).toEqual([':root :: #3a839e'])
+  })
+
+  test('--hux-control-accent has only the requested effective CSS consumers', () => {
+    expect(consumedBy('--hux-control-accent')).toEqual([
+      '#kbar-listbox .text-primary-600 :: color',
+      "#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer, #kbar-listbox [role='option']:hover > div > .cursor-pointer :: background-color",
+      '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: background-color',
+      '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: border-color',
+      '.pager a:hover, .pager a:focus :: background-color',
+      '.pager a:hover, .pager a:focus :: border-color',
+    ])
+  })
+
+  test('--color-primary-600 retains its broader palette ownership and value', () => {
+    expect(declaredValues('--color-primary-600')).toEqual(['@theme  :: #4db8d1'])
   })
 })
 

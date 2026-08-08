@@ -51,7 +51,7 @@ test('返回頂部按鈕是方角,桌面/手機位置比照舊站', async ({ pag
   expect(mobileRight).toBe('20px')
 })
 
-test('返回頂部按鈕 hover 配色:淺色 #0085a1', async ({ page }) => {
+test('返回頂部按鈕 hover 配色:淺色 #3A839E', async ({ page }) => {
   // 站方預設主題是 dark(data/siteMetadata.ts),要測淺色得先寫入 next-themes 的
   // localStorage 偏好,搶在任何頁面腳本執行前生效。
   await page.addInitScript(() => window.localStorage.setItem('theme', 'light'))
@@ -65,10 +65,10 @@ test('返回頂部按鈕 hover 配色:淺色 #0085a1', async ({ page }) => {
   await backTop.hover()
   await expect
     .poll(async () => backTop.evaluate((el) => getComputedStyle(el).backgroundColor))
-    .toBe('rgb(0, 133, 161)') // #0085a1
+    .toBe('rgb(58, 131, 158)') // #3A839E
 })
 
-test('返回頂部按鈕 hover 配色:深色 #66c7e0', async ({ page }) => {
+test('返回頂部按鈕 hover 配色:深色 #3A839E', async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem('theme', 'dark'))
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(postPath)
@@ -79,5 +79,5 @@ test('返回頂部按鈕 hover 配色:深色 #66c7e0', async ({ page }) => {
   await backTop.hover()
   await expect
     .poll(async () => backTop.evaluate((el) => getComputedStyle(el).backgroundColor))
-    .toBe('rgb(102, 199, 224)') // #66c7e0
+    .toBe('rgb(58, 131, 158)') // #3A839E
 })

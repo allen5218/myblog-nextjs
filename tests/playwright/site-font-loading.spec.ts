@@ -117,7 +117,7 @@ test('首頁只請求 schema-v2 core 並使用 immutable 同源快取', async ({
 })
 
 // 每篇文章都要量。抽測代表文章會漏掉「渲染得出來、但 markdown 沒有」的字元
-// (HuxPager 的 `←`、KaTeX 的 `×`/`−` 等)——那類遺漏只會打中特定文章,
+// (HuxPager 的 `←`/`→`、KaTeX 的 `×`/`−` 等)——那類遺漏只會打中特定文章,
 // 而 check:site-font 的靜態模型只讀 markdown,永遠抓不到。
 const articles = (
   JSON.parse(

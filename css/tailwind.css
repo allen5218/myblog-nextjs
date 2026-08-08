@@ -184,6 +184,7 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
   --hux-quote-bg: rgb(245, 245, 245);
+  --hux-control-accent: #3a839e;
   /* 成對 token:--hux-interactive 是頁面底色上的 accent 前景,
      --hux-on-interactive 是承載文字的 focus 背景上要用的前景色。
      同一個值不能兩者兼任 —— 見 --hux-interactive 深色值上白字只有 1.94。 */
@@ -1121,22 +1122,29 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   list-style: none;
 }
 
-.pager li {
-  flex: 1;
+.pager-list {
+  gap: 0;
 }
 
-@media (max-width: 767.98px) {
-  .post-shell:not(.about-shell) > .post-container > .pager > li {
-    flex: 0 0 calc((100% - 16px) / 2);
-  }
-
-  .post-shell:not(.about-shell) > .post-container > .pager > .next {
-    margin-left: auto;
-  }
+.pager-list li {
+  flex: 0 0 auto;
 }
 
-.pager .next {
+.pager-list .next,
+.pager-article .next {
+  margin-left: auto;
+}
+
+.pager-list .next {
   text-align: right;
+}
+
+.pager-article {
+  gap: 4%;
+}
+
+.pager-article li {
+  flex: 0 0 48%;
 }
 
 .pager a {
@@ -1152,24 +1160,71 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   transition: all 0.3s ease;
 }
 
+.pager-article a {
+  display: block;
+  max-width: none;
+  background-color: #fff;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.pager-list a {
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.pager-article .pager-label,
+.pager-article .pager-title {
+  display: block;
+}
+
+.pager-article .pager-title {
+  color: #a3a3a3;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+@media (max-width: 767.98px) {
+  .pager a {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .pager-article {
+    margin-right: 7.5px;
+    margin-left: 7.5px;
+  }
+}
+
+@media (max-width: 320px) {
+  .pager-list:has(> .previous):has(> .next) {
+    flex-wrap: wrap;
+  }
+
+  .pager-list:has(> .previous):has(> .next) > li {
+    flex-basis: 100%;
+  }
+}
+
 /* 深色模式下 pager 按鈕(Older Posts / 上一篇・下一篇)非 hover 的邊框改為淺灰 #DDDDDD */
 .dark .pager a {
   border-color: #dddddd;
 }
 
-/* 文章切換(上/下一篇)與首頁 Older Posts 共用此 pager,還原原站 hover 變色效果。
-   原站以 --post-link-hover 變數區分:淺色 #0085a1、深色 #66c7e0(參考圖為深色故呈淺青)。 */
+.dark .pager-article a {
+  background-color: #2d2d2d;
+}
+
 .pager a:hover,
 .pager a:focus {
-  background-color: #0085a1;
-  border-color: #0085a1;
+  background-color: var(--hux-control-accent);
+  border-color: var(--hux-control-accent);
   color: #fff;
 }
 
-.dark .pager a:hover,
-.dark .pager a:focus {
-  background-color: #66c7e0;
-  border-color: #66c7e0;
+.pager-article a:hover .pager-title,
+.pager-article a:focus .pager-title {
   color: #fff;
 }
 
@@ -1494,9 +1549,7 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   font-size: 14px;
 }
 
-/* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。
-   Hover 色沿用 .pager a:hover 的既有配色慣例(#0085a1 / #66c7e0),
-   而非按鈕自己原本的深色 hover(#4db8d1)——為了與站內其他控制項一致,經確認採用。 */
+/* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。 */
 .hux-elevator-control {
   position: fixed;
   right: 20px;
@@ -1521,22 +1574,25 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
     color 0.3s ease;
 }
 
-.hux-elevator-control:hover,
-.hux-elevator-control:focus-visible {
-  background-color: #0085a1;
-  border-color: #0085a1;
-  color: #fff;
-}
-
 .dark .hux-elevator-control {
   background: rgba(45, 45, 45, 0.9);
 }
 
-.dark .hux-elevator-control:hover,
-.dark .hux-elevator-control:focus-visible {
-  background-color: #66c7e0;
-  border-color: #66c7e0;
+.hux-elevator-control:hover,
+.hux-elevator-control:focus-visible {
+  background-color: var(--hux-control-accent);
+  border-color: var(--hux-control-accent);
   color: #fff;
+}
+
+/* Pliny 的 KBar portal 掛在 app 外;只在它的 listbox 內覆寫原本的 primary utility。 */
+#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer,
+#kbar-listbox [role='option']:hover > div > .cursor-pointer {
+  background-color: var(--hux-control-accent);
+}
+
+#kbar-listbox .text-primary-600 {
+  color: var(--hux-control-accent);
 }
 
 .hux-elevator-control-visible {
