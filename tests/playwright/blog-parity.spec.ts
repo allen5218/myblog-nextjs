@@ -332,15 +332,39 @@ test('mobile article pagers reserve boundary slots for every article position', 
         }
       })
 
+      const container = pager.closest('.post-container')!
+      const containerRect = container.getBoundingClientRect()
+      const containerStyle = getComputedStyle(container)
+      const pagerStyle = getComputedStyle(pager)
+
       return {
         pagerLeft: pagerRect.left,
         pagerRight: pagerRect.right,
         pagerWidth: pagerRect.width,
+        // 相對 .post-container 內容盒的左右內縮量。這才是 pager 自己的契約;
+        // 「寬 345px」是 viewport → .post-shell → .post-container 一路算下來的結果,
+        // 把它寫死會把上游那條鏈偷渡進 pager 的契約 —— 而那條鏈曾經含 `100vw`(含捲軸寬),
+        // headless 的 overlay 捲軸會讓其中的錯誤永遠不顯現。
+        //
+        // 注意不要退回「pagerWidth === 內容盒寬 − 自身 margin」那種寫法:block-level 的
+        // flex container 填滿容器本來就是 CSS 定義,那條恆真、永遠不會紅。
+        insetLeft: pagerRect.left - (containerRect.left + parseFloat(containerStyle.paddingLeft)),
+        insetRight: containerRect.right - parseFloat(containerStyle.paddingRight) - pagerRect.right,
+        marginLeft: parseFloat(pagerStyle.marginLeft),
+        marginRight: parseFloat(pagerStyle.marginRight),
         items,
       }
     }, items)
 
-    expect(geometry.pagerWidth).toBe(345)
+    // 手機版(此測試固定 390px)左右各內縮 7.5px。
+    for (const inset of [
+      geometry.insetLeft,
+      geometry.insetRight,
+      geometry.marginLeft,
+      geometry.marginRight,
+    ]) {
+      expect(inset).toBeCloseTo(7.5, 1)
+    }
     const expectedSlotWidth = geometry.pagerWidth * 0.48
     for (const item of geometry.items) {
       expect(item.width).toBeCloseTo(expectedSlotWidth, 1)

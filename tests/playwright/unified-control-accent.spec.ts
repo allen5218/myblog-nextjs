@@ -3,6 +3,7 @@ import { contrastRatio, parseColor } from '../helpers/color'
 import { focusWithKeyboard } from '../helpers/focus'
 
 const accent = 'rgb(58, 131, 158)'
+
 const middleArticlePath = '/2025/10/12/ai-learning-community/'
 
 async function setTheme(page: Page, theme: 'light' | 'dark') {
@@ -73,12 +74,12 @@ test('article pager keeps the two-line classic Previous and Next contract withou
 test('list and article pagers keep their distinct Hux markup and responsive geometry', async ({
   page,
 }) => {
-  for (const [width, pagerWidth, slotWidth] of [
-    [320, 275, 132],
-    [390, 345, 165.6],
-    [768, 697.5, 334.8],
-    [1200, 706.5, 339.12],
-  ]) {
+  // 這裡刻意不釘死絕對像素(舊版是 275 / 345 / 697.5 / 706.5)。那些數字混進了「.post-shell
+  // 怎麼從 viewport 算出寬度」這條與 pager 無關的鏈,而該鏈曾經含 `100vw`(含捲軸寬)——
+  // headless Chromium 一律 overlay 捲軸,`100vw === 100%`,絕對值在 CI 永遠成立,傳統捲軸的
+  // 真實桌面卻會整組差一個捲軸寬。改成從量測基準(.post-container 的內容盒)自己推期望值:
+  // 上游容器寬度怎麼變都跟著走,被守住的是 pager 自己的比例契約。
+  for (const width of [320, 390, 768, 1200]) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto(middleArticlePath)
 
@@ -87,20 +88,73 @@ test('list and article pagers keep their distinct Hux markup and responsive geom
     await expect(articleItems).toHaveCount(2)
     await expect(articlePager.locator('.pager-label, .pager-title')).toHaveCount(4)
     const articleGeometry = await articlePager.evaluate((pager) => {
+      const container = pager.closest('.post-container')!
+      const containerRect = container.getBoundingClientRect()
+      const containerStyle = getComputedStyle(container)
       const pagerRect = pager.getBoundingClientRect()
+      const pagerStyle = getComputedStyle(pager)
       const items = Array.from(pager.children).map((item) => {
         const itemRect = item.getBoundingClientRect()
-        const linkRect = item.querySelector('a')!.getBoundingClientRect()
-        return { width: itemRect.width, linkWidth: linkRect.width, linkHeight: linkRect.height }
+        const link = item.querySelector('a')!
+        const title = item.querySelector('.pager-title')!
+        const titleStyle = getComputedStyle(title)
+        const linkRect = link.getBoundingClientRect()
+        return {
+          left: itemRect.left,
+          right: itemRect.right,
+          width: itemRect.width,
+          height: itemRect.height,
+          linkWidth: linkRect.width,
+          linkHeight: linkRect.height,
+          // 標題換幾行才是高度差的成因。直接斷言「第二個比較高」會綁死這兩篇鄰居文章的
+          // 標題長度 —— 中間插一篇短標題的文章就會紅。
+          titleLines: Math.round(
+            title.getBoundingClientRect().height / parseFloat(titleStyle.lineHeight)
+          ),
+        }
       })
-      return { width: pagerRect.width, items }
+      return {
+        contentLeft: containerRect.left + parseFloat(containerStyle.paddingLeft),
+        contentRight: containerRect.right - parseFloat(containerStyle.paddingRight),
+        marginLeft: parseFloat(pagerStyle.marginLeft),
+        marginRight: parseFloat(pagerStyle.marginRight),
+        left: pagerRect.left,
+        right: pagerRect.right,
+        width: pagerRect.width,
+        items,
+      }
     })
-    expect(articleGeometry.width).toBeCloseTo(pagerWidth, 1)
+
+    // 契約一:相對 .post-container 的內容盒,手機版左右各內縮 7.5px,≥768px 貼齊。
+    const expectedInset = width < 768 ? 7.5 : 0
+    expect(articleGeometry.marginLeft).toBeCloseTo(expectedInset, 1)
+    expect(articleGeometry.marginRight).toBeCloseTo(expectedInset, 1)
+    expect(articleGeometry.left - articleGeometry.contentLeft).toBeCloseTo(expectedInset, 1)
+    expect(articleGeometry.contentRight - articleGeometry.right).toBeCloseTo(expectedInset, 1)
+
+    const [previous, next] = articleGeometry.items
+    // 契約二:每個 slot 佔 pager 的 48%。契約三:中間間隔佔 4%。
     for (const item of articleGeometry.items) {
-      expect(item.width).toBeCloseTo(slotWidth, 1)
-      expect(item.linkWidth).toBeCloseTo(slotWidth, 1)
+      expect(item.width / articleGeometry.width).toBeCloseTo(0.48, 3)
+      // 契約四:anchor 填滿自己的 slot(.pager a 的 max-width: 339px 不得回到 article variant)
+      expect(item.linkWidth).toBeCloseTo(item.width, 1)
     }
-    expect(articleGeometry.items[1].linkHeight).toBeGreaterThan(articleGeometry.items[0].linkHeight)
+    expect((next.left - previous.right) / articleGeometry.width).toBeCloseTo(0.04, 3)
+
+    // 契約五:Previous / Next 各自貼齊 pager 的左右邊界。
+    expect(previous.left).toBeCloseTo(articleGeometry.left, 1)
+    expect(next.right).toBeCloseTo(articleGeometry.right, 1)
+
+    // 契約六:標題長度只改高度、不改寬度。兩個方向都斷言,才不必依賴「這兩篇鄰居文章的
+    // 標題剛好一長一短」—— 寬 slot 下兩者可能都只佔一行,那時該成立的是等高。
+    expect(previous.linkWidth).toBeCloseTo(next.linkWidth, 1)
+    if (previous.titleLines === next.titleLines) {
+      expect(previous.linkHeight).toBeCloseTo(next.linkHeight, 1)
+    } else {
+      const taller = previous.titleLines > next.titleLines ? previous : next
+      const shorter = previous.titleLines > next.titleLines ? next : previous
+      expect(taller.linkHeight).toBeGreaterThan(shorter.linkHeight)
+    }
 
     const articleLink = articlePager.locator('.previous > a')
     await expect(articleLink).toHaveCSS('text-align', 'center')
