@@ -276,11 +276,12 @@ describe('navbar trigger 的語意 class', () => {
 })
 
 describe('popup focus 的成對 token', () => {
-  const PAIR = 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+  const INTERACTIVE_PAIR = 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+  const THEME_SWITCH_PAIR = 'bg-[var(--hux-control-accent)] text-white'
   const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const occurrences = (source: string, needle: string) => source.split(needle).length - 1
-  const focusBranches = (source: string) =>
-    source.match(new RegExp(`focus\\s*\\?\\s*'${escapeForRegExp(PAIR)}'`, 'g'))?.length ?? 0
+  const focusBranches = (source: string, pair: string) =>
+    source.match(new RegExp(`focus\\s*\\?\\s*'${escapeForRegExp(pair)}'`, 'g'))?.length ?? 0
 
   // HeadlessUI 的 MenuItem 在選單關閉時根本不在 DOM 裡(renderToStaticMarkup 的輸出
   // 只有 trigger button),所以 focus 態的 class 沒有任何渲染層可以斷言。
@@ -288,14 +289,25 @@ describe('popup focus 的成對 token', () => {
   // 比對「成對字串出現在 focus 分支的次數」而不是兩個字串各自的出現次數:後者對
   // 「把前景 token 搬到 else 分支」與「把整對搬到非 focus 的元素上」都是綠的 —— 計數
   // 表達不了位置。這裡要求每一次用到互動色,都是以成對形式出現在 focus 三元運算子上。
-  test.each([['ThemeSwitch.tsx'], ['MobileNavMenu.tsx']])(
-    '%s 的互動色只以成對形式出現在 focus 分支',
-    (file) => {
-      const source = readSource('components', file)
-      const paired = focusBranches(source)
-      expect(paired).toBeGreaterThan(0)
-      expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(paired)
-      expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(paired)
-    }
-  )
+  test('MobileNavMenu.tsx 的互動色只以成對形式出現在 focus 分支', () => {
+    const source = readSource('components', 'MobileNavMenu.tsx')
+    const paired = focusBranches(source, INTERACTIVE_PAIR)
+    expect(paired).toBeGreaterThan(0)
+    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(paired)
+    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(paired)
+  })
+
+  test('ThemeSwitch.tsx 的三個 focus 分支只使用 control accent 與白字', () => {
+    const source = readSource('components', 'ThemeSwitch.tsx')
+    const paired = focusBranches(source, THEME_SWITCH_PAIR)
+
+    // 完整 class 字串必須正好在 focus 三元分支，不能靠別處保留 pair 讓計數假綠，
+    // 也不能在同一分支尾端追加另一個 background/text class 覆蓋有效樣式。
+    expect(paired).toBe(3)
+    expect(occurrences(source, THEME_SWITCH_PAIR)).toBe(paired)
+    expect(occurrences(source, 'bg-[var(--hux-control-accent)]')).toBe(paired)
+    expect(occurrences(source, 'text-white')).toBe(paired)
+    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(0)
+    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(0)
+  })
 })
