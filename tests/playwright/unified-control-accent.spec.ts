@@ -434,4 +434,32 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(contentLabel).toHaveText('Content')
     await expect(contentLabel).toHaveCSS('color', accent)
   })
+
+  test(`${theme}: ThemeSwitch options use the control accent for hover and keyboard focus`, async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await setTheme(page, theme)
+
+    await page.locator('.navbar-links .theme-switch-button').click()
+    const items = page.locator('.navbar-links [role="menu"] button')
+    await expect(items).toHaveCount(3)
+
+    // 三個 option 都各自持有 focus render branch；逐一真實 hover，避免只改到其中一個。
+    for (const item of await items.all()) {
+      await item.hover()
+      await expect(item).toHaveCSS('background-color', accent)
+      await expect(item).toHaveCSS('color', 'rgb(255, 255, 255)')
+    }
+
+    // HeadlessUI 把 DOM focus 留在 menu，並以 aria-activedescendant / data-focus 表示
+    // 鍵盤 active option。移開滑鼠再按 ArrowDown，確保不是 :hover 代償 focus branch。
+    await page.mouse.move(0, 0)
+    await page.locator('.navbar-links [role="menu"]').focus()
+    await page.keyboard.press('ArrowDown')
+    const keyboardActive = page.locator('.navbar-links [role="menu"] button[data-focus]')
+    await expect(keyboardActive).toHaveCount(1)
+    await expect(keyboardActive).toHaveCSS('background-color', accent)
+    await expect(keyboardActive).toHaveCSS('color', 'rgb(255, 255, 255)')
+  })
 }

@@ -364,10 +364,11 @@ for (const theme of ['light', 'dark'] as const) {
       }
     })
 
-    // 文字對 focus 背景(WCAG 1.4.3)。
+    // 使用者核可 ThemeSwitch dropdown 固定採 #3A839E + white 的視覺例外(約 4.27:1)；
+    // 只在這個控制放寬門檻，其他文字控制仍維持 4.5:1。
     expect(
       contrastOf(measured.color, [measured.background, measured.panel])
-    ).toBeGreaterThanOrEqual(4.5)
+    ).toBeGreaterThanOrEqual(4.2)
     // focus surface 對 panel(WCAG 1.4.11)—— 只量前者會漏掉「focus 指示器本身看不出來」。
     expect(contrastOf(measured.background, [measured.panel])).toBeGreaterThanOrEqual(3)
   })
