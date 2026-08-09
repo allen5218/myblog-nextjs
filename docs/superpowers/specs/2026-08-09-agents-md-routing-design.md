@@ -72,7 +72,27 @@ Karpathy 的 [LLM Wiki pattern][karpathy] 把知識庫分三層:`raw/`(不可變
 
 ### D-1:分流判準(三問決策程序)
 
-判準本身進 `AGENTS.md` 的新章節 `## 這份文件的維護規則`。三個問題**依序**問:
+判準本身進 `AGENTS.md` 的新章節 `## 這份文件的定位與維護規則`。
+
+**該章節必須先宣告分層,再列判準。** 少了分層宣告,三個問題對未來的 agent 只是三條沒有
+理由的啟發式,第一次遇到邊界情形就會被繞過。開頭要寫明:
+
+> 這個 repo 有**兩個 LLM wiki 和兩個 schema**:
+>
+> | | schema(人工維護,不可重生成) | wiki(衍生知識) | 誰在寫 |
+> | --- | --- | --- | --- |
+> | 功能 / 機制 | `openwiki/INSTRUCTIONS.md` | `openwiki/*.md` | `openwiki code --update` |
+> | 教訓 / 坑 | **本章節** | `docs/lessons/*.md` | 每個 session 的 agent |
+>
+> **`AGENTS.md` 是 schema 層,不是 wiki。** 它放操作規則與往兩個 wiki 的路由,
+> 不放衍生知識。**教訓 ≠ 規則**:規則通常是教訓的結論——案例本體留在 wiki,
+> 萃取出的祈使句升上 schema。
+>
+> 兩條線有個關鍵不對稱:`openwiki/` 寫壞了下次 `--update` 會重寫,
+> **`docs/lessons/` 沒有生成器、不可重生成**,寫壞了沒有任何東西會回來修它。
+> 所以下面的判準刻意設計成**可從文字表面判斷**,不依賴主觀評估。
+
+接著三個問題**依序**問:
 
 ---
 
@@ -192,11 +212,19 @@ wiki 內容。這是本判準最重要的性質——它不需要主觀評估。
 
 這讓壓力變成雙向:加新條目時會被迫面對取捨,而不是永遠只加不減。
 
-### D-6:`openwiki/INSTRUCTIONS.md` 修正
+### D-6:`openwiki/INSTRUCTIONS.md` 修正(兩處)
 
-第 7 行的「As of 2026-08-02 the only one is `docs/lessons/mermaid-pipeline.md`」已過時
-(`css-pitfalls.md` 早就存在)。**改成不列舉**——列舉當下狀態正是 `AGENTS.md` 自己
-警告過的失效模式(生成器會把「這次執行當下的狀態」寫成 repo 的永久不變量)。
+**① 拿掉列舉。** 第 7 行的「As of 2026-08-02 the only one is
+`docs/lessons/mermaid-pipeline.md`」已過時(`css-pitfalls.md` 早就存在)。列舉當下狀態
+正是這個檔案自己在「Hard constraints」第 1 條警告過的失效模式——把執行當下的狀態
+寫成 repo 的永久不變量。改成不列舉。
+
+**② 修正定性。** 同一行把 `docs/lessons/` 描述成「the same kind of **human-maintained
+rules**」——依 D-1 確立的分層,那是**教訓(wiki 內容)**,不是規則(schema)。這個定性
+直接餵給生成器,錯的模型會讓它把兩者當同一種東西處理。改成:`docs/lessons/` 是
+經驗衍生的知識頁,`AGENTS.md` 是它們的 schema,`openwiki/` 與它是**平行的兩個 wiki**
+(前者從 source 生成、可重生成;後者從除錯經驗寫成、不可重生成),因此一樣是
+連結、不轉述、不覆寫。
 
 ## 已否決
 
