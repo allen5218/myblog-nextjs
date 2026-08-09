@@ -69,6 +69,7 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
             <HuxPager
               next={next && { href: `/${next.path}`, title: next.title }}
               prev={prev && { href: `/${prev.path}`, title: prev.title }}
+              variant="article"
             />
             {siteMetadata.comments && (
               <div className="comments hux-comments" id="comment">

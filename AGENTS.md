@@ -16,6 +16,27 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   沒這檔案全專案 CSS/圖片 import 的型別會炸。
 - **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
   不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
+- **驗證前先確認 port 上的伺服器真的是自己那一份。** 2026-08-08 實測:本機另一個 worktree
+  (`/private/tmp/myblog-nextjs-unified-accent/`)佔著 3012,`next start` 靜默吃到
+  `EADDRINUSE` 退出,而 `curl` 照樣回 200 —— 96 組量測全部打在別人的分支上,還「乾淨地」
+  給出全綠。**`playwright.config.ts` 預設 port 3012 且 `reuseExistingServer: true`,會放大
+  這個坑**。查法:`lsof -nP -iTCP:<port> -sTCP:LISTEN` 看 PID 的執行路徑,或直接抓
+  `/_next/static/chunks/*.css` 比對本次改動的字串。多 worktree 並行時一律用
+  `PLAYWRIGHT_BASE_URL` 明確指向自己的 port,不要依賴預設值。
+- **headless Chromium 一律是 overlay 捲軸,量不到「捲軸佔版面」才會出現的版面 bug。**
+  2026-08-08 實測 `innerWidth - clientWidth`:headless(含
+  `--disable-features=OverlayScrollbar,FluentOverlayScrollbar`)一律 `0`,只有
+  `headless: false` 給 `15`。`html::-webkit-scrollbar { width: 15px }` 這個常見手法在
+  headless 下**完全無效**。因此 `100vw`(含捲軸寬)與 `clientWidth`(不含)的落差類
+  bug,既有 `tests/playwright/*` 在結構上不可能重現 —— 2026-07-10 那次修 full-bleed 溢出
+  跑遍 6 種寬度兩種引擎仍漏掉,就是這個原因。這類不變量的護欄要放在 `test:unit`
+  (見 `tests/unit/css-viewport-width-contract.test.ts`);需要實測時用 headed Chromium。
+- **水平尺寸不要用 `vw` 量。** `100vw` 依規範包含傳統捲軸寬度,百分比 / auto margin /
+  `left:right:0` 讀的 containing block 不含。macOS「顯示捲軸」預設「依滑鼠或觸控板自動
+  決定」,**接上滑鼠就會全系統切成佔版面的傳統捲軸**,於是同一份程式碼時好時壞、
+  Edge 與 Safari 都中、Playwright 測不出來。症狀是整組元素左偏半個捲軸寬、右側溢出同量
+  (LTR 下左側溢出不產生捲軸,所以只看得到「多一條水平捲軸」)。`.hux-full-bleed` /
+  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由上述 unit test 擋。
 - **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
   沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
   新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、
@@ -340,6 +361,24 @@ dev-only 現象,真因是 `/` 與 `/blog` 內容重複)與 kbar「手機點文�
    接線,在後面補一行寫死值(CSS 後者勝出)會讓 token 完全失效而斷言照樣綠 —— 掃 AST 時
    同一個屬性只能採**最後一次**宣告。寫「掃原始碼/AST 找某個字串」這類斷言前,先問:
    **有沒有一種改法保留了這個字串,卻讓它不再生效?**
+
+8. **突變測試證明不了涵蓋面 —— 那是另一條正交的失效軸。** 突變測試的取樣母體就是既有斷言,
+   它在結構上看不見母體之外的東西。2026-08-08 實測:PR #73 有 125 條 Playwright 全綠、
+   6 組突變全紅,而「把共用基底 `.pager li { flex: 1 }` 搬進 variant」的連帶回歸就大剌剌
+   躺在 404 與 `/offline/` 兩個從來沒被 pager 測試碰過的頁面上(單顆按鈕從置中掉成靠左)。
+   **動共用基底規則時,先列出全部呼叫點再改**,不要指望測試網撈到 —— 這類重構的受害者
+   依定義就是「還沒被收編進 variant 的舊呼叫點」,而它們之所以還裸著,通常正因為邊緣、
+   不重要,也就是最不可能有測試的地方。突變測試給的信心非常具體,很容易被誤當成整體
+   測試品質的證明。
+
+9. **突變鷹架本身也要先驗證會生效,再相信它的紅綠。** 2026-08-08 用 `page.route` 攔
+   `/_next/static/chunks/*.css` 附加突變規則,結果只有**迴圈第一個 viewport** 生效 ——
+   Next 的 static chunk 帶 immutable 快取,第二次 `page.goto` 根本不再發請求,route
+   攔不到(補 `cache-control: no-store` 也無效,`fulfill({ response, headers })` 讓
+   response 自己的 header 勝出)。當時四個突變都「正確變紅」,但全都紅在迴圈外的斷言上,
+   迴圈內兩條從未被真正考驗;唯一一個只在寬視窗才會顯現的突變因此假綠。**跨多次導覽的
+   樣式突變要用 `page.addInitScript` 注入 `<style>`**(每次導覽都跑,繞開 HTTP 快取),
+   並且先用探針確認突變在**每一個**受測條件下都真的套用了。
 
 ## 提交慣例
 

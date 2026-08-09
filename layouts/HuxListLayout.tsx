@@ -50,6 +50,7 @@ export default function HuxListLayout({
           <HuxPager
             prev={newerHref ? { href: newerHref, title: 'Newer Posts' } : undefined}
             next={olderHref ? { href: olderHref, title: 'Older Posts' } : undefined}
+            variant="list"
           />
         </div>
         <HuxSidebar posts={posts} />

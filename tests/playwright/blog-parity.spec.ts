@@ -74,7 +74,7 @@ test('listed surfaces use legacy URLs and keep hidden posts out', async ({ page,
   expect(projects.status()).toBe(404)
 })
 
-test('starter KBar search opens with cyan active result and legacy navigation', async ({
+test('starter KBar search opens with the control-accent active result and legacy navigation', async ({
   page,
 }) => {
   await page.goto('/')
@@ -82,16 +82,11 @@ test('starter KBar search opens with cyan active result and legacy navigation', 
   await page.locator('.navbar-links').getByLabel('Search').click()
   await page.keyboard.type('AI')
 
-  await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const activeResult = [...document.querySelectorAll('div')].find(
-          (element) => getComputedStyle(element).backgroundColor === 'rgb(77, 184, 209)'
-        )
-        return activeResult?.textContent?.trim() || ''
-      })
-    )
-    .toContain('課程啟動 - AI 跨領域學習社群')
+  const activeResult = page.locator(
+    '#kbar-listbox [role="option"][aria-selected="true"] > div > .cursor-pointer'
+  )
+  await expect(activeResult).toHaveCSS('background-color', 'rgb(58, 131, 158)')
+  await expect(activeResult).toContainText('課程啟動 - AI 跨領域學習社群')
   await expect(page.locator('.hux-search-overlay')).toHaveCount(0)
   await expect(page.getByText('Catalog Test')).toHaveCount(0)
 
@@ -337,19 +332,44 @@ test('mobile article pagers reserve boundary slots for every article position', 
         }
       })
 
+      const container = pager.closest('.post-container')!
+      const containerRect = container.getBoundingClientRect()
+      const containerStyle = getComputedStyle(container)
+      const pagerStyle = getComputedStyle(pager)
+
       return {
         pagerLeft: pagerRect.left,
         pagerRight: pagerRect.right,
         pagerWidth: pagerRect.width,
+        // 相對 .post-container 內容盒的左右內縮量。這才是 pager 自己的契約;
+        // 「寬 345px」是 viewport → .post-shell → .post-container 一路算下來的結果,
+        // 把它寫死會把上游那條鏈偷渡進 pager 的契約 —— 而那條鏈曾經含 `100vw`(含捲軸寬),
+        // headless 的 overlay 捲軸會讓其中的錯誤永遠不顯現。
+        //
+        // 注意不要退回「pagerWidth === 內容盒寬 − 自身 margin」那種寫法:block-level 的
+        // flex container 填滿容器本來就是 CSS 定義,那條恆真、永遠不會紅。
+        insetLeft: pagerRect.left - (containerRect.left + parseFloat(containerStyle.paddingLeft)),
+        insetRight: containerRect.right - parseFloat(containerStyle.paddingRight) - pagerRect.right,
+        marginLeft: parseFloat(pagerStyle.marginLeft),
+        marginRight: parseFloat(pagerStyle.marginRight),
         items,
       }
     }, items)
 
-    expect(geometry.pagerWidth).toBe(360)
+    // 手機版(此測試固定 390px)左右各內縮 7.5px。
+    for (const inset of [
+      geometry.insetLeft,
+      geometry.insetRight,
+      geometry.marginLeft,
+      geometry.marginRight,
+    ]) {
+      expect(inset).toBeCloseTo(7.5, 1)
+    }
+    const expectedSlotWidth = geometry.pagerWidth * 0.48
     for (const item of geometry.items) {
-      expect(item.width).toBe(172)
-      expect(item.linkLeft).toBeGreaterThanOrEqual(item.left)
-      expect(item.linkRight).toBeLessThanOrEqual(item.right)
+      expect(item.width).toBeCloseTo(expectedSlotWidth, 1)
+      expect(item.linkLeft).toBeCloseTo(item.left, 1)
+      expect(item.linkRight).toBeCloseTo(item.right, 1)
     }
 
     const previous = geometry.items.find((item) => item.itemClass === 'previous')

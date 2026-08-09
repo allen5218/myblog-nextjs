@@ -112,6 +112,20 @@ function consumedBy(token: string): string[] {
   return sites.sort()
 }
 
+/**
+ * 讀出 token 的最後宣告座標和值；@theme 不是 Rule,所以也必須保留它的 at-rule scope。
+ */
+function declaredValues(token: string): string[] {
+  const declarations: string[] = []
+  stylesheet.walkDecls(token, (declaration) => {
+    const parent = declaration.parent
+    if (parent instanceof Rule) declarations.push(`${scopeOf(parent)} :: ${declaration.value}`)
+    else if (parent instanceof AtRule)
+      declarations.push(`@${parent.name} ${parent.params} :: ${declaration.value}`)
+  })
+  return declarations.sort()
+}
+
 const NAVBAR_TOKEN_SCOPES = [
   '.navbar-custom',
   '@media (max-width: 767.98px) | body:has(main .intro-header-post.intro-header-text) .navbar-custom',
@@ -217,6 +231,27 @@ describe('paired interactive tokens', () => {
   })
 })
 
+describe('scoped control accent', () => {
+  test('--hux-control-accent only declares the fixed requested value', () => {
+    expect(declaredValues('--hux-control-accent')).toEqual([':root :: #3a839e'])
+  })
+
+  test('--hux-control-accent has only the requested effective CSS consumers', () => {
+    expect(consumedBy('--hux-control-accent')).toEqual([
+      '#kbar-listbox .text-primary-600 :: color',
+      "#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer, #kbar-listbox [role='option']:hover > div > .cursor-pointer :: background-color",
+      '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: background-color',
+      '.hux-elevator-control:hover, .hux-elevator-control:focus-visible :: border-color',
+      '.pager a:hover, .pager a:focus :: background-color',
+      '.pager a:hover, .pager a:focus :: border-color',
+    ])
+  })
+
+  test('--color-primary-600 retains its broader palette ownership and value', () => {
+    expect(declaredValues('--color-primary-600')).toEqual(['@theme  :: #4db8d1'])
+  })
+})
+
 /** 從 markup 取出帶指定 aria-label 的 <button> 開標籤,屬性順序無關。 */
 function buttonTag(html: string, ariaLabel: string): string {
   const match = html.match(new RegExp(`<button[^>]*aria-label="${ariaLabel}"[^>]*>`))
@@ -241,11 +276,13 @@ describe('navbar trigger 的語意 class', () => {
 })
 
 describe('popup focus 的成對 token', () => {
-  const PAIR = 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+  const CONTROL_ACCENT_PAIR = 'bg-[var(--hux-control-accent)] text-white'
+  const MOBILE_NAV_REST =
+    'text-gray-700! hover:bg-[var(--hux-control-accent)] hover:text-white! dark:text-gray-200!'
   const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const occurrences = (source: string, needle: string) => source.split(needle).length - 1
-  const focusBranches = (source: string) =>
-    source.match(new RegExp(`focus\\s*\\?\\s*'${escapeForRegExp(PAIR)}'`, 'g'))?.length ?? 0
+  const focusBranches = (source: string, pair: string) =>
+    source.match(new RegExp(`focus\\s*\\?\\s*'${escapeForRegExp(pair)}'`, 'g'))?.length ?? 0
 
   // HeadlessUI 的 MenuItem 在選單關閉時根本不在 DOM 裡(renderToStaticMarkup 的輸出
   // 只有 trigger button),所以 focus 態的 class 沒有任何渲染層可以斷言。
@@ -253,14 +290,30 @@ describe('popup focus 的成對 token', () => {
   // 比對「成對字串出現在 focus 分支的次數」而不是兩個字串各自的出現次數:後者對
   // 「把前景 token 搬到 else 分支」與「把整對搬到非 focus 的元素上」都是綠的 —— 計數
   // 表達不了位置。這裡要求每一次用到互動色,都是以成對形式出現在 focus 三元運算子上。
-  test.each([['ThemeSwitch.tsx'], ['MobileNavMenu.tsx']])(
-    '%s 的互動色只以成對形式出現在 focus 分支',
-    (file) => {
-      const source = readSource('components', file)
-      const paired = focusBranches(source)
-      expect(paired).toBeGreaterThan(0)
-      expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(paired)
-      expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(paired)
-    }
-  )
+  test('MobileNavMenu.tsx 的 Link 與 Search 在 focus、hover 都只用 control accent 與白字', () => {
+    const source = readSource('components', 'MobileNavMenu.tsx')
+    const focused = focusBranches(source, CONTROL_ACCENT_PAIR)
+
+    expect(focused).toBe(2)
+    expect(occurrences(source, CONTROL_ACCENT_PAIR)).toBe(focused)
+    expect(occurrences(source, MOBILE_NAV_REST)).toBe(2)
+    expect(occurrences(source, 'hover:bg-[var(--hux-control-accent)]')).toBe(2)
+    expect(occurrences(source, 'hover:text-white!')).toBe(2)
+    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(0)
+    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(0)
+  })
+
+  test('ThemeSwitch.tsx 的三個 focus 分支只使用 control accent 與白字', () => {
+    const source = readSource('components', 'ThemeSwitch.tsx')
+    const paired = focusBranches(source, CONTROL_ACCENT_PAIR)
+
+    // 完整 class 字串必須正好在 focus 三元分支，不能靠別處保留 pair 讓計數假綠，
+    // 也不能在同一分支尾端追加另一個 background/text class 覆蓋有效樣式。
+    expect(paired).toBe(3)
+    expect(occurrences(source, CONTROL_ACCENT_PAIR)).toBe(paired)
+    expect(occurrences(source, 'bg-[var(--hux-control-accent)]')).toBe(paired)
+    expect(occurrences(source, 'text-white')).toBe(paired)
+    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(0)
+    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(0)
+  })
 })

@@ -184,6 +184,8 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(64, 64, 64);
   --hux-border: rgb(238, 238, 238);
   --hux-quote-bg: rgb(245, 245, 245);
+  --hux-control-accent: #3a839e;
+  --hux-pager-title: #737373;
   /* 成對 token:--hux-interactive 是頁面底色上的 accent 前景,
      --hux-on-interactive 是承載文字的 focus 背景上要用的前景色。
      同一個值不能兩者兼任 —— 見 --hux-interactive 深色值上白字只有 1.94。 */
@@ -199,6 +201,7 @@ input:-webkit-autofill:focus {
   --hux-link: rgb(224, 224, 224);
   --hux-border: rgb(68, 68, 68);
   --hux-quote-bg: rgb(58, 58, 58);
+  --hux-pager-title: #a3a3a3;
   --hux-interactive: #66c7e0;
   --hux-on-interactive: #2d2d2d;
   --series-interactive: var(--hux-interactive);
@@ -209,16 +212,25 @@ body {
   color: var(--hux-text);
 }
 
+/* 滿版出血(navbar / hero / footer)。這裡刻意不用 `left:50%` + `width:100vw` +
+   `margin-left:-50vw` 的逃脫技巧:`100vw` 依規範「包含」傳統捲軸寬度,而 `50%` 讀的
+   containing block 不含,兩把尺在「顯示捲軸=總是」的系統(macOS 接上滑鼠即會切換)
+   差一個捲軸寬,整組元素左偏半個捲軸、右側溢出同量並產生水平捲軸。
+   這三個元素的 containing block 本來就已經滿寬(見 components/SectionContainer.tsx),
+   滿版交由 block 佈局自然達成即可。position:relative 留著給 .intro-header-content
+   的絕對定位當參照。 */
 .hux-full-bleed {
   position: relative;
-  left: 50%;
-  width: 100vw;
-  margin-left: -50vw;
 }
 
 .navbar-custom {
   position: absolute;
   top: 0;
+  /* absolute(及 .is-fixed 的 fixed)下 width:auto 是 shrink-to-fit,滿寬必須靠左右
+     歸零達成。兩種模式的 containing block 都是 initial containing block,寬度等於
+     documentElement.clientWidth(不含捲軸),所以不會重蹈上面 100vw 的覆轍。 */
+  left: 0;
+  right: 0;
   z-index: 30;
   min-height: 56px;
   color: var(--navbar-fg);
@@ -557,10 +569,13 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   border-color: var(--hero-border);
 }
 
+/* 用 100% 而非 100vw 量可用寬度、用 auto margin 置中:同 .hux-full-bleed 的理由,
+   `100vw` 含傳統捲軸寬,窄於 1170px 的視窗會讓本容器溢出半個捲軸寬。 */
 .hux-home-layout {
   display: block;
-  width: min(1170px, 100vw);
-  margin-left: calc(50% - min(585px, 50vw));
+  width: min(1170px, 100%);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 /* 手機版預設就要有跟舊站 Bootstrap .container 一樣的左右留白(0 15px),
@@ -915,10 +930,13 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   }
 }
 
+/* 同 .hux-home-layout:改用 100% + auto margin,避免 100vw 在傳統捲軸下多算一個
+   捲軸寬。768–1199px 有各自的固定欄寬覆寫,這條主要作用在 <768px 與 ≥1200px。 */
 .post-shell {
   display: block;
-  width: min(1170px, 100vw);
-  margin-left: calc(50% - min(585px, 50vw));
+  width: min(1170px, 100%);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .post-container {
@@ -1125,18 +1143,29 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   flex: 1;
 }
 
-@media (max-width: 767.98px) {
-  .post-shell:not(.about-shell) > .post-container > .pager > li {
-    flex: 0 0 calc((100% - 16px) / 2);
-  }
-
-  .post-shell:not(.about-shell) > .post-container > .pager > .next {
-    margin-left: auto;
-  }
+.pager-list {
+  gap: 0;
 }
 
-.pager .next {
+.pager-list li {
+  flex: 0 0 auto;
+}
+
+.pager-list .next,
+.pager-article .next {
+  margin-left: auto;
+}
+
+.pager-list .next {
   text-align: right;
+}
+
+.pager-article {
+  gap: 4%;
+}
+
+.pager-article li {
+  flex: 0 0 48%;
 }
 
 .pager a {
@@ -1152,24 +1181,71 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   transition: all 0.3s ease;
 }
 
+.pager-article a {
+  display: block;
+  max-width: none;
+  background-color: #fff;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.pager-list a {
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.pager-article .pager-label,
+.pager-article .pager-title {
+  display: block;
+}
+
+.pager-article .pager-title {
+  color: var(--hux-pager-title);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+@media (max-width: 767.98px) {
+  .pager a {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .pager-article {
+    margin-right: 7.5px;
+    margin-left: 7.5px;
+  }
+}
+
+@media (max-width: 320px) {
+  .pager-list:has(> .previous):has(> .next) {
+    flex-wrap: wrap;
+  }
+
+  .pager-list:has(> .previous):has(> .next) > li {
+    flex-basis: 100%;
+  }
+}
+
 /* 深色模式下 pager 按鈕(Older Posts / 上一篇・下一篇)非 hover 的邊框改為淺灰 #DDDDDD */
 .dark .pager a {
   border-color: #dddddd;
 }
 
-/* 文章切換(上/下一篇)與首頁 Older Posts 共用此 pager,還原原站 hover 變色效果。
-   原站以 --post-link-hover 變數區分:淺色 #0085a1、深色 #66c7e0(參考圖為深色故呈淺青)。 */
+.dark .pager-article a {
+  background-color: #2d2d2d;
+}
+
 .pager a:hover,
 .pager a:focus {
-  background-color: #0085a1;
-  border-color: #0085a1;
+  background-color: var(--hux-control-accent);
+  border-color: var(--hux-control-accent);
   color: #fff;
 }
 
-.dark .pager a:hover,
-.dark .pager a:focus {
-  background-color: #66c7e0;
-  border-color: #66c7e0;
+.pager-article a:hover .pager-title,
+.pager-article a:focus .pager-title {
   color: #fff;
 }
 
@@ -1494,9 +1570,7 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   font-size: 14px;
 }
 
-/* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。
-   Hover 色沿用 .pager a:hover 的既有配色慣例(#0085a1 / #66c7e0),
-   而非按鈕自己原本的深色 hover(#4db8d1)——為了與站內其他控制項一致,經確認採用。 */
+/* 舊站 Hux 主題的方角外框樣式(桌面 right:4% 在下方 768px 斷點覆寫)。 */
 .hux-elevator-control {
   position: fixed;
   right: 20px;
@@ -1521,22 +1595,25 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
     color 0.3s ease;
 }
 
-.hux-elevator-control:hover,
-.hux-elevator-control:focus-visible {
-  background-color: #0085a1;
-  border-color: #0085a1;
-  color: #fff;
-}
-
 .dark .hux-elevator-control {
   background: rgba(45, 45, 45, 0.9);
 }
 
-.dark .hux-elevator-control:hover,
-.dark .hux-elevator-control:focus-visible {
-  background-color: #66c7e0;
-  border-color: #66c7e0;
+.hux-elevator-control:hover,
+.hux-elevator-control:focus-visible {
+  background-color: var(--hux-control-accent);
+  border-color: var(--hux-control-accent);
   color: #fff;
+}
+
+/* Pliny 的 KBar portal 掛在 app 外;只在它的 listbox 內覆寫原本的 primary utility。 */
+#kbar-listbox [role='option'][aria-selected='true'] > div > .cursor-pointer,
+#kbar-listbox [role='option']:hover > div > .cursor-pointer {
+  background-color: var(--hux-control-accent);
+}
+
+#kbar-listbox .text-primary-600 {
+  color: var(--hux-control-accent);
 }
 
 .hux-elevator-control-visible {

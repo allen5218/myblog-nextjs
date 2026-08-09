@@ -97,7 +97,7 @@ const ThemeSwitch = () => {
                       <button
                         className={`${
                           focus
-                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            ? 'bg-[var(--hux-control-accent)] text-white'
                             : 'text-gray-700! dark:text-gray-200!'
                         } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
@@ -115,7 +115,7 @@ const ThemeSwitch = () => {
                       <button
                         className={`${
                           focus
-                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            ? 'bg-[var(--hux-control-accent)] text-white'
                             : 'text-gray-700! dark:text-gray-200!'
                         } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
@@ -133,7 +133,7 @@ const ThemeSwitch = () => {
                       <button
                         className={`${
                           focus
-                            ? 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
+                            ? 'bg-[var(--hux-control-accent)] text-white'
                             : 'text-gray-700! dark:text-gray-200!'
                         } group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold tracking-wide`}
                       >
