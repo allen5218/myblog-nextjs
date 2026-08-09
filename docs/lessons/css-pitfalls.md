@@ -5,7 +5,7 @@
 > 寫一般的樣式**不需要**讀。
 >
 > 這裡只放**踩過的坑**:每一條都附實測數字與最小重現條件。規則性的描述
-> (斷點、token 命名、hero 模式)在 `AGENTS.md` 與
+> (token 命名、hero 模式)在 `AGENTS.md` 與
 > [`openwiki/architecture/overview.md`](../../openwiki/architecture/overview.md)。
 
 ---
@@ -77,16 +77,55 @@ ffmpeg -i in.png -vf "colorchannelmixer=rr=0.5:gg=0.5:bb=0.5" out.png
 
 ---
 
-## 相關條目(仍在 `AGENTS.md`,尚未搬過來)
+## 版面與樣式的其他不變量
 
-- **水平尺寸不要用 `vw` 量** —— `100vw` 含傳統捲軸寬,百分比 / auto margin 不含。
-- **headless Chromium 一律 overlay 捲軸** —— 量不到「捲軸佔版面」才會出現的版面 bug,
-  這類不變量的護欄放在 `tests/unit/css-viewport-width-contract.test.ts`。
-- **Tailwind v4 色盤編譯後 `getComputedStyle` 會回傳 `lab()`** —— 顏色斷言一律走
-  `tests/helpers/color.ts`。
-- **全域 `scroll-behavior: smooth`** —— Playwright 捲動輔助要用 `behavior: 'instant'`
-  蓋掉,再等兩輪 `requestAnimationFrame`。
-- **Tailwind v4 會掃 `docs/` 底下的 markdown** —— 在 spec 裡提到一個 class name,它就會
-  變成 production 的死 CSS。**這份文件也在掃描範圍內**:上面程式碼區塊裡的
-  `.intro-header-archive` 是實作真的在用的 class,不會憑空產生新的死 CSS;但未來往這裡
-  加「假想的」class name 前要先想到這件事。
+> 2026-08-09 從 `AGENTS.md` 搬入。上面兩節是深入解剖,這節是規則速查。
+
+- **水平尺寸不要用 `vw` 量。** `100vw` 依規範包含傳統捲軸寬度,百分比 / auto margin /
+  `left:right:0` 讀的 containing block 不含。macOS「顯示捲軸」預設「依滑鼠或觸控板自動
+  決定」,**接上滑鼠就會全系統切成佔版面的傳統捲軸**,於是同一份程式碼時好時壞、
+  Edge 與 Safari 都中、Playwright 測不出來。症狀是整組元素左偏半個捲軸寬、右側溢出同量
+  (LTR 下左側溢出不產生捲軸,所以只看得到「多一條水平捲軸」)。`.hux-full-bleed` /
+  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由 `tests/unit/css-viewport-width-contract.test.ts` 擋。
+- **文章正文必須保留 Hux 的中間斷點行寬**(768 / 992 / 1200 四段)。**不能只留 1200px
+  斷點**,否則平板與窄桌面會退化成 `viewport - 30px`。所有文章專用的 breakpoint selector
+  (含 `≥1200px` grid)**都必須排除 `.about-shell`**(About 是獨立置中的 780px 窄欄)。
+  斷點數值見 `openwiki/architecture/overview.md`;調整文章容器必須跑
+  `tests/playwright/article-width.spec.ts`。
+- **文章標題的 hash 落點必須保留 80px 上方空間**:`h1`–`h6` 的 `scroll-margin-top` 與
+  SideCatalog observer 邊界要**一起**維持(否則向上跳轉會被導覽列蓋住、下個標題被誤判為
+  active);catalog 回歸測試必須同時驗證向上與向下跳轉。
+- **`.icon-bar { background: var(--navbar-fg) }` 目前只是媒體查詢位置湊巧安全。** `.is-fixed`
+  的 token 重新賦值寫在 `min-width: 768px` 區塊內,而 `.navbar-toggle` 與 `.navbar-mobile`
+  在那個斷點是 `display: none`。把這組 token 搬出媒體查詢的話,手機漢堡選單會在 fixed
+  狀態悄悄變暗。
+- **Tailwind v4 的色盤編譯後,Chromium 的 `getComputedStyle` 會回傳 `lab()`。** 任何顏色斷言
+  都要走 `tests/helpers/color.ts`(支援 hex / rgb / rgba / oklch / lab,其餘一律拋錯)。用
+  數字 regex 讀顏色字串會同時誤判 `oklch()` 與 `lab()`,而且是靜默算錯,不會報錯。
+- **站台設了全域 `scroll-behavior: smooth`。** Playwright 的捲動輔助函式必須用
+  `behavior: 'instant'` 蓋掉它,再等兩輪 `requestAnimationFrame`,否則會同時被 easing 動畫
+  與 `Header.tsx` 的 scroll 監聽器捲進競態 —— 症狀是測試靜默量到頂部狀態,而不是報錯。
+- **`Header.tsx` 只在 `scrollY` 恰好等於 `0` 時才移除 `is-fixed`。** 想測「捲回接近頂端」
+  狀態的測試要用一個小的非零 offset,並把 class 與 `scrollY` 都當前置斷言驗證。
+- **Tailwind v4 會掃 `docs/` 底下的 markdown。** `css/tailwind.css` 只有 `@import 'tailwindcss'`
+  加一條 `@source '../node_modules/pliny'`,沒有限制掃描範圍,所以 v4 的預設行為(從專案根
+  目錄掃所有 git 追蹤的檔案)會把設計文件也算進去。**在 spec 裡「提到」一個 class name,
+  它就會變成 production 的死 CSS。** 2026-08-01 實測:`edc01cb` 的 bundle 裡有
+  `.bg-\[var\(--hux-interactive\)\]`,但該 commit 的程式碼沒有這個 class、連
+  `--hux-interactive` 都還不存在 —— 來源是 PR #67 一起合併的 spec 裡的一行 markdown 表格。
+  因此**不要用「CSS bundle 裡有沒有某個 token」判斷 production 跑的是哪個 commit**(這次
+  就差點誤判成已部署);要用只有實作才會產生的東西:手寫的 custom property(`--hero-fg`)、
+  語意 class(`.navbar-tool-trigger`),或直接比對 `/_next/static/chunks/*.css` 的 hash。
+
+**注意:這份文件本身也在 Tailwind 的掃描範圍內。** 上面程式碼區塊裡的
+`.intro-header-archive` 是實作真的在用的 class,不會憑空產生新的死 CSS;但未來往這裡
+加「假想的」class name 前要先想到這件事。
+
+---
+
+## 相關條目(在別的文件)
+
+- **headless Chromium 一律是 overlay 捲軸** —— 量不到「捲軸佔版面」才會出現的版面 bug。
+  搬到 [`verification-environment.md`](verification-environment.md),因為它是量測環境的
+  性質,不是 CSS 的性質。這類不變量的護欄放在
+  `tests/unit/css-viewport-width-contract.test.ts`。
