@@ -1,0 +1,242 @@
+# AGENTS.md 分層與分流判準設計
+
+> 本文件是**規範正文 + 驗證計畫**。它同時是「這一輪搬什麼」的施工圖,以及
+> 「以後每次發現新教訓該寫去哪」的長期判準。判準本身要進 `AGENTS.md`,
+> 施工細節只留在這裡。
+
+## 背景
+
+`AGENTS.md`(`CLAUDE.md` 是它的 symlink)現在 **422 行 / 33,645 bytes**。
+它從 2026-07 一路長到現在,驅動力是提交前檢查清單第 3 點:
+
+> **AGENTS.md 本身**:這次除錯或實作有沒有得到新教訓?有就順手把守則更新在對應章節。
+
+這條規則**只有加、沒有減**,跑了一年的結果就是現在的長度。2026-08-02 的 mermaid PR
+建立了分流慣例並搬走第一組(67 行 → `docs/lessons/mermaid-pipeline.md`),但慣例只寫在
+session 記憶裡,沒有落進 repo,也沒有任何機制保證它會被執行第二次。
+
+### 這不是「太長了」的美觀問題
+
+**證據一:長度有實測代價。** ETH Zurich 的 AGENTbench(2026-02,138 個真實 Python 任務
+× 4 個模型)量到:LLM 生成的 `AGENTS.md` **讓任務成功率下降 3%、成本上升 20%**;
+人工撰寫的也只**上升 4%、成本上升 19%**。[Augment Code 的研究][augment]給的甜蜜點是
+**100–150 行**,超過之後增益開始反轉。
+
+**證據二:有一個靜默的硬上限。** Codex CLI 的 `PROJECT_DOC_MAX_BYTES` 舊版為 32 KiB、
+現行版 64 KiB,**超過的部分從檔尾直接截斷,TUI 沒有任何警告**
+([openai/codex#7138][codex7138]、[#13386][codex13386])。本機 `codex-cli 0.144.1`
+且無 `project_doc_max_bytes` 覆寫,吃的是 64 KiB,**目前沒有正在被截斷**;但 33,645 bytes
+已超過舊上限、吃掉現行上限的 52%,而排在檔尾、會第一個被切掉的正是「提交前檢查清單」。
+
+**證據三:孤兒文件幾乎不會被讀到。** 沒有從入口檔連過去的文件,被 agent 翻到的機率
+**不到 10%**[^augment-orphan]。這是「路由出去 = 刪掉」的量化版本,也是本設計為什麼要
+把 inbound link 做成機器護欄的理由。
+
+### 真正的診斷:分層塌陷
+
+Karpathy 的 [LLM Wiki pattern][karpathy] 把知識庫分三層:`raw/`(不可變原始資料)→
+`wiki/`(LLM 維護的衍生知識)→ **schema(`CLAUDE.md`,記錄慣例、結構規則與工作流程,
+「指導 LLM 有紀律地操作」)**。
+
+對應到這個 repo:
+
+| Karpathy 的層 | 這個 repo | 產權 | 可否重生成 |
+| --- | --- | --- | --- |
+| `raw/` | 程式碼本身 + 除錯 session 的實測結果 | — | — |
+| `wiki/` | `openwiki/`(從 source 生成)**+** `docs/lessons/`(從經驗生成) | 生成器 / 人 | 可 / **不可** |
+| **schema(`CLAUDE.md`)** | **`AGENTS.md`** | 人 | 不可 |
+
+**`AGENTS.md` 現在同時在當 schema 層和 wiki 層。** 「`aspect-ratio` 會把 `min-height`
+反向傳遞成寬度限制,2026-08-09 實測讓 1920px 視窗的 hero 縮成 1093px」是 wiki 內容
+(衍生知識),不是操作規則。422 行不是紀律問題,是分層塌陷。
+
+這也解釋了 `docs/lessons/` 與 `openwiki/` 為什麼不重複:**分界是可否重生成**。
+`openwiki/` 描述「程式怎麼運作」,從 source 推導得出、每次 `--update` 覆寫;
+`docs/lessons/` 是除錯 session 的殘留物,**從 source 推導不出來**——
+「headless Chromium 量 `innerWidth - clientWidth` 一律回 0」這件事,讀一萬遍程式碼
+也讀不出來。`openwiki/INSTRUCTIONS.md:7` 已經明文保護這條界線。
+
+## 已驗證的事實
+
+| # | 事實 | 佐證 |
+| --- | --- | --- |
+| F-1 | `AGENTS.md` = 422 行 / 33,645 bytes;`CLAUDE.md` 是它的 symlink | `wc -l`、`ls -la` |
+| F-2 | 本機 Codex 為 `codex-cli 0.144.1`,`~/.codex/config.toml` 無 `project_doc_max_bytes` 覆寫 → 現行上限 64 KiB,**未被截斷** | `codex --version`、`grep` |
+| F-3 | 字型 corpus 只掃 `data/blog` 與 `data/authors`,**`docs/` 不在內** → 把中文搬進 `docs/lessons/` 不影響字型預算 | `scripts/site-font-text.mjs:138` |
+| F-4 | Tailwind v4 會掃 `docs/` 底下的 markdown → 搬進去的 CSS class name 會變成 production 死 CSS | `AGENTS.md` 既有條目;`docs/lessons/css-pitfalls.md` 檔尾已自我約束 |
+| F-5 | `openwiki/INSTRUCTIONS.md:7` 已規定 `docs/lessons/` 與 `AGENTS.md` 同等地位(連結、不轉述、不覆寫),但**列舉了當下的檔案清單**,現已過時 | `grep -n lessons openwiki/INSTRUCTIONS.md` |
+| F-6 | `docs/lessons/css-pitfalls.md` 檔尾已有一份「相關條目(仍在 `AGENTS.md`,尚未搬過來)」清單,列出 5 條 | 該檔 80–92 行 |
+| F-7 | 既有護欄測試的風格是「檔頭註解寫清楚為什麼存在 + 明列守不到什麼」 | `tests/unit/css-viewport-width-contract.test.ts:6-21` |
+
+## 決策
+
+### D-1:分流判準(三問決策程序)
+
+判準本身進 `AGENTS.md` 的新章節 `## 這份文件的維護規則`。三個問題**依序**問:
+
+---
+
+**問 0 — 已經有機器擋住了嗎?**(測試、CI、lint、型別檢查、腳本的失敗訊息)
+
+> **有 → 兩邊都不寫。**
+
+守則檔重複「測試已經會說的事」是純成本:agent 讀它要付 token,而它本來就會在失敗訊息
+裡看到。來自 mermaid 那次的實際教訓——`todayMarker off` 原本以為要留在 `AGENTS.md`
+(寫文章會碰到),但它已有單元測試,失敗訊息就寫著檔名與缺什麼。
+
+---
+
+**問 1 — 這條是「怎麼操作」,還是「發生過什麼」?**
+
+| 判斷 | 去處 |
+| --- | --- |
+| 含實測數字、日期、案例敘事、機制解釋 → **wiki 內容** | `docs/lessons/<subsystem>.md` |
+| 純祈使句,拿掉所有案例仍然成立 → **schema** | 留 `AGENTS.md` |
+
+這一問**可從文字表面判斷**:一條規則只要寫得出「2026-08-08 實測…」,它幾乎必然是
+wiki 內容。這是本判準最重要的性質——它不需要主觀評估。
+
+---
+
+**問 2 — (邊界情形)一個不知道這條的 agent,會在打開任何相關檔案之前就犯錯嗎?**
+
+| 判斷 | 去處 | 理由 |
+| --- | --- | --- |
+| **會** | 留 `AGENTS.md` | 這種知識**沒有觸發點可掛**。agent 不會知道自己需要查它。例:「不要直接 push main」「不要用 dev server 判斷互動行為」「`next-env.d.ts` 不用調查」。 |
+| **不會,一定要先動到某個子系統** | `docs/lessons/` | **子系統名稱本身就是觸發點。** |
+
+**這一問問的是「可路由性」,不是「重要性」。** 「這條重不重要?」永遠答「重要」,
+所以什麼都會留下——那正是 422 行的成因。
+
+---
+
+**什麼時候兩邊都不寫(除了問 0):**
+
+- **還沒做過鑑別實驗的假設**,不管它多能解釋症狀。呼應除錯守則第 1 條:一致的證據
+  可以無限收集,否證實驗一個就夠;沒做過至少一個否證實驗前,不寫「根因是 X」。
+  Karpathy 的原文對此的說法是:schema 層必須阻止 agent 歸檔低信心答案。
+- **可以從 source 推導出來的東西** → 那是 `openwiki/` 的範圍,讓它生成。
+
+### D-2:pointer 格式
+
+搬走的內容在 `AGENTS.md` 留 pointer,**三個成分缺一不可**:
+
+```markdown
+- **<主題>的坑在 [docs/lessons/X.md](docs/lessons/X.md)。**
+  動到 <具體檔案/情境> 之前**先讀它**。裡面有 <N> 個會靜默失敗的坑。
+  **<某個常見場景>不必讀** —— 該擋的都有測試機器強制。
+```
+
+1. **祈使句**,不是「詳見」。必須明確命令 agent 在對應場景**先讀完再動手**。
+2. **觸發條件**:具體到檔案路徑或情境,不是主題名稱。
+3. **反向邊界**:明寫「什麼時候不必讀」。少了這個,agent 會保險起見每次都讀,等於沒搬。
+
+### D-3:這一輪的搬遷
+
+| 從 `AGENTS.md` 搬出 | 目的地 | 量 |
+| --- | --- | --- |
+| Chiron 字型 9 條(含 HarfBuzz argv 那條) | `docs/lessons/chiron-font.md`(新) | 48 行 / 4,628 B |
+| CSS 版面 8 條(`vw`、文章斷點、`scroll-margin-top`、`.icon-bar`、Tailwind 掃 `docs/`、`lab()`、`scroll-behavior`、`Header.tsx` 的 `is-fixed`) | 併入 `docs/lessons/css-pitfalls.md` | 35 行 / 3,534 B |
+| 驗證環境 4 條(lockfile、dev server、port 佔用、headless 捲軸) | `docs/lessons/verification-environment.md`(新) | 19 行 / 1,820 B |
+| 除錯守則第 7–9 條的長篇案例分析 | `docs/lessons/test-assertions.md`(新),`AGENTS.md` 留祈使結論 | 37 行 / 3,692 B |
+
+**預期:422 行 / 33,645 B → 約 307 行 / 20,900 B(−38%)**
+
+**不搬**(這一輪刻意留下):
+
+- OpenWiki 行為 2 條、Codex 沙箱 2 條(合計 29 行)。留待下一輪。
+- 通用工程守則全 4 條:純祈使、無案例也成立 → 依 D-1 問 1 判定為 schema。
+- 除錯守則第 1–6 條:同上。
+
+搬遷執行時遵守 mermaid 那次的三條教訓:
+
+1. **整組搬,不要只搬新加的。** 以「哪些是這次加的」當分割線對讀者毫無意義。
+2. **搬完驗證零遺失**:逐行比對 `git diff` 移除的行是否都出現在新檔。**用 python,
+   不要用 grep** —— `-` 開頭的行會被當成選項。
+3. **檢查有沒有東西已被測試機器強制**(即 D-1 的問 0)。有就直接刪,不要搬。
+
+### D-4:護欄 `tests/unit/agents-md-contract.test.ts`
+
+納入必過的 `ci` job(`test:unit` 已在其中)。三條斷言:
+
+| # | 斷言 | 守的是什麼 |
+| --- | --- | --- |
+| 1 | `AGENTS.md` ≤ **24 KiB** | 分層塌陷復發。搬完約 20.4 KiB(20,871 B),留 3.6 KiB ≈ 8–10 條新坑的成長空間。 |
+| 2 | 每個 `docs/lessons/*.md` 都必須被 `AGENTS.md` 連到 | **孤兒頁**。這是把「孤兒文件被翻到 <10%」變成 CI 失敗。 |
+| 3 | `AGENTS.md` 連出的每個 `docs/lessons/` 路徑都必須存在 | **斷鏈**。 |
+
+**只守 byte 不守行數**:byte 客觀,不會因為換行風格或中英文混排誤判。
+
+24 KiB 的由來:Codex 舊版硬上限是 32 KiB 且**從檔尾靜默截斷**。留 8 KiB 餘裕,
+確保就算哪天在舊版 Codex 或多層 `AGENTS.md` 疊加下執行,排在檔尾的「提交前檢查清單」
+也不會被無聲吃掉。
+
+失敗訊息必須直接寫出下一步:
+
+> `AGENTS.md 已達預算(<實際> / 24576 bytes)。請依「## 這份文件的維護規則」的三問判準,`
+> `搬一組子系統知識到 docs/lessons/。不要調高這個上限——上限就是強迫分流的機制。`
+
+依 F-7 的既有風格,檔頭註解要寫清楚**為什麼**這道護欄存在,並**明列它守不到什麼**:
+
+- 守不到內容品質、重複、矛盾、過時。
+- 守不到 pointer 有沒有寫觸發條件與反向邊界(D-2 的三個成分)。
+- 守不到 `docs/lessons/` 各檔自己的長度。
+
+### D-5:迭代迴路
+
+提交前檢查清單第 3 點改寫:
+
+> **3. 新教訓落地**:這次有沒有得到新教訓(環境陷阱、架構決策、驗證方式)?
+>    有就跑「## 這份文件的維護規則」的三問決定去處——**答案可能是「哪裡都不寫」**。
+>    若寫進 `AGENTS.md` 後 `test:unit` 因預算失敗,那不是叫你調高上限,是叫你搬一組出去。
+
+這讓壓力變成雙向:加新條目時會被迫面對取捨,而不是永遠只加不減。
+
+### D-6:`openwiki/INSTRUCTIONS.md` 修正
+
+第 7 行的「As of 2026-08-02 the only one is `docs/lessons/mermaid-pipeline.md`」已過時
+(`css-pitfalls.md` 早就存在)。**改成不列舉**——列舉當下狀態正是 `AGENTS.md` 自己
+警告過的失效模式(生成器會把「這次執行當下的狀態」寫成 repo 的永久不變量)。
+
+## 已否決
+
+| 做法 | 否決理由 |
+| --- | --- |
+| 把 lessons 改成 Claude Code skill | skill 只有 Claude 讀得到,而 `CLAUDE.md` 是 `AGENTS.md` 的 symlink、Codex 也在用這個 repo。且 skill 無法穩定地鏈式引用。`docs/lessons/` 兩邊都讀得到。 |
+| 新增 `docs/lessons/index.md`(Karpathy 的 index 層) | 多一次跳轉,agent 很可能因為「看起來不相關」就不去查——那是把孤兒文件問題往上移一層。`AGENTS.md` 直接列 pointer 保證被讀到;pointer 吃掉的預算是**健康的壓力**,它逼人別把 lesson 切太碎。 |
+| 新增 `log.md`(Karpathy 的 append-only 時序層) | git log 已在做,且提交慣例已要求 commit body 寫因果鏈。刻意 YAGNI。 |
+| 護欄同時守行數 | 中英文混排與換行風格會讓行數失去意義,製造假失敗。 |
+| 把「重要性 / 使用頻率」當判準 | 「這條重不重要?」永遠答「重要」——這正是長到 422 行的成因。判準必須是可從文字表面判斷的性質。 |
+| 這一輪連 OpenWiki + Codex 沙箱一起搬 | 範圍控制。這一輪已動 4 組 + 新增護欄 + 改判準,再摻入會變難審。 |
+
+## 驗證計畫
+
+| # | 驗證項 | 方式 | 通過條件 |
+| --- | --- | --- | --- |
+| V-1 | 搬遷零遺失 | python 逐行比對 `git diff` 移除的行 vs. 新檔內容 | 每一行都能在目的地找到 |
+| V-2 | 護欄真的會紅(突變測試) | 塞 4 KiB 進 `AGENTS.md` / 新增一個沒被連到的 `docs/lessons/orphan.md` / 把一個 pointer 路徑改錯 | 三個突變分別讓三條斷言各自變紅 |
+| V-3 | 護欄現在是綠的 | `yarn test:unit` | 通過 |
+| V-4 | 沒有斷鏈 | 斷言 3 本身 | 通過 |
+| V-5 | 字型預算未受影響 | `yarn check:site-font --full` | 通過(依 F-3 預期零變化) |
+| V-6 | 型別與 lint | `yarn contentlayer2 build && tsc --noEmit`、lint | 通過 |
+| V-7 | 判準可操作 | 拿搬完後仍留在 `AGENTS.md` 的每一條跑一次 D-1 三問 | 每條都得到「留下」;若有得到「搬走」的,就是這一輪漏搬 |
+
+**V-2 是重點。** 依除錯守則第 7 條,新斷言一律做突變測試:刻意把它宣稱要防的東西弄壞,
+確認它真的變紅。三條斷言要**分別**驗,不能只驗其中一條就宣稱整支測試有效——依第 9 條,
+突變鷹架本身也要先確認在每個受測條件下都真的生效。
+
+## 提交前檢查清單對應
+
+- **兩份說明書**:本次不改行為、指令、路由、設定 → 不需要動
+  `docs/functionality-settings-manual{,.zh-TW}.md`。
+- **README**:不改使用者可見功能 → 不需要動。
+- **`AGENTS.md` 本身**:這次就是在改它,判準與護欄都要寫進去(D-1、D-4、D-5)。
+- **OpenWiki**:需要更新(D-6 直接改 `INSTRUCTIONS.md`;`openwiki/` 生成頁提到
+  `docs/lessons/` 的地方要重生成)。**先 commit 變更再跑 `openwiki code --update --print`**。
+
+[karpathy]: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+[augment]: https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
+[codex7138]: https://github.com/openai/codex/issues/7138
+[codex13386]: https://github.com/openai/codex/issues/13386
+
+[^augment-orphan]: 同 [augment]:未被 `AGENTS.md` 引用的文件,被 agent 發現的比率低於 10%。
