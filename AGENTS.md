@@ -5,38 +5,64 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 `docs/functionality-settings-manual.zh-TW.md` — **動手前先讀相關章節**,大部分
 「看起來像 bug」的行為(路由語意、CSP、OG 字體、PWA)都是有意為之且記錄在案。
 
+## 這份文件的定位與維護規則
+
+這個 repo 有**兩個 LLM wiki 和兩個 schema**:
+
+| | schema(人工維護,不可重生成) | wiki(衍生知識) | 誰在寫 |
+| --- | --- | --- | --- |
+| 功能 / 機制 | `openwiki/INSTRUCTIONS.md` | `openwiki/*.md` | `openwiki code --update` |
+| 教訓 / 坑 | **本章節** | `docs/lessons/*.md` | 每個 session 的 agent |
+
+**本檔是 schema 層,不是 wiki**:放操作規則與往兩個 wiki 的路由,不放衍生知識。
+**教訓 ≠ 規則** —— 規則通常是教訓的結論:案例本體留在 wiki,萃取出的祈使句升上 schema。
+
+關鍵不對稱:`openwiki/` 寫壞了下次 `--update` 會重寫,**`docs/lessons/` 沒有生成器、
+不可重生成**,寫壞了沒有東西會回來修。所以判準刻意設計成**可從文字表面判斷**。
+
+### 得到新教訓時,依序問三個問題
+
+**問 0 — 已經有機器擋住了嗎?**(測試、CI、lint、型別、腳本的失敗訊息)
+**有就兩邊都不寫** —— 重複「測試已經會說的事」是純成本。
+
+**問 1 — 這條是「怎麼操作」,還是「發生過什麼」?**
+含實測數字、日期、案例敘事、機制解釋 → **wiki 內容** → `docs/lessons/<subsystem>.md`。
+純祈使句、拿掉所有案例仍然成立 → **schema** → 留在本檔。
+一條規則只要寫得出「2026-08-08 實測…」,它幾乎必然是 wiki 內容。
+
+**問 2 —(邊界情形)不知道這條的 agent,會在打開任何相關檔案之前就犯錯嗎?**
+會 → 留在本檔(**沒有觸發點可掛**,agent 不會知道自己需要查它)。
+不會、一定要先動到某個子系統 → `docs/lessons/`(**子系統名稱就是觸發點**)。
+**這問的是「可路由性」不是「重要性」**:「重不重要?」永遠答「重要」,那樣什麼都會留下
+—— 那正是本檔一度長到 422 行的成因。
+
+### 什麼時候兩邊都不寫
+
+- 還沒做過**鑑別實驗**的假設,不管它多能解釋症狀(見除錯守則第 1 條)。
+- 可以從 source 推導出來的東西 —— 那是 `openwiki/` 的範圍,讓它生成。
+
+### 搬出去時,pointer 的三個必要成分
+
+1. **祈使句**,不是「詳見」:明確命令在對應場景**先讀完再動手**。
+2. **觸發條件**:具體到檔案路徑或情境,不是主題名稱。
+3. **反向邊界**:明寫「什麼時候不必讀」。少了它,agent 會保險起見每次都讀,等於沒搬。
+
+沒寫觸發條件的 pointer 等於刪除 —— 沒有 inbound link 的文件被翻到的機率不到 10%。
+
+### 護欄
+
+`tests/unit/agents-md-contract.test.ts`(在必過的 `ci` 裡)守:本檔 ≤ 24 KiB、每個
+`docs/lessons/*.md` 都有 inbound link、本檔連出的路徑都存在。**預算滿了不要調高上限**
+—— 上限就是強迫分流的機制。
+
+
 ## 指令與環境陷阱
 
 - 指令清單與 `yarn build` 的階段順序見 `openwiki/operations/runbook.md`。
-- Next 16 的 dev 與 build 可並行,但 lockfile 會擋同類重複程序。**不要為了繞過 lockfile
-  硬啟第二個同類程序**;互動驗證一律用 production build。
 - **`next-env.d.ts` 會在 dev/build 交替後反覆翻動**(typed routes 產出位置分家,誰最後跑
   誰贏)。這不是任何人的改動:**不用調查、不要 checkout 還原、commit 時一律排除**(用明確的
   `git add <檔案清單>`)。**也不能 gitignore** —— CI 乾淨 checkout 直接跑 `tsc --noEmit`,
   沒這檔案全專案 CSS/圖片 import 的型別會炸。
-- **永遠不要用 dev server 判斷互動行為**:冷路由第一次點擊會停 ~1.5 秒,是按需編譯
-  不是 bug;production 導航只要 ~15ms。互動類驗證一律跑 production build。
-- **驗證前先確認 port 上的伺服器真的是自己那一份。** 2026-08-08 實測:本機另一個 worktree
-  (`/private/tmp/myblog-nextjs-unified-accent/`)佔著 3012,`next start` 靜默吃到
-  `EADDRINUSE` 退出,而 `curl` 照樣回 200 —— 96 組量測全部打在別人的分支上,還「乾淨地」
-  給出全綠。**`playwright.config.ts` 預設 port 3012 且 `reuseExistingServer: true`,會放大
-  這個坑**。查法:`lsof -nP -iTCP:<port> -sTCP:LISTEN` 看 PID 的執行路徑,或直接抓
-  `/_next/static/chunks/*.css` 比對本次改動的字串。多 worktree 並行時一律用
-  `PLAYWRIGHT_BASE_URL` 明確指向自己的 port,不要依賴預設值。
-- **headless Chromium 一律是 overlay 捲軸,量不到「捲軸佔版面」才會出現的版面 bug。**
-  2026-08-08 實測 `innerWidth - clientWidth`:headless(含
-  `--disable-features=OverlayScrollbar,FluentOverlayScrollbar`)一律 `0`,只有
-  `headless: false` 給 `15`。`html::-webkit-scrollbar { width: 15px }` 這個常見手法在
-  headless 下**完全無效**。因此 `100vw`(含捲軸寬)與 `clientWidth`(不含)的落差類
-  bug,既有 `tests/playwright/*` 在結構上不可能重現 —— 2026-07-10 那次修 full-bleed 溢出
-  跑遍 6 種寬度兩種引擎仍漏掉,就是這個原因。這類不變量的護欄要放在 `test:unit`
-  (見 `tests/unit/css-viewport-width-contract.test.ts`);需要實測時用 headed Chromium。
-- **水平尺寸不要用 `vw` 量。** `100vw` 依規範包含傳統捲軸寬度,百分比 / auto margin /
-  `left:right:0` 讀的 containing block 不含。macOS「顯示捲軸」預設「依滑鼠或觸控板自動
-  決定」,**接上滑鼠就會全系統切成佔版面的傳統捲軸**,於是同一份程式碼時好時壞、
-  Edge 與 Safari 都中、Playwright 測不出來。症狀是整組元素左偏半個捲軸寬、右側溢出同量
-  (LTR 下左側溢出不產生捲軸,所以只看得到「多一條水平捲軸」)。`.hux-full-bleed` /
-  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由上述 unit test 擋。
 - **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
   沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
   新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、
@@ -48,49 +74,15 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   `inset: 0` shorthand** — Satori 的 inline-style layout 不會把它展開,元素會沒有面積而
   靜默消失。要明寫 `top`/`right`/`bottom`/`left: 0`,並用實際渲染 PNG 的像素測試驗證;
   只測傳入 opacity 數值抓不到這類 renderer 相容性問題。
-- 對 HarfBuzz(或任何 CLI)傳非 ASCII 文字**一律用 `--text-file`/stdin,不要走 argv**
-  — argv 會經過呼叫端 locale 的編碼轉換,在沒設 UTF-8 locale 的 shell(CI、
-  非互動環境)會直接炸。build 所需的 HarfBuzz/woff2 CLI 完整清單見
-  `openwiki/operations/runbook.md`(手寫清單曾漏掉 `hb-info`)。
-- **Chiron 站字型的產物必須整組一起 commit**(`public/static/fonts/chiron/*.woff2`、manifest、
-  `css/chiron-font.generated.css`、`font-data/chiron/{core-codepoints.txt,
-  supplemental-assignments.json,assignment-epoch.txt}`),**不要手改 generated CSS/manifest**。
-  既有 code point 不得被普通更新重排、core 不得縮減;產物過期時跑 `yarn update:site-font`
-  (只有刻意擴張 core 才加 `--rebuild-core`)。pipeline 細節、CI/Vercel 差異與所需 CLI 見
-  `openwiki/operations/runbook.md`。
-- **字型預算的成本模型是「每頁碰到的桶整包下載」**(`bytes = core + Σ碰到的桶`、
-  `requests = 1 + 碰到的桶數`)。所以**碰幾個桶**遠比用了幾個字重要:實測過一篇文章
-  只為了 33 個既有字元就多付 4 個桶、256KB。診斷預算超標時**先看每頁碰桶數**,
-  不要先看 bucket 大小 —— 「某個 bucket 太胖」通常是症狀不是根因。
-- **往既有文章加字前先量碰桶數,出界就改用詞,不要動 `--rebalance`。** `check:site-font`
-  讀的是整份原始 markdown、**不剝 code fence**,所以連 mermaid 標籤裡的中文都算進該頁預算。
-  查法:比對 `font-data/chiron/supplemental-assignments.json`(key 是大寫 hex code point、
-  value 是 bucket 編號)與 `font-data/chiron/core-codepoints.txt`,確認新字都落在該頁已經
-  碰到的桶或 core 裡。2026-07-25 實測:OpenWiki 那篇本來就卡在 3 requests / 532,448 bytes
-  (上限 3 / 550,000),補一張 mermaid 圖只因為 `貌`(未分派)和 `忙`(bucket 2)兩個字就變成
-  4 requests / 601,968 bytes;換掉那兩個詞後 footprint 一個 byte 都沒變,零產物重生成。
-- **`yarn update:site-font --rebalance` 是刻意的一次性重排**,會改派既有 code point、
-  遞增 `font-data/chiron/assignment-epoch.txt`,並讓所有讀者的字型快取失效。只在
-  `check:site-font` 因文章預算失敗、且確認不是單純 corpus 過期時才用。CI 的
-  `validateAssignmentHistory` 只在 epoch 未變時比對;epoch 遞增時改由
-  `validateRebalancedAssignments` 要求分派**逐字等於確定性重排的產物**(重算約 1 秒),
-  所以單獨手動 bump epoch 現在會直接失敗,不再是讓歷史保護靜默失效的後門。漏傳
-  `--base-epoch` 也一律退回比對(fail-closed),不會因為少一個旗標就跳過。
-  重排若新增了 fixed UI seed 字元,要同時加 `--rebuild-core`(seed 必須在 core)。
-- **動到字型 seed 或產物後,本機一定要跑 `yarn check:site-font --full`**。不帶 `--full` 會
-  略過 glyph shaping、cmap 與 axis 驗證,而 CI 的必過 `check` job 跑的正是 `--full`
-  —— 2026-07-25 就因此讓 `.notdef` 一路過關到 CI 才爆。
-- **seed 只能列來源字型真的有字形的字元**。seed 一律進 core,`--full` 會對 core 做 shaping,
-  字型沒有的字元會變成 `.notdef` 直接讓必過檢查失敗。要確認某字元有沒有字形:
-  `hb-info --list-unicodes <來源 TTF>`(來源快取在 `$TMPDIR/chiron-site-font/<sha256>.ttf`,
-  由 `ensureSourceFont` 下載)。
-- **`check:site-font` 只讀 markdown,看不到「渲染才出現」的字元**。元件寫死的符號
-  (HuxPager 的 `←`、返回頂部的 `↑`、SideCatalog 的 `−`/`+`)不在任何 markdown 裡,
-  必須明列在 `scripts/site-font-text.mjs` 的 `SHARED_UI_TEXT`。漏掉時靜態檢查照樣綠燈,
-  只有 `tests/playwright/site-font-loading.spec.ts` 的 production 量測抓得到 —— 該測試
-  **必須涵蓋全部 production-reachable 文章**(draft 的 404 由
-  `tests/playwright/publication-policy.spec.ts` 負責),原則仍是不可抽測,只是「全部」
-  現在排除掉本來就進不去 production 的頁面。
+- **Chiron 站字型的管線陷阱與不變量在
+  [`docs/lessons/chiron-font.md`](docs/lessons/chiron-font.md)。**
+  動到字型 seed、`scripts/site-font-*.mjs`、`font-data/chiron/` 的產物,或 `check:site-font`
+  因文章預算失敗之前**先讀它**。九條,含成本模型(碰幾個桶遠比用幾個字重要)與
+  `--rebalance` 的一次性代價。**單純寫文章不必讀** —— 預算由必過的 `check` job 強制。
+- **量測與互動驗證的環境陷阱在
+  [`docs/lessons/verification-environment.md`](docs/lessons/verification-environment.md)。**
+  跑 Playwright、量版面幾何,或用瀏覽器判斷互動行為之前**先讀它**。四條的共同性質是
+  **錯了會給出全綠的假結果而不是報錯**。**改一般程式碼不必讀。**
 - **`BLOG_PUBLICATION_MODE` 只管 contentlayer 衍生產物**(`app/tag-data.json`、
   `public/search.json`),**不管路由**——文章頁、`/opengraph-image`、`/blog/...` 別名
   各自讀 `NODE_ENV === 'development'`,完全不讀這個變數。`yarn dev` 與 `yarn build`
@@ -101,11 +93,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   漏設環境變數不能讓 draft 外洩);非 `production`/`preview` 的值會讓
   `yarn contentlayer2 build` 直接失敗。行為細節見
   `docs/functionality-settings-manual.zh-TW.md` 的「草稿 vs. 隱藏」。
-- **判斷「要不要 seed」看的是字型鏈,不是字元有沒有出現在 DOM。** 2026-07-25 實測:KaTeX 的
-  輸出字元(`\times` → `×`、減號 → U+2212、`≈` 等)雖然出現在 DOM,但 `.katex-html` 與
-  MathML 都自訂 `font-family`(`KaTeX_Main` / `math`),**Chiron 不在它們的字型鏈上**,
-  所以完全不會觸發 Chiron 子集下載,不需要也不該 seed。用瀏覽器的 `getComputedStyle`
-  確認實際 font-family,不要從「這個字元在頁面上」推論它會造成字型請求。
 - 乾淨 checkout(CI runner、新 clone)單獨跑 `tsc --noEmit` 或其他型別檢查前,**必須先跑
   `yarn contentlayer2 build`**,否則會炸一片 `TS2307: Cannot find module 'contentlayer/generated'`。
 - **擴充 i18n 時,語系間不變的視覺外殼要放在共同 layout**(現況:Hero 由 `app/(about)/`
@@ -121,14 +108,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
   做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
   `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
-- **文章正文必須保留 Hux 的中間斷點行寬**(768 / 992 / 1200 四段)。**不能只留 1200px
-  斷點**,否則平板與窄桌面會退化成 `viewport - 30px`。所有文章專用的 breakpoint selector
-  (含 `≥1200px` grid)**都必須排除 `.about-shell`**(About 是獨立置中的 780px 窄欄)。
-  斷點數值見 `openwiki/architecture/overview.md`;調整文章容器必須跑
-  `tests/playwright/article-width.spec.ts`。
-- **文章標題的 hash 落點必須保留 80px 上方空間**:`h1`–`h6` 的 `scroll-margin-top` 與
-  SideCatalog observer 邊界要**一起**維持(否則向上跳轉會被導覽列蓋住、下個標題被誤判為
-  active);catalog 回歸測試必須同時驗證向上與向下跳轉。
 - **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
   鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
   `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,
@@ -143,12 +122,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   (`mermaid-check` 只比對檔名、`.contentlayer` 快取、Playwright 的 service worker
   預設值等),每一個都是實際踩過才寫下來的。**單純在文章裡寫 mermaid fence 不必讀** ——
   該擋的都有測試機器強制。
-- **CSS 的版面尺寸陷阱在
+- **CSS 的版面尺寸陷阱與樣式不變量在
   [`docs/lessons/css-pitfalls.md`](docs/lessons/css-pitfalls.md)。**
-  動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`,或把視覺效果從 CSS 烘進圖檔之前
-  **先讀它**。目前收錄兩條:`min/max-height` 會透過 `aspect-ratio` **反向傳遞**成寬度限制
-  (實測讓滿版 hero 在 1920px 視窗縮成 1093px、375px 視窗撐出水平捲軸,而且完全不報錯),
-  以及黑色遮罩烘進圖檔的正確係數是 sRGB 空間的 `1 - α`。**寫一般樣式不必讀。**
+  動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`、文章容器斷點、顏色斷言,或把視覺
+  效果從 CSS 烘進圖檔之前**先讀它**。兩則深入解剖加八條速查規則(`vw` 不可用於水平
+  尺寸、Hux 的四段行寬、`lab()` 顏色、全域 `scroll-behavior` 等)。**寫一般樣式不必讀。**
 - **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
   原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
   ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**
@@ -164,27 +142,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   優先序」的 brief,OpenWiki 只讀不覆寫。生成內容跑偏(實測過:它會把「這次執行當下哪些
   檔案未被追蹤」寫成 repo 的永久不變量)要在這裡加約束,不要去改 `openwiki/` 底下的生成頁
   —— 那些下次 `--update` 會被重寫。
-- **`.icon-bar { background: var(--navbar-fg) }` 目前只是媒體查詢位置湊巧安全。** `.is-fixed`
-  的 token 重新賦值寫在 `min-width: 768px` 區塊內,而 `.navbar-toggle` 與 `.navbar-mobile`
-  在那個斷點是 `display: none`。把這組 token 搬出媒體查詢的話,手機漢堡選單會在 fixed
-  狀態悄悄變暗。
-- **Tailwind v4 會掃 `docs/` 底下的 markdown。** `css/tailwind.css` 只有 `@import 'tailwindcss'`
-  加一條 `@source '../node_modules/pliny'`,沒有限制掃描範圍,所以 v4 的預設行為(從專案根
-  目錄掃所有 git 追蹤的檔案)會把設計文件也算進去。**在 spec 裡「提到」一個 class name,
-  它就會變成 production 的死 CSS。** 2026-08-01 實測:`edc01cb` 的 bundle 裡有
-  `.bg-\[var\(--hux-interactive\)\]`,但該 commit 的程式碼沒有這個 class、連
-  `--hux-interactive` 都還不存在 —— 來源是 PR #67 一起合併的 spec 裡的一行 markdown 表格。
-  因此**不要用「CSS bundle 裡有沒有某個 token」判斷 production 跑的是哪個 commit**(這次
-  就差點誤判成已部署);要用只有實作才會產生的東西:手寫的 custom property(`--hero-fg`)、
-  語意 class(`.navbar-tool-trigger`),或直接比對 `/_next/static/chunks/*.css` 的 hash。
-- **Tailwind v4 的色盤編譯後,Chromium 的 `getComputedStyle` 會回傳 `lab()`。** 任何顏色斷言
-  都要走 `tests/helpers/color.ts`(支援 hex / rgb / rgba / oklch / lab,其餘一律拋錯)。用
-  數字 regex 讀顏色字串會同時誤判 `oklch()` 與 `lab()`,而且是靜默算錯,不會報錯。
-- **站台設了全域 `scroll-behavior: smooth`。** Playwright 的捲動輔助函式必須用
-  `behavior: 'instant'` 蓋掉它,再等兩輪 `requestAnimationFrame`,否則會同時被 easing 動畫
-  與 `Header.tsx` 的 scroll 監聽器捲進競態 —— 症狀是測試靜默量到頂部狀態,而不是報錯。
-- **`Header.tsx` 只在 `scrollY` 恰好等於 `0` 時才移除 `is-fixed`。** 想測「捲回接近頂端」
-  狀態的測試要用一個小的非零 offset,並把 class 與 `scrollY` 都當前置斷言驗證。
 
 ## Git 工作流程(2026-07-12 起)
 
@@ -212,18 +169,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     check 兩者兼得。
   - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
-- **合併後確認 Vercel 真的有部署 —— 這件事會靜默失敗。** 2026-08-01 合併 PR #68 後
-  production 完全沒動:Vercel 一筆部署紀錄都沒建(不是 build 失敗、不是 skip 後留一筆),
-  `9b228d3` 的 commit status 是空的,而前幾次合併都有 `Vercel` 這個 context。當時已排除
-  `[skip ci]` 類標記、`git.deploymentEnabled`(repo 沒有 `vercel.json`/`vercel.ts`)、
-  配額(24 小時內只有 3 筆)、平台故障(status 全綠)與設定漂移(專案 `updatedAt` 停在
-  合併之前),而同一個 GitHub App 在合併前 5 分鐘才剛建過該分支的 preview。最可能是那次
-  push 的 webhook 掉了(GitHub App 的 delivery 失敗**不會自動重送**)。**補救**:Vercel
-  dashboard → Deployments → **Create Deployment** 選 `main`(**不要**用舊部署的 Redeploy,
-  那會重建舊 commit);手動建的部署 meta 會少 `repoPushedAt` 但仍帶正確 `githubCommitSha`。
-  排查時 `gh api repos/<owner>/<repo>/commits/<sha>/status` 看有沒有 `Vercel` context 最快。
-  **已證實是偶發,不是設定問題**:下一次合併(PR #69,`737bcce`)在 71 秒內自動部署完成。
-  **所以再遇到請直接補觸發,不要重新排查專案設定** —— 那條路上次已經全部走完且全部乾淨。
+- **合併後確認 Vercel 真的有部署 —— 這件事會靜默失敗。** 排查時
+  `gh api repos/<owner>/<repo>/commits/<sha>/status` 看有沒有 `Vercel` context 最快。
+  **已證實是偶發的 webhook 掉包,不是設定問題**(2026-08-01 那次已把專案設定整條路走完且
+  全部乾淨)。**再遇到請直接補觸發,不要重新排查設定**:Vercel dashboard → Deployments →
+  **Create Deployment** 選 `main`(**不要**用舊部署的 Redeploy,那會重建舊 commit)。
 - **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
   這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
   `renovate.json`,範圍**只限 GitHub Actions 版本**
@@ -236,21 +186,17 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     這條規則刻意限定在 `matchManagers: ["github-actions"]`,不是全域
     `automerge: true` —— 未來若擴大 Renovate scope 到 npm/yarn,新 manager
     不會連坐繼承自動合併,要另外決定。
-  - **一次開多個 PR 時,排隊的會卡在 `BEHIND` 動不了**:必過檢查設了
-    `strict: true`(分支要跟 base 同步才能合併),repo 沒開自動更新分支
-    (`allow_update_branch`)。2026-07-12 手動觸發「一次全開」7 個 PR 時實測:
-    每合併一個進 main,其餘還在排隊的 PR 分支立刻落後,卡在
-    `mergeStateStatus: BEHIND`,自己不會動——等 Mend 下一輪重新 rebase 才會
-    解開(實測約數分鐘到十幾分鐘)。目前選擇**不處理**(單人 repo、Renovate
-    平時一次頂多開一兩個 PR,不太會撞到這個情境);真的常卡再考慮開 GitHub
-    merge queue 或把 `strict` 關掉。遇到「PR 一直不合併但檢查都綠燈」先查
+  - **一次開多個 PR 時,排隊的會卡在 `BEHIND` 動不了**(必過檢查設了 `strict: true`,
+    repo 沒開 `allow_update_branch`)。目前選擇**不處理** —— 等 Mend 下一輪 rebase 會自己
+    解開。遇到「PR 一直不合併但檢查都綠燈」先查
     `gh pr view <N> --json mergeStateStatus`,不用重新從頭診斷。
-  - 2026-07-12 前曾自架在 repo 自己的 Actions 裡跑 `renovatebot/github-action`,
-    改用官方 App 後已移除 —— 自架版需要自己追 Renovate 本體版本、還需要開
-    repo 層「Allow Actions to create and approve pull requests」這個範圍比
-    實際需求廣的開關;App 版兩者都不需要。除非 App 被移除,否則不要走回自架
-    這條路。
+  - **不要走回自架 `renovatebot/github-action`** —— 2026-07-12 已改用官方 App 並移除自架版。
   - 第三方 action(非 `actions/*`、`github/*`)一律釘 commit SHA,版本號用註解
+    (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
+- **上面兩件事的完整案例(已排除過哪些假設、實測數字)在
+  [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md)。**
+  合併後 production 沒動,或 Renovate PR 全綠卻不合併時**先讀它** —— 它的結論就是
+  「不要重新排查」。**平常開 PR、合併不必讀。**
     (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
 
 ## 通用工程守則
@@ -348,43 +294,23 @@ dev-only 現象,真因是 `/` 與 `/blog` 內容重複)與 kbar「手機點文�
 6. **修復前先寫會失敗的回歸測試**(`tests/playwright/`),用它證明 bug、再用它證明
    修好;測試環境的保真度同第 4 條。
 
-7. **「測試綠了」不等於「測試守得住」—— 新斷言一律做突變測試。** 寫完斷言後,**刻意把
-   它宣稱要防的那個東西弄壞,確認它真的變紅**;抓不到就代表斷言在測一個不可能成立的
-   狀態,是空包彈。2026-07-29 在 hero series metadata 上連踩四次:#64/#65 的斷言只比對
-   `fontSize` + `fontStyle`,所以顏色和連結字重的不一致一路綠燈上了 production;修它的
-   時候又寫出兩條同型空包彈 —— 一條斷言文章底部連結「不是白色」(它在結構上永遠不可能
-   變白,唯一給白的規則要求 `.intro-header-post` 祖先),一條斷言 hero 連結 hover「顏色
-   有變」(規則被刪後遞補的 `--series-interactive` 也會讓顏色變,照樣綠)。突變測試當場
-   抓出後者,才換成真正有鑑別力的不變量(hover 色在淺/深主題必須相同,因為 hero 永遠是
-   深色照片、不隨主題翻轉)。**CSS 斷言尤其容易寫成空包彈**:比對絕對值容易在重構時
-   誤綠,要斷言的是「跟參照元素相同/不同」這種關係。
+7. **新斷言一律做突變測試。** 寫完斷言後,**刻意把它宣稱要防的那個東西弄壞,確認它真的
+   變紅**;抓不到就代表斷言在測一個不可能成立的狀態,是空包彈。**CSS 斷言尤其容易寫成
+   空包彈**:比對絕對值容易在重構時誤綠,要斷言的是「跟參照元素相同/不同」這種關係。
+   寫「掃原始碼/AST 找某個字串」這類斷言前,先問:**有沒有一種改法保留了這個字串,
+   卻讓它不再生效?**
 
-   2026-08-01 寫 `tests/unit/css-token-contract.test.ts` 時又踩到兩個同型陷阱,都是「斷言
-   覆蓋了函式,卻沒覆蓋它存在的理由」:**① 計數表達不了位置。** 用「兩個 class 字串出現
-   次數相同」守成對 focus token,把前景 token 搬到 else 分支、或把整對搬到非 focus 的元素
-   上,計數都不變,全綠 —— 要守「位置」就得把成對字串當成**一個** needle,再要求它出現在
-   focus 分支上。**② 存在性表達不了覆蓋。** 用「這條規則有沒有出現 `var(--token)`」守 token
-   接線,在後面補一行寫死值(CSS 後者勝出)會讓 token 完全失效而斷言照樣綠 —— 掃 AST 時
-   同一個屬性只能採**最後一次**宣告。寫「掃原始碼/AST 找某個字串」這類斷言前,先問:
-   **有沒有一種改法保留了這個字串,卻讓它不再生效?**
+8. **突變測試證明不了涵蓋面 —— 那是另一條正交的失效軸。** 它的取樣母體就是既有斷言,
+   在結構上看不見母體之外的東西。**動共用基底規則時,先列出全部呼叫點再改**,不要指望
+   測試網撈到 —— 這類重構的受害者依定義就是「還沒被收編進 variant 的舊呼叫點」。
 
-8. **突變測試證明不了涵蓋面 —— 那是另一條正交的失效軸。** 突變測試的取樣母體就是既有斷言,
-   它在結構上看不見母體之外的東西。2026-08-08 實測:PR #73 有 125 條 Playwright 全綠、
-   6 組突變全紅,而「把共用基底 `.pager li { flex: 1 }` 搬進 variant」的連帶回歸就大剌剌
-   躺在 404 與 `/offline/` 兩個從來沒被 pager 測試碰過的頁面上(單顆按鈕從置中掉成靠左)。
-   **動共用基底規則時,先列出全部呼叫點再改**,不要指望測試網撈到 —— 這類重構的受害者
-   依定義就是「還沒被收編進 variant 的舊呼叫點」,而它們之所以還裸著,通常正因為邊緣、
-   不重要,也就是最不可能有測試的地方。突變測試給的信心非常具體,很容易被誤當成整體
-   測試品質的證明。
+9. **突變鷹架本身也要先驗證會生效,再相信它的紅綠。** 跨多次導覽的樣式突變要用
+   `page.addInitScript` 注入(每次導覽都跑,繞開 HTTP 快取),並先用探針確認突變在
+   **每一個**受測條件下都真的套用了。
 
-9. **突變鷹架本身也要先驗證會生效,再相信它的紅綠。** 2026-08-08 用 `page.route` 攔
-   `/_next/static/chunks/*.css` 附加突變規則,結果只有**迴圈第一個 viewport** 生效 ——
-   Next 的 static chunk 帶 immutable 快取,第二次 `page.goto` 根本不再發請求,route
-   攔不到(補 `cache-control: no-store` 也無效,`fulfill({ response, headers })` 讓
-   response 自己的 header 勝出)。當時四個突變都「正確變紅」,但全都紅在迴圈外的斷言上,
-   迴圈內兩條從未被真正考驗;唯一一個只在寬視窗才會顯現的突變因此假綠。**跨多次導覽的
-   樣式突變要用 `page.addInitScript` 注入 `<style>`**(每次導覽都跑,繞開 HTTP 快取),
-   並且先用探針確認突變在**每一個**受測條件下都真的套用了。
+   以上三條背後的六次實際踩坑(空包彈的四種長相、涵蓋面失效的實例、鷹架自身失效)在
+   [`docs/lessons/test-assertions.md`](docs/lessons/test-assertions.md) ——
+   **寫新的 CSS / 版面類斷言之前先讀它**。改實作、跑既有測試不必讀。
 
 ## 提交慣例
 
@@ -400,9 +326,10 @@ dev-only 現象,真因是 `/` 與 `/blog` 內容重複)與 kbar「手機點文�
    另一份)描述的行為、指令、路由、設定?有就在同一次提交裡更新。
 2. **README**:`README.md` 描述的功能與特性清單是否仍然正確?新增/移除/改變
    使用者可見的功能時,README 要跟著動。
-3. **AGENTS.md 本身**:這次除錯或實作有沒有得到新教訓、或造成 AGENTS.md 未提到
-   的重大變化(新的環境陷阱、新的架構決策、新的驗證方式)?有就順手把守則
-   更新在對應章節 — 教訓不落地,下一個 session 就會重付學費。
+3. **新教訓落地**:這次除錯或實作有沒有得到新教訓(環境陷阱、架構決策、驗證方式)?
+   有就跑「這份文件的定位與維護規則」的三問決定去處 —— **答案可能是「哪裡都不寫」**。
+   教訓不落地,下一個 session 就會重付學費;但落錯層,這個檔案會再長回 400 行。若寫進
+   本檔後 `test:unit` 因預算失敗,那不是叫你調高上限,是叫你搬一組出去。
 4. **OpenWiki wiki**:這次改動有沒有讓 `openwiki/` 的描述過時?**先 commit 你的變更,
    再**無頭跑 `openwiki code --update --print`,把 wiki 的更新併進同一個 PR。**順序不能
    顛倒** —— noop 判斷要求乾淨工作樹,工作樹髒的話它一律做完整(付費)重生成;反之若
