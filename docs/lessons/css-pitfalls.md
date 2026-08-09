@@ -123,6 +123,17 @@ ffmpeg -i in.png -vf "colorchannelmixer=rr=0.5:gg=0.5:bb=0.5" out.png
 
 ---
 
+## 固定浮動控制項不能用內容阻擋器認得的 selector
+
+- **固定浮動控制項要避開內容阻擋器的通用 selector**:實測 AdGuard 啟用的
+  Fanboy's Annoyances 同時以 `##.back-top` 與 `##[aria-label="Back to top"]` 隱藏返回頂部
+  按鈕,造成 Safari、Discord WebView 與部分主畫面 Web App 消失,而 LINE WebView 仍
+  正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
+  做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
+  `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
+
+---
+
 ## 相關條目(在別的文件)
 
 - **headless Chromium 一律是 overlay 捲軸** —— 量不到「捲軸佔版面」才會出現的版面 bug。

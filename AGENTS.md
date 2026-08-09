@@ -29,6 +29,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 含實測數字、日期、案例敘事、機制解釋 → **wiki 內容** → `docs/lessons/<subsystem>.md`。
 純祈使句、拿掉所有案例仍然成立 → **schema** → 留在本檔。
 一條規則只要寫得出「2026-08-08 實測…」,它幾乎必然是 wiki 內容。
+**例外:一行以內的內嵌舉例不搬。** 它們讓祈使句可操作(「最便宜的實驗」很模糊,
+「⌘K 繞過漢堡直開 kbar,30 秒否證」不模糊),搬走只省幾十 bytes 卻讓規則變鈍,
+還多一次跳轉。要搬的是**成段的敘事**,不是括號裡的舉例。
 
 **問 2 —(邊界情形)不知道這條的 agent,會在打開任何相關檔案之前就犯錯嗎?**
 會 → 留在本檔(**沒有觸發點可掛**,agent 不會知道自己需要查它)。
@@ -103,12 +106,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   的 flat config 匯入,**不要改回 FlatCompat 的 legacy `next` extends**。
 - Serwist 的 service worker 由 `app/serwist/[path]/route.ts` 產生。`app/sw.ts` 因 webworker
   型別排除於主 tsconfig/ESLint,但**該 route handler 是一般 app 程式碼,不得排除**。
-- **固定浮動控制項要避開內容阻擋器的通用 selector**:實測 AdGuard 啟用的
-  Fanboy's Annoyances 同時以 `##.back-top` 與 `##[aria-label="Back to top"]` 隱藏返回頂部
-  按鈕,造成 Safari、Discord WebView 與部分主畫面 Web App 消失,而 LINE WebView 仍
-  正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
-  做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
-  `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
+- **固定浮動控制項要用專屬中性 class**(現況 `.hux-elevator-control`),無障礙名稱用
+  `sr-only` 內文提供。**不要用 `.back-top` 或 `aria-label="Back to top"`** —— 內容阻擋器
+  的通用 selector 認得它們,會讓按鈕在部分瀏覽器與 WebView 整個消失。
 - **Mermaid 管線的環境陷阱與不變量在
   [`docs/lessons/mermaid-pipeline.md`](docs/lessons/mermaid-pipeline.md)。**
   動到 `scripts/mermaid-*.mjs`、`lib/rehype-mermaid.mjs`、`public/mermaid/` 的產物、
@@ -118,26 +118,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   該擋的都有測試機器強制。
 - **CSS 的版面尺寸陷阱與樣式不變量在
   [`docs/lessons/css-pitfalls.md`](docs/lessons/css-pitfalls.md)。**
-  動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`、文章容器斷點、顏色斷言,或把視覺
-  效果從 CSS 烘進圖檔之前**先讀它**。兩則深入解剖加八條速查規則(`vw` 不可用於水平
-  尺寸、Hux 的四段行寬、`lab()` 顏色、全域 `scroll-behavior` 等)。**寫一般樣式不必讀。**
-- **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
-  原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
-  ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**
-  (`CODE_MODE_AGENT_FILES` 寫死這兩個檔名)。手動刪掉 `CLAUDE.md` 那份下次會原地長回來;
-  **絕對不要整個刪掉 `CLAUDE.md`** —— 檔案不存在時它會「新建」一個只含 OpenWiki 區塊的檔,
-  把 `@AGENTS.md` import 弄丟。重複約 500 B,接受即可,不要「順手修正」。
-  ② `.github/workflows/openwiki-update.yml` **每次執行被無條件覆寫**(`writeFile`),手改必被
-  蓋掉;而它用 `peter-evans/create-pull-request` 從 Actions 開 PR,需要開 repo 層
-  「Allow Actions to create and approve pull requests」—— 本專案刻意不開這個開關
-  (理由見 [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md))。
-  故該檔已列入 `.gitignore`:本機任它覆寫、但永不入庫;要更新 wiki 就本機跑
-  `openwiki --update`,產物照常走 PR。
-- **`openwiki/INSTRUCTIONS.md` 是唯一該由人手動維護的 OpenWiki 檔案**。它是「wiki 範圍與
-  優先序」的 brief,OpenWiki 只讀不覆寫。生成內容跑偏(實測過:它會把「這次執行當下哪些
-  檔案未被追蹤」寫成 repo 的永久不變量)要在這裡加約束,不要去改 `openwiki/` 底下的生成頁
-  —— 那些下次 `--update` 會被重寫。
-
+  動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`、文章容器斷點、顏色斷言、**新增固定
+  浮動控制項**,或把視覺效果從 CSS 烘進圖檔之前**先讀它**。三則深入解剖加八條速查規則
+  (`vw` 不可用於水平尺寸、Hux 的四段行寬、`lab()` 顏色、全域 `scroll-behavior` 等)。
+  **寫一般樣式不必讀。**
 ## Git 工作流程(2026-07-12 起)
 
 - **改檔前與提交前都要確認本地基底沒有落後遠端** — 先跑 `git fetch origin main`,
@@ -156,19 +140,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     `tsc --noEmit`、`test:unit`。
   - `OG font check`(`.github/workflows/og-font-check.yml`,job 名 `check`)—
     每次 push/PR 都跑,**故意不用 paths 過濾**。
-  - **必過檢查不能有條件跳過**:GitHub 對 required status check 的語意是
-    「等到它回報結果為止」;workflow 用 `paths:` 過濾、條件不符時根本不會
-    觸發,就永遠不會回報狀態,PR 會卡死在 pending 動彈不得(PR #5 上真的踩過
-    這個坑,才把 og-font-check 的 paths 過濾拿掉)。要嘛必過檢查每次都跑,
-    要嘛就不能設為必過 —— 兩者只能選一個,不要試圖用 paths 過濾 + required
-    check 兩者兼得。
+  - **必過檢查不能有條件跳過。** 用 `paths:` 過濾的 workflow 條件不符時根本不會觸發,
+    就永遠不會回報狀態,PR 會卡死在 pending。**要嘛每次都跑,要嘛就不能設為必過。**
   - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
-- **合併後確認 Vercel 真的有部署 —— 這件事會靜默失敗。** 排查時
-  `gh api repos/<owner>/<repo>/commits/<sha>/status` 看有沒有 `Vercel` context 最快。
-  **已證實是偶發的 webhook 掉包,不是設定問題**(2026-08-01 那次已把專案設定整條路走完且
-  全部乾淨)。**再遇到請直接補觸發,不要重新排查設定**:Vercel dashboard → Deployments →
-  **Create Deployment** 選 `main`(**不要**用舊部署的 Redeploy,那會重建舊 commit)。
+- **發現合併後 production 沒動時,直接補觸發,不要排查專案設定。** 這是偶發的 webhook
+  掉包,**不必每次合併都主動確認**。補法:Vercel dashboard → Deployments → **Create
+  Deployment** 選 `main`(**不要**用舊部署的 Redeploy,那會重建舊 commit)。
 - **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
   這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
   `renovate.json`,範圍**只限 GitHub Actions 版本**
@@ -188,10 +166,16 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   - **不要走回自架 `renovatebot/github-action`** —— 2026-07-12 已改用官方 App 並移除自架版。
   - 第三方 action(非 `actions/*`、`github/*`)一律釘 commit SHA,版本號用註解
     (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
-- **上面兩件事的完整案例(已排除過哪些假設、實測數字)在
+- **`openwiki --init` / `--update` 每次執行都會重跑 repo setup,有兩件事不要試圖手動修正**:
+  它把同一段 OpenWiki 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`(**絕對不要整個刪掉
+  `CLAUDE.md`** —— 檔案不存在時它會新建一個只含該區塊的檔),並無條件覆寫
+  `.github/workflows/openwiki-update.yml`(已列入 `.gitignore`)。
+  **`openwiki/INSTRUCTIONS.md` 是唯一該由人手動維護的 OpenWiki 檔案** —— 生成內容跑偏要在
+  那裡加約束,不要去改 `openwiki/` 底下的生成頁。
+- **跑在你控制之外的流程,其案例與機制在
   [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md)。**
-  合併後 production 沒動,或 Renovate PR 全綠卻不合併時**先讀它** —— 它的結論就是
-  「不要重新排查」。**平常開 PR、合併不必讀。**
+  合併後 production 沒動、Renovate PR 全綠卻不合併、要動必過檢查的觸發條件,或要跑
+  `openwiki --update` 之前**先讀它**。**平常開 PR、合併不必讀。**
 
 ## 通用工程守則
 

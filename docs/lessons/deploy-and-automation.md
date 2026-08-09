@@ -1,10 +1,12 @@
-# 部署與自動化:兩件已經查到底的事
+# 部署與自動化:跑在你控制之外的流程
 
-> **什麼時候該讀這份**:合併後 production 沒動、Renovate PR 檢查全綠卻不合併,或想調整
-> Renovate 的範圍與自動合併設定時。**平常開 PR、合併不必讀。**
+> **什麼時候該讀這份**:合併後 production 沒動、Renovate PR 檢查全綠卻不合併、要動
+> `.github/workflows/` 的必過檢查條件,或要跑 `openwiki --init` / `--update` 之前。
+> **平常開 PR、合併不必讀。**
 >
-> 這兩件事的共同點是**已經完整排查過一輪,而結論就是「不要再排查一次」**。祈使結論留在
-> `AGENTS.md`,案例留在這裡 —— 你需要的是結論,只有結論不管用時才需要案例。
+> 收錄的共同性質是**流程在你看不見的地方自作主張**:webhook 會掉、required check 過濾
+> 條件會讓 PR 永遠 pending、`openwiki` 每次執行都會覆寫某些檔案。祈使結論留在
+> `AGENTS.md`,案例與機制留在這裡。
 >
 > 從 `AGENTS.md` 搬出來(2026-08-09)。`AGENTS.md` 是 schema 層,這份是教訓層。
 
@@ -42,3 +44,32 @@
     repo 層「Allow Actions to create and approve pull requests」這個範圍比
     實際需求廣的開關;App 版兩者都不需要。除非 App 被移除,否則不要走回自架
     這條路。
+
+## 必過檢查為什麼不能用 `paths:` 過濾(PR #5)
+
+  - **必過檢查不能有條件跳過**:GitHub 對 required status check 的語意是
+    「等到它回報結果為止」;workflow 用 `paths:` 過濾、條件不符時根本不會
+    觸發,就永遠不會回報狀態,PR 會卡死在 pending 動彈不得(PR #5 上真的踩過
+    這個坑,才把 og-font-check 的 paths 過濾拿掉)。要嘛必過檢查每次都跑,
+    要嘛就不能設為必過 —— 兩者只能選一個,不要試圖用 paths 過濾 + required
+    check 兩者兼得。
+
+## OpenWiki 兩個「不要試圖手動修正」的行為
+
+- **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
+  原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
+  ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**
+  (`CODE_MODE_AGENT_FILES` 寫死這兩個檔名)。手動刪掉 `CLAUDE.md` 那份下次會原地長回來;
+  **絕對不要整個刪掉 `CLAUDE.md`** —— 檔案不存在時它會「新建」一個只含 OpenWiki 區塊的檔,
+  把 `@AGENTS.md` import 弄丟。重複約 500 B,接受即可,不要「順手修正」。
+  ② `.github/workflows/openwiki-update.yml` **每次執行被無條件覆寫**(`writeFile`),手改必被
+  蓋掉;而它用 `peter-evans/create-pull-request` 從 Actions 開 PR,需要開 repo 層
+  「Allow Actions to create and approve pull requests」—— 本專案刻意不開這個開關
+  (理由見 [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md))。
+  故該檔已列入 `.gitignore`:本機任它覆寫、但永不入庫;要更新 wiki 就本機跑
+  `openwiki --update`,產物照常走 PR。
+
+- **`openwiki/INSTRUCTIONS.md` 是唯一該由人手動維護的 OpenWiki 檔案**。它是「wiki 範圍與
+  優先序」的 brief,OpenWiki 只讀不覆寫。生成內容跑偏(實測過:它會把「這次執行當下哪些
+  檔案未被追蹤」寫成 repo 的永久不變量)要在這裡加約束,不要去改 `openwiki/` 底下的生成頁
+  —— 那些下次 `--update` 會被重寫。
