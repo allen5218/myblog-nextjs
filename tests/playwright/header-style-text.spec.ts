@@ -252,9 +252,9 @@ test('text hero 的 tag hover:可讀性與方向性是兩個契約', async ({ pa
 // fixed 狀態的前景在兩個主題**不同**(淺 #2d2d2d / 深 #fff),所以兩輪都必須跑 ——
 // 只跑 light 的話 .dark .navbar-custom.is-fixed 那組 token 被刪掉照樣全綠。
 const FIXED_FOREGROUND = { light: 'rgb(45, 45, 45)', dark: 'rgb(255, 255, 255)' } as const
-// 使用者核可 ThemeSwitch dropdown 固定採 #3A839E + white 的視覺例外(約 4.27:1)。
-// 這個門檻只能用於 ThemeSwitch dropdown；其他文字控制仍維持 4.5:1。
-const THEME_SWITCH_APPROVED_DROPDOWN_TEXT_CONTRAST = 4.2
+// 使用者核可頂欄 dropdown(ThemeSwitch + MobileNav)固定採 #3A839E + white 的視覺例外
+// (約 4.27:1)。這個門檻只能用於這兩個 dropdown；其他文字控制仍維持 4.5:1。
+const NAVBAR_APPROVED_DROPDOWN_TEXT_CONTRAST = 4.2
 
 for (const theme of ['light', 'dark'] as const) {
   test(`${theme}:桌面 fixed-visible 前景正確,hover 完全不變色,popup 對比仍合格`, async ({
@@ -296,7 +296,7 @@ for (const theme of ['light', 'dark'] as const) {
     })
     expect(
       contrastOf(measured.color, [measured.background, measured.panel])
-    ).toBeGreaterThanOrEqual(THEME_SWITCH_APPROVED_DROPDOWN_TEXT_CONTRAST)
+    ).toBeGreaterThanOrEqual(NAVBAR_APPROVED_DROPDOWN_TEXT_CONTRAST)
   })
 
   test(`${theme}:桌面 fixed-hidden 只驗 class 與位置,不做 hover(元素不可見)`, async ({ page }) => {
@@ -367,36 +367,74 @@ for (const theme of ['light', 'dark'] as const) {
       }
     })
 
-    // 與 fixed-visible popup 共用同一個已核可的 ThemeSwitch 專用例外。
+    // 與 fixed-visible popup 共用同一個已核可的頂欄 dropdown 例外。
     expect(
       contrastOf(measured.color, [measured.background, measured.panel])
-    ).toBeGreaterThanOrEqual(THEME_SWITCH_APPROVED_DROPDOWN_TEXT_CONTRAST)
+    ).toBeGreaterThanOrEqual(NAVBAR_APPROVED_DROPDOWN_TEXT_CONTRAST)
     // focus surface 對 panel(WCAG 1.4.11)—— 只量前者會漏掉「focus 指示器本身看不出來」。
     expect(contrastOf(measured.background, [measured.panel])).toBeGreaterThanOrEqual(3)
   })
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`${theme}:手機展開漢堡後 Search 按鈕的 focus 態對比`, async ({ page }) => {
+  test(`${theme}:手機漢堡的 Link 與 Search 在 hover、鍵盤 focus 都使用 control accent`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await open(page, textPost, theme)
 
     await page.locator('.navbar-toggle').click()
-    // 必須明確 focus Search 按鈕 —— 其他選單項是 <a>,抓不到 button 相關的回歸。
-    const search = page.locator('[role="menu"] button', { hasText: 'Search' })
-    await search.focus()
+    // 一個 <a> 與 Search <button> 都要量；只守其中一種，另一個 focus 分支漂移仍會全綠。
+    const targets = [
+      page.locator('[role="menu"] a').first(),
+      page.locator('[role="menu"] button', { hasText: 'Search' }),
+    ]
 
-    const measured = await search.evaluate((el) => {
-      const panel = el.closest('[role="menu"]') as HTMLElement
-      return {
+    for (const target of targets) {
+      await page.mouse.move(1, 700)
+      await target.hover()
+      const hovered = await target.evaluate((el) => ({
         color: getComputedStyle(el).color,
         background: getComputedStyle(el).backgroundColor,
-        panel: getComputedStyle(panel).backgroundColor,
-      }
-    })
-    expect(
-      contrastOf(measured.color, [measured.background, measured.panel])
-    ).toBeGreaterThanOrEqual(4.5)
+      }))
+      expect(hovered).toEqual({
+        color: 'rgb(255, 255, 255)',
+        background: 'rgb(58, 131, 158)',
+      })
+    }
+
+    // 先關閉選單、移走 mouse，再由鍵盤重新展開。HeadlessUI 的 menuitem 以
+    // aria-activedescendant + data-focus 表達鍵盤 focus，DOM focus 留在 menu 容器上。
+    await page.keyboard.press('Escape')
+    await page.mouse.move(1, 700)
+    const toggle = page.locator('.navbar-toggle')
+    await focusWithKeyboard(page, toggle)
+    await page.keyboard.press('Enter')
+
+    // Enter 預設選中第一個 Link；End 則是真實鍵盤路徑移到最後一個 Search。
+    for (const [target, key] of [
+      [page.locator('[role="menu"] a').first(), undefined],
+      [page.locator('[role="menu"] button', { hasText: 'Search' }), 'End'],
+    ] as const) {
+      if (key) await page.keyboard.press(key)
+      await expect(target).toHaveAttribute('data-focus', '')
+      const focused = await target.evaluate((el) => {
+        const panel = el.closest('[role="menu"]') as HTMLElement
+        return {
+          color: getComputedStyle(el).color,
+          background: getComputedStyle(el).backgroundColor,
+          panel: getComputedStyle(panel).backgroundColor,
+          hovered: el.matches(':hover'),
+        }
+      })
+      expect(focused.hovered).toBe(false)
+      expect(focused.color).toBe('rgb(255, 255, 255)')
+      expect(focused.background).toBe('rgb(58, 131, 158)')
+      expect(contrastOf(focused.color, [focused.background, focused.panel])).toBeGreaterThanOrEqual(
+        NAVBAR_APPROVED_DROPDOWN_TEXT_CONTRAST
+      )
+      expect(contrastOf(focused.background, [focused.panel])).toBeGreaterThanOrEqual(3)
+    }
   })
 }
 

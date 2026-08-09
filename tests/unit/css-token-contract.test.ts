@@ -276,8 +276,9 @@ describe('navbar trigger 的語意 class', () => {
 })
 
 describe('popup focus 的成對 token', () => {
-  const INTERACTIVE_PAIR = 'bg-[var(--hux-interactive)] text-[var(--hux-on-interactive)]'
-  const THEME_SWITCH_PAIR = 'bg-[var(--hux-control-accent)] text-white'
+  const CONTROL_ACCENT_PAIR = 'bg-[var(--hux-control-accent)] text-white'
+  const MOBILE_NAV_REST =
+    'text-gray-700! hover:bg-[var(--hux-control-accent)] hover:text-white! dark:text-gray-200!'
   const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const occurrences = (source: string, needle: string) => source.split(needle).length - 1
   const focusBranches = (source: string, pair: string) =>
@@ -289,22 +290,27 @@ describe('popup focus 的成對 token', () => {
   // 比對「成對字串出現在 focus 分支的次數」而不是兩個字串各自的出現次數:後者對
   // 「把前景 token 搬到 else 分支」與「把整對搬到非 focus 的元素上」都是綠的 —— 計數
   // 表達不了位置。這裡要求每一次用到互動色,都是以成對形式出現在 focus 三元運算子上。
-  test('MobileNavMenu.tsx 的互動色只以成對形式出現在 focus 分支', () => {
+  test('MobileNavMenu.tsx 的 Link 與 Search 在 focus、hover 都只用 control accent 與白字', () => {
     const source = readSource('components', 'MobileNavMenu.tsx')
-    const paired = focusBranches(source, INTERACTIVE_PAIR)
-    expect(paired).toBeGreaterThan(0)
-    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(paired)
-    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(paired)
+    const focused = focusBranches(source, CONTROL_ACCENT_PAIR)
+
+    expect(focused).toBe(2)
+    expect(occurrences(source, CONTROL_ACCENT_PAIR)).toBe(focused)
+    expect(occurrences(source, MOBILE_NAV_REST)).toBe(2)
+    expect(occurrences(source, 'hover:bg-[var(--hux-control-accent)]')).toBe(2)
+    expect(occurrences(source, 'hover:text-white!')).toBe(2)
+    expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(0)
+    expect(occurrences(source, 'text-[var(--hux-on-interactive)]')).toBe(0)
   })
 
   test('ThemeSwitch.tsx 的三個 focus 分支只使用 control accent 與白字', () => {
     const source = readSource('components', 'ThemeSwitch.tsx')
-    const paired = focusBranches(source, THEME_SWITCH_PAIR)
+    const paired = focusBranches(source, CONTROL_ACCENT_PAIR)
 
     // 完整 class 字串必須正好在 focus 三元分支，不能靠別處保留 pair 讓計數假綠，
     // 也不能在同一分支尾端追加另一個 background/text class 覆蓋有效樣式。
     expect(paired).toBe(3)
-    expect(occurrences(source, THEME_SWITCH_PAIR)).toBe(paired)
+    expect(occurrences(source, CONTROL_ACCENT_PAIR)).toBe(paired)
     expect(occurrences(source, 'bg-[var(--hux-control-accent)]')).toBe(paired)
     expect(occurrences(source, 'text-white')).toBe(paired)
     expect(occurrences(source, 'bg-[var(--hux-interactive)]')).toBe(0)
