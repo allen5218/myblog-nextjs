@@ -40,7 +40,7 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
         variant="archive"
         title={group.name}
         subtitle="Series"
-        headerImg="/img/bg-little-universe.jpg"
+        headerImg="/img/bg-flamingo-lagoon.webp"
       />
       <SeriesPostList series={group} />
     </>

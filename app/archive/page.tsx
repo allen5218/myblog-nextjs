@@ -26,7 +26,7 @@ export default async function ArchivePage() {
         variant="archive"
         title="Archive"
         subtitle="If you don't know, the thing to do is not to get scared, but to learn."
-        headerImg="/img/bg-little-universe.jpg"
+        headerImg="/img/bg-gull-facade.webp"
       />
       <Suspense fallback={<ArchiveContent posts={posts} tags={tags} />}>
         <ArchiveFilter posts={posts} tags={tags} />

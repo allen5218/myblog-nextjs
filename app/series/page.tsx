@@ -16,7 +16,7 @@ export default function SeriesPage() {
         variant="archive"
         title="Series"
         subtitle="Collections of related posts."
-        headerImg="/img/bg-little-universe.jpg"
+        headerImg="/img/bg-flamingo-lagoon.webp"
       />
       <SeriesIndex series={collectSeries(allBlogs)} />
     </>
