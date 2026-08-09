@@ -1,8 +1,8 @@
 # CSS 常見陷阱
 
 > **什麼時候該讀這份**:動到版面尺寸規則(高度、寬度、`aspect-ratio`、`min-*`/`max-*`)、
-> 把視覺效果從 CSS 烘進圖檔,或排查「規則明明寫對了、算出來的值卻不是預期」時。
-> 寫一般的樣式**不需要**讀。
+> 文章容器斷點、顏色斷言、新增固定浮動控制項、把視覺效果從 CSS 烘進圖檔,或排查
+> 「規則明明寫對了、算出來的值卻不是預期」時。寫一般的樣式**不需要**讀。
 >
 > 這裡只放**踩過的坑**:每一條都附實測數字與最小重現條件。規則性的描述
 > (token 命名、hero 模式)在 `AGENTS.md` 與
@@ -117,20 +117,16 @@ ffmpeg -i in.png -vf "colorchannelmixer=rr=0.5:gg=0.5:bb=0.5" out.png
   就差點誤判成已部署);要用只有實作才會產生的東西:手寫的 custom property(`--hero-fg`)、
   語意 class(`.navbar-tool-trigger`),或直接比對 `/_next/static/chunks/*.css` 的 hash。
 
-**注意:這份文件本身也在 Tailwind 的掃描範圍內。** 上面程式碼區塊裡的
-`.intro-header-archive` 是實作真的在用的 class,不會憑空產生新的死 CSS;但未來往這裡
-加「假想的」class name 前要先想到這件事。
-
----
-
-## 固定浮動控制項不能用內容阻擋器認得的 selector
-
 - **固定浮動控制項要避開內容阻擋器的通用 selector**:實測 AdGuard 啟用的
   Fanboy's Annoyances 同時以 `##.back-top` 與 `##[aria-label="Back to top"]` 隱藏返回頂部
   按鈕,造成 Safari、Discord WebView 與部分主畫面 Web App 消失,而 LINE WebView 仍
   正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
   做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
   `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
+
+**注意:這份文件本身也在 Tailwind 的掃描範圍內。** 上面程式碼區塊裡的
+`.intro-header-archive` 是實作真的在用的 class,不會憑空產生新的死 CSS;但未來往這裡
+加「假想的」class name 前要先想到這件事。
 
 ---
 

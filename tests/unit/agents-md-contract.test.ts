@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 // `AGENTS.md`(`CLAUDE.md` 是它的 symlink)是 schema 層:操作規則,加上往兩個 wiki
@@ -20,6 +20,8 @@ import { describe, expect, test } from 'vitest'
 //     告訴 agent 什麼時候該讀、什麼時候不必讀。
 //   - `docs/lessons/` 各檔自己的長度。那些是按需載入的,不佔每個 session 的預算。
 //   - 條目有沒有放對層。判準在 `AGENTS.md` 的「這份文件的定位與維護規則」,是人在跑的。
+//   - `docs/lessons/` 連到 `AGENTS.md`、`openwiki/` 或原始碼的連結。只驗 lesson 之間與
+//     lesson 對自己的連結,因為那是搬遷會弄壞的部分。
 const ROOT = process.cwd()
 const AGENTS_PATH = resolve(ROOT, 'AGENTS.md')
 const LESSONS_DIR = resolve(ROOT, 'docs/lessons')
@@ -95,6 +97,39 @@ describe('AGENTS.md 的 schema 層契約', () => {
         '(什麼時候不必讀)——少了反向邊界,agent 會保險起見每次都讀,等於沒搬。\n' +
         '如果你已經加了:pointer 必須是 inline markdown 連結 `[文字](docs/lessons/x.md)`。\n' +
         'code span、reference-style 連結、註解或 fenced block 裡的連結,這支測試都不算數。'
+    ).toEqual([])
+  })
+
+  // 搬遷弄壞連結有兩個方向,`AGENTS.md` 的出向連結只涵蓋其中一個。2026-08-09 第二輪把一段
+  // 含「理由見 <lesson>」的內容從 `AGENTS.md` 搬進那個 lesson 自己,連結於是指向自己,而且
+  // 相對路徑從 `docs/lessons/` 起算 → 解析成 `docs/lessons/docs/lessons/…`,在 GitHub 上 404。
+  // 四條斷言當時全綠,因為沒有一條看 lesson 檔內部。這是第一輪「指涉跟著被搬走」的鏡像:
+  // 被搬走的是指涉者,不是被指涉者。
+  test('docs/lessons/ 內部的相對連結都解析得到,且不指向自己', () => {
+    const problems: string[] = []
+
+    for (const name of lessonFiles) {
+      const filePath = resolve(LESSONS_DIR, name)
+      const source = readFileSync(filePath, 'utf8')
+
+      for (const match of source.matchAll(/\]\(([^)#\s]+\.md)(?:#[^)\s]*)?(?:\s+"[^"]*")?\)/g)) {
+        const target = match[1]
+        if (/^[a-z]+:/i.test(target)) continue
+
+        const resolved = resolve(dirname(filePath), target)
+        if (resolved === filePath) {
+          problems.push(`${name}: 連到自己(${target})`)
+        } else if (!existsSync(resolved)) {
+          problems.push(`${name}: ${target} → ${relative(ROOT, resolved)} 不存在`)
+        }
+      }
+    }
+
+    expect(
+      problems,
+      `docs/lessons/ 內部有壞掉的連結:\n  ${problems.join('\n  ')}\n` +
+        '搬遷時把「理由見 X」整段搬進 X 自己,連結就會指向自己;而 lesson 檔的相對路徑\n' +
+        '從 docs/lessons/ 起算,寫成 docs/lessons/x.md 會解析成 docs/lessons/docs/lessons/x.md。'
     ).toEqual([])
   })
 
