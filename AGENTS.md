@@ -29,9 +29,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 含實測數字、日期、案例敘事、機制解釋 → **wiki 內容** → `docs/lessons/<subsystem>.md`。
 純祈使句、拿掉所有案例仍然成立 → **schema** → 留在本檔。
 一條規則只要寫得出「2026-08-08 實測…」,它幾乎必然是 wiki 內容。
-**例外:一行以內的內嵌舉例不搬。** 它們讓祈使句可操作(「最便宜的實驗」很模糊,
-「⌘K 繞過漢堡直開 kbar,30 秒否證」不模糊),搬走只省幾十 bytes 卻讓規則變鈍,
-還多一次跳轉。要搬的是**成段的敘事**,不是括號裡的舉例。
+**例外:單句、括號內、約 100 bytes 以內的舉例不搬,且同一條規則最多一處。** 判準不是
+排版行數(手工換行可以規避),而是「刪掉它之後這條祈使句還可不可操作」——「最便宜的實驗」
+很模糊,「⌘K 繞過漢堡直開 kbar,30 秒否證」不模糊。要搬的是**成段的敘事**。
 
 **問 2 —(邊界情形)不知道這條的 agent,會在打開任何相關檔案之前就犯錯嗎?**
 會 → 留在本檔(**沒有觸發點可掛**,agent 不會知道自己需要查它)。
@@ -119,9 +119,10 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 - **CSS 的版面尺寸陷阱與樣式不變量在
   [`docs/lessons/css-pitfalls.md`](docs/lessons/css-pitfalls.md)。**
   動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`、文章容器斷點、顏色斷言、**新增固定
-  浮動控制項**,或把視覺效果從 CSS 烘進圖檔之前**先讀它**。三則深入解剖加八條速查規則
+  浮動控制項**,或把視覺效果從 CSS 烘進圖檔之前**先讀它**。兩則深入解剖加九條速查規則
   (`vw` 不可用於水平尺寸、Hux 的四段行寬、`lab()` 顏色、全域 `scroll-behavior` 等)。
   **寫一般樣式不必讀。**
+
 ## Git 工作流程(2026-07-12 起)
 
 - **改檔前與提交前都要確認本地基底沒有落後遠端** — 先跑 `git fetch origin main`,
@@ -144,9 +145,11 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
     就永遠不會回報狀態,PR 會卡死在 pending。**要嘛每次都跑,要嘛就不能設為必過。**
   - 這兩個都**只是 PR 合併閘門**,不影響 Vercel 部署節奏 — Vercel 仍照自己的
     邏輯部署 `main` 的每個 commit。
-- **發現合併後 production 沒動時,直接補觸發,不要排查專案設定。** 這是偶發的 webhook
-  掉包,**不必每次合併都主動確認**。補法:Vercel dashboard → Deployments → **Create
-  Deployment** 選 `main`(**不要**用舊部署的 Redeploy,那會重建舊 commit)。
+- **發現合併後 production 沒動時,直接補觸發,不要排查專案設定。** 先用
+  `gh api repos/<owner>/<repo>/commits/<sha>/status` 確認**連一筆部署紀錄都沒有**
+  (有紀錄但失敗是另一回事,補觸發沒用)。這是偶發的 webhook 掉包,**不必每次合併都主動
+  確認**。補法:Vercel dashboard → Deployments → **Create Deployment** 選 `main`
+  (**不要**用舊部署的 Redeploy,那會重建舊 commit)。
 - **Renovate**:官方 Mend App(https://github.com/apps/renovate,人類手動安裝在
   這個 repo 上,agent 沒有能力自己走 App 安裝/授權流程)。組態是 repo 根目錄的
   `renovate.json`,範圍**只限 GitHub Actions 版本**
@@ -174,8 +177,9 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   那裡加約束,不要去改 `openwiki/` 底下的生成頁。
 - **跑在你控制之外的流程,其案例與機制在
   [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md)。**
-  合併後 production 沒動、Renovate PR 全綠卻不合併、要動必過檢查的觸發條件,或要跑
-  `openwiki --update` 之前**先讀它**。**平常開 PR、合併不必讀。**
+  合併後 production 沒動、Renovate PR 全綠卻不合併、要動必過檢查的觸發條件,或發現
+  `openwiki` 覆寫了你沒改的檔案時**先讀它**。**平常開 PR、合併、例行跑 `openwiki --update`
+  都不必讀。**
 
 ## 通用工程守則
 

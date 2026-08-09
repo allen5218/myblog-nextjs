@@ -1,8 +1,8 @@
 # 部署與自動化:跑在你控制之外的流程
 
 > **什麼時候該讀這份**:合併後 production 沒動、Renovate PR 檢查全綠卻不合併、要動
-> `.github/workflows/` 的必過檢查條件,或要跑 `openwiki --init` / `--update` 之前。
-> **平常開 PR、合併不必讀。**
+> `.github/workflows/` 的必過檢查條件,或發現 `openwiki` 覆寫了你沒改的檔案時。
+> **平常開 PR、合併、例行跑 `openwiki --update` 都不必讀。**
 >
 > 收錄的共同性質是**流程在你看不見的地方自作主張**:webhook 會掉、required check 過濾
 > 條件會讓 PR 永遠 pending、`openwiki` 每次執行都會覆寫某些檔案。祈使結論留在
@@ -65,7 +65,7 @@
   ② `.github/workflows/openwiki-update.yml` **每次執行被無條件覆寫**(`writeFile`),手改必被
   蓋掉;而它用 `peter-evans/create-pull-request` 從 Actions 開 PR,需要開 repo 層
   「Allow Actions to create and approve pull requests」—— 本專案刻意不開這個開關
-  (理由見 [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md))。
+  (理由見本檔「Renovate:為什麼不走回自架 action」一節)。
   故該檔已列入 `.gitignore`:本機任它覆寫、但永不入庫;要更新 wiki 就本機跑
   `openwiki --update`,產物照常走 PR。
 
