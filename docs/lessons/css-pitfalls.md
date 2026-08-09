@@ -86,7 +86,7 @@ ffmpeg -i in.png -vf "colorchannelmixer=rr=0.5:gg=0.5:bb=0.5" out.png
   決定」,**接上滑鼠就會全系統切成佔版面的傳統捲軸**,於是同一份程式碼時好時壞、
   Edge 與 Safari 都中、Playwright 測不出來。症狀是整組元素左偏半個捲軸寬、右側溢出同量
   (LTR 下左側溢出不產生捲軸,所以只看得到「多一條水平捲軸」)。`.hux-full-bleed` /
-  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由上述 unit test 擋。
+  `.hux-home-layout` / `.post-shell` 已於 2026-08-08 改掉;新增規則由 `tests/unit/css-viewport-width-contract.test.ts` 擋。
 - **文章正文必須保留 Hux 的中間斷點行寬**(768 / 992 / 1200 四段)。**不能只留 1200px
   斷點**,否則平板與窄桌面會退化成 `viewport - 30px`。所有文章專用的 breakpoint selector
   (含 `≥1200px` grid)**都必須排除 `.about-shell`**(About 是獨立置中的 780px 窄欄)。

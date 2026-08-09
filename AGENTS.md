@@ -49,11 +49,16 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
 
 沒寫觸發條件的 pointer 等於刪除 —— 沒有 inbound link 的文件被翻到的機率不到 10%。
 
+**搬完一定要檢查指涉**:原文的「上述」「下節」「見下」「同上」,指涉對象很可能跟著被搬走。
+逐行比對「移除的行有沒有出現在別處」**在結構上看不到這種缺陷** —— 兩邊的行都在,只是不再
+指到彼此。2026-08-09 那次搬遷連續踩到兩處。
+
 ### 護欄
 
 `tests/unit/agents-md-contract.test.ts`(在必過的 `ci` 裡)守:本檔 ≤ 24 KiB、每個
 `docs/lessons/*.md` 都有 inbound link、本檔連出的路徑都存在。**預算滿了不要調高上限**
-—— 上限就是強迫分流的機制。
+—— 上限就是強迫分流的機制。**也不要用 `@path` import 或新增巢狀 `AGENTS.md` 繞過** ——
+那些一樣進每個 session 的 context,只是護欄量不到(前者 30 bytes 就能換進 5 KB)。
 
 
 ## 指令與環境陷阱
@@ -63,13 +68,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   誰贏)。這不是任何人的改動:**不用調查、不要 checkout 還原、commit 時一律排除**(用明確的
   `git add <檔案清單>`)。**也不能 gitignore** —— CI 乾淨 checkout 直接跑 `tsc --noEmit`,
   沒這檔案全專案 CSS/圖片 import 的型別會炸。
-- **Codex 沙箱內的 Next 16 production build 可能假性卡住。** 2026-07-17 做過同碼鑑別:
-  沙箱內 `yarn build` 停在 `Creating an optimized production build ...` 超過數分鐘且沒有
-  新輸出;終止後以提升權限在沙箱外重跑,同一份程式碼約 4 秒完成 Turbopack compile、
-  約 15 秒完成整個 build。遇到明顯超過平常約 120 秒的情況,先確認沒有第二個 build、
-  lockfile 或真實編譯錯誤;若都沒有,不要把它診斷成 Next 16 效能退化,直接申請提升權限
-  重跑 `yarn build`。production server 綁定 `127.0.0.1:3012` 若回 `listen EPERM` 也用
-  同一方式在沙箱外啟動;驗證完成後必須關閉該程序。
 - `next/og` 的 `ImageResponse` 只支援 CSS 子集;全版 absolute overlay **不要用
   `inset: 0` shorthand** — Satori 的 inline-style layout 不會把它展開,元素會沒有面積而
   靜默消失。要明寫 `top`/`right`/`bottom`/`left: 0`,並用實際渲染 PNG 的像素測試驗證;
@@ -79,10 +77,13 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   動到字型 seed、`scripts/site-font-*.mjs`、`font-data/chiron/` 的產物,或 `check:site-font`
   因文章預算失敗之前**先讀它**。九條,含成本模型(碰幾個桶遠比用幾個字重要)與
   `--rebalance` 的一次性代價。**單純寫文章不必讀** —— 預算由必過的 `check` job 強制。
+- **不要用 dev server 判斷互動行為或量任何數字**;互動類驗證一律跑 production build。
+  dev 與 build 可並行,但 lockfile 會擋同類重複程序 —— **不要為了繞過它硬啟第二個同類程序**。
 - **量測與互動驗證的環境陷阱在
   [`docs/lessons/verification-environment.md`](docs/lessons/verification-environment.md)。**
-  跑 Playwright、量版面幾何,或用瀏覽器判斷互動行為之前**先讀它**。四條的共同性質是
-  **錯了會給出全綠的假結果而不是報錯**。**改一般程式碼不必讀。**
+  跑 `yarn dev` / `next start` / Playwright、量版面幾何,或 Codex 沙箱裡 build 像是卡住、
+  `gh auth status` 說憑證過期時**先讀它**。六條的共同性質是**錯了會給出看似正常的結果,
+  而不是報錯** —— 包含兩條「沙箱在說謊」。**只讀原始碼、不跑東西時不必讀。**
 - **`BLOG_PUBLICATION_MODE` 只管 contentlayer 衍生產物**(`app/tag-data.json`、
   `public/search.json`),**不管路由**——文章頁、`/opengraph-image`、`/blog/...` 別名
   各自讀 `NODE_ENV === 'development'`,完全不讀這個變數。`yarn dev` 與 `yarn build`
@@ -108,13 +109,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   正常。排查時用 Safari 無痕模式、單站關閉內容阻擋器,再逐組停用 filter
   做鑑別;AdGuard iOS 沒有 filtering log。站內控制項保留專屬中性 class
   `.hux-elevator-control`,無障礙名稱用 `sr-only` 內文提供,不要改回上述兩個屬性。
-- **Codex 沙箱可能把有效的 GitHub CLI 登錄誤報為過期。** 2026-07-12 已做過
-  鑑別實驗:同一份 macOS Keychain 憑證在 Codex 沙箱內執行 `gh auth status` 會顯示
-  `The token in default is invalid`,但沙箱外執行同一命令及 `gh api user` 都成功,
-  Claude Code 也正常。遇到這個訊息不要先 `gh auth logout/login`、撤銷 OAuth 或重建
-  PAT;先申請沙箱外權限重跑 `gh auth status && gh api user --jq .login`。確認成功後,
-  後續 `gh` 命令使用沙箱外執行;若仍無法使用,PR、Issue、CI、review 等 GitHub API
-  操作可改走已安裝的 GitHub MCP,本機修改、commit、push 仍使用 Git/沙箱外 `gh`。
 - **Mermaid 管線的環境陷阱與不變量在
   [`docs/lessons/mermaid-pipeline.md`](docs/lessons/mermaid-pipeline.md)。**
   動到 `scripts/mermaid-*.mjs`、`lib/rehype-mermaid.mjs`、`public/mermaid/` 的產物、
@@ -135,7 +129,8 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   把 `@AGENTS.md` import 弄丟。重複約 500 B,接受即可,不要「順手修正」。
   ② `.github/workflows/openwiki-update.yml` **每次執行被無條件覆寫**(`writeFile`),手改必被
   蓋掉;而它用 `peter-evans/create-pull-request` 從 Actions 開 PR,需要開 repo 層
-  「Allow Actions to create and approve pull requests」—— 正是下節載明本專案刻意不開的開關。
+  「Allow Actions to create and approve pull requests」—— 本專案刻意不開這個開關
+  (理由見 [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md))。
   故該檔已列入 `.gitignore`:本機任它覆寫、但永不入庫;要更新 wiki 就本機跑
   `openwiki --update`,產物照常走 PR。
 - **`openwiki/INSTRUCTIONS.md` 是唯一該由人手動維護的 OpenWiki 檔案**。它是「wiki 範圍與
@@ -197,7 +192,6 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   [`docs/lessons/deploy-and-automation.md`](docs/lessons/deploy-and-automation.md)。**
   合併後 production 沒動,或 Renovate PR 全綠卻不合併時**先讀它** —— 它的結論就是
   「不要重新排查」。**平常開 PR、合併不必讀。**
-    (供應鏈安全慣例;`sha_pinning_required` 目前是 false,不代表可以省略)。
 
 ## 通用工程守則
 

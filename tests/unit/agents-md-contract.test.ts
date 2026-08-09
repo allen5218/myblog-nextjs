@@ -29,11 +29,27 @@ const BUDGET_BYTES = 24 * 1024
 
 const agentsSource = readFileSync(AGENTS_PATH, 'utf8')
 
-/** `AGENTS.md` 連出去的 `docs/lessons/` 檔名(markdown 連結目標,不含 anchor)。 */
+// 掃連結前先剝掉「看得到但不生效」的區域。註解掉的 pointer,與寫在 fenced block 裡當範例
+// 的 pointer,對 agent 而言都不是路由,但字串還在 —— 不剝的話這支測試就是除錯守則第 7 條
+// 說的那型空包彈:「保留了這個字串,卻讓它不再生效」。2026-08-09 實測:把 mermaid pointer
+// 整段包進 `<!-- -->`,三條斷言原本全數照樣綠。
+const scannableSource = agentsSource
+  .replace(/<!--[\s\S]*?-->/g, '')
+  .replace(/^```[\s\S]*?^```/gm, '')
+
+/**
+ * `AGENTS.md` 連出去的 `docs/lessons/` 檔名。
+ *
+ * 刻意只認 inline markdown 連結 —— code span 與 reference-style 連結不算數,因為 pointer
+ * 的價值在於 agent 點得進去。放寬的只有可選的 `./` 前綴、anchor 與 title:那三種都是同一個
+ * 連結的合法寫法,不放寬會製造假失敗。
+ */
 const linkedLessons = new Set(
-  [...agentsSource.matchAll(/\]\(docs\/lessons\/([^)#]+\.md)(?:#[^)]*)?\)/g)].map(
-    (match) => match[1]
-  )
+  [
+    ...scannableSource.matchAll(
+      /\]\(\.?\/?docs\/lessons\/([^)#\s]+\.md)(?:#[^)\s]*)?(?:\s+"[^"]*")?\)/g
+    ),
+  ].map((match) => match[1])
 )
 
 const lessonFiles = readdirSync(LESSONS_DIR).filter((name) => name.endsWith('.md'))
@@ -51,6 +67,23 @@ describe('AGENTS.md 的 schema 層契約', () => {
     ).toBeLessThanOrEqual(BUDGET_BYTES)
   })
 
+  // 預算算的是本檔的 bytes,而 `@path` import 的內容一樣進每個 session 的 context。
+  // 2026-08-09 實測:一行 30 bytes 的 `@docs/lessons/chiron-font.md` 能把 5,402 bytes
+  // 搬進 context,而預算斷言完全看不到 —— 保留了「檔案很小」這個事實,卻讓它不再代表
+  // 「context 很小」。這是繞過預算最便宜的一條路,所以獨立守住。
+  test('不用 @import 把內容繞過預算搬進 context', () => {
+    const imports = agentsSource
+      .split('\n')
+      .filter((line) => /^@\S/.test(line))
+
+    expect(
+      imports,
+      `AGENTS.md 有 @import:${imports.join('、')}\n` +
+        '這些內容一樣進每個 session 的 context,只是預算斷言量不到。\n' +
+        '要引用 docs/lessons/ 請用一般 markdown 連結,讓 agent 依觸發條件自己決定要不要讀。'
+    ).toEqual([])
+  })
+
   test('每個 docs/lessons/ 頁面都有來自 AGENTS.md 的 inbound link', () => {
     const orphans = lessonFiles.filter((name) => !linkedLessons.has(name))
 
@@ -59,7 +92,9 @@ describe('AGENTS.md 的 schema 層契約', () => {
       `docs/lessons/ 有孤兒頁:${orphans.join('、')}\n` +
         '沒有 inbound link 的文件被 agent 翻到的機率不到 10%,等於刪掉它。\n' +
         '請在 AGENTS.md 加 pointer,並且必須寫出觸發條件(什麼時候該讀)與反向邊界\n' +
-        '(什麼時候不必讀)——少了反向邊界,agent 會保險起見每次都讀,等於沒搬。'
+        '(什麼時候不必讀)——少了反向邊界,agent 會保險起見每次都讀,等於沒搬。\n' +
+        '如果你已經加了:pointer 必須是 inline markdown 連結 `[文字](docs/lessons/x.md)`。\n' +
+        'code span、reference-style 連結、註解或 fenced block 裡的連結,這支測試都不算數。'
     ).toEqual([])
   })
 
