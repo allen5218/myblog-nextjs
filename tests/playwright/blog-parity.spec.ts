@@ -130,9 +130,6 @@ test('about page uses new i18n routes without changing legacy blog URLs', async 
 
 test('Hux visual shell keeps archive and post hero parity contracts', async ({ page }) => {
   await page.goto('/archive/')
-  await expect
-    .poll(() => page.locator('.intro-header').evaluate((el) => el.getBoundingClientRect().height))
-    .toBe(228)
   await expect(page.locator('.site-heading h1')).toHaveText('Archive')
   await expect
     .poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
@@ -146,6 +143,48 @@ test('Hux visual shell keeps archive and post hero parity contracts', async ({ p
     'Updated on August 13, 2025',
     'Posted by elmagnifico on April 30, 2021',
   ])
+})
+
+/**
+ * hero 高度統一契約:About(variant="home")與每個 variant="archive" 的頁面共用同一組
+ * 高度規則,所以在這些頁面之間切換時 hero 不能上下跳。
+ *
+ * 斷言寫成「跟 About 相等」而不是比對 418/270 這類絕對值,是因為絕對值抓不到真正要防的
+ * 情形:只改到其中一邊。相等關係在任何一邊被單獨調整時都會紅,而整組一起調整時仍然綠。
+ *
+ * 呼叫點刻意列全。.intro-header-archive 除了 archive / series 之外,404 與 /offline 也在
+ * 用,而那兩頁幾乎沒有其他版面測試覆蓋 —— 共用基底規則的回歸正是最容易躺在這種邊緣頁面上。
+ * 兩個斷點都要測:高度規則在 768px 換一次值,只測桌面會漏掉手機那組。
+ */
+test('every archive-variant hero shares the About hero height at both breakpoints', async ({
+  page,
+}) => {
+  const heroHeight = async (path: string) => {
+    await page.goto(path)
+    return page
+      .locator('.intro-header')
+      .first()
+      .evaluate((element) => Math.round(element.getBoundingClientRect().height))
+  }
+
+  const archiveVariantPaths = [
+    '/archive/',
+    '/series/',
+    encodeURI('/series/ai-自維護的知識庫/'),
+    '/this-path-does-not-exist/',
+    '/offline/',
+  ]
+
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    const aboutHeight = await heroHeight('/about/')
+    // 前置斷言:高度真的量到了,否則下面的相等比對會在「兩邊都是 0」時假綠。
+    expect(aboutHeight, `about @${width}px`).toBeGreaterThan(100)
+
+    for (const path of archiveVariantPaths) {
+      expect(await heroHeight(path), `${path} @${width}px`).toBe(aboutHeight)
+    }
+  }
 })
 
 test('post hero and navigation geometry matches the legacy layout', async ({ page }) => {

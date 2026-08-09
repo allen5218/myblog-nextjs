@@ -376,12 +376,15 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
   color: var(--hero-fg);
 }
 
-.intro-header-home {
-  height: 270px;
-}
-
+/* home 與 archive 兩個 variant 共用同一組高度,是刻意的:兩者的 hero 內容結構相同
+   (.site-heading 的大標 + 副標),高度一致才不會在 About ↔ archive ↔ series ↔ 404 ↔
+   /offline 之間切換時上下跳。固定高度 + background-size:cover 也讓行為與視窗比例無關
+   —— 曾試過 aspect-ratio 綁底圖比例,但 CSS Sizing 4 會把 min/max-height 透過 ratio
+   反向傳遞成 min/max-width,寬視窗的 hero 反而縮成 1093px、窄視窗被撐出水平捲軸。
+   注意 .intro-header-archive 的呼叫點不只 archive/series,還有 404 與 /offline。 */
+.intro-header-home,
 .intro-header-archive {
-  height: 228px;
+  height: 270px;
 }
 
 .intro-header-post {
@@ -1712,7 +1715,9 @@ body:has(main .intro-header-post.intro-header-text) .navbar-custom:not(.is-fixed
     margin-bottom: 20px;
   }
 
-  .intro-header-home {
+  /* 桌面高度同樣兩個 variant 共用,理由見上面的基底規則。 */
+  .intro-header-home,
+  .intro-header-archive {
     height: 418px;
   }
 

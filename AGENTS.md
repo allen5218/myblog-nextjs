@@ -143,6 +143,12 @@ Vercel 自動部署 `main`)。完整的功能與設定手冊在
   (`mermaid-check` 只比對檔名、`.contentlayer` 快取、Playwright 的 service worker
   預設值等),每一個都是實際踩過才寫下來的。**單純在文章裡寫 mermaid fence 不必讀** ——
   該擋的都有測試機器強制。
+- **CSS 的版面尺寸陷阱在
+  [`docs/lessons/css-pitfalls.md`](docs/lessons/css-pitfalls.md)。**
+  動到高度/寬度規則、`aspect-ratio`、`min-*`/`max-*`,或把視覺效果從 CSS 烘進圖檔之前
+  **先讀它**。目前收錄兩條:`min/max-height` 會透過 `aspect-ratio` **反向傳遞**成寬度限制
+  (實測讓滿版 hero 在 1920px 視窗縮成 1093px、375px 視窗撐出水平捲軸,而且完全不報錯),
+  以及黑色遮罩烘進圖檔的正確係數是 sRGB 空間的 `1 - α`。**寫一般樣式不必讀。**
 - **OpenWiki(`openwiki` CLI,code 模式)有兩個「不要試圖手動修正」的行為** —— 都寫死在
   原始碼、沒有設定開關,且 `--init` 與 `--update` **每次執行都會重跑** repo setup:
   ① 它把**同一段 `<!-- OPENWIKI:START/END -->` 區塊同時寫進 `AGENTS.md` 與 `CLAUDE.md`**
